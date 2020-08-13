@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Play DiabloII together</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link href="/assets/css/main.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="game-body">
+      <!--<video src="locahost:8080/test.sdp">-->
+      <video
+        id="game-screen"
+        muted
+        playinfullscreen="false"
+        playsinline
+        onloadstart="this.volume=0.5"
+        autoplay
+      ></video>
+      <div id="logs"></div>
+
+      <script>
+        var log = (msg) => {
+          document.getElementById("logs").innerHTML += msg + "<br>";
+        };
+        // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
+        // await pc.setRemoteDescription(offer);
+
+        let pc = new RTCPeerConnection({
+          iceServers: [
+            {
+              urls: "stun:stun.l.google.com:19302",
+            },
+          ],
+        });
+        pc.oniceconnectionstatechange = (e) => log(pc.iceConnectionState);
+        pc.onicecandidate = (event) => {
+          console.log(event.candidate);
+          // if (event.candidate === null) {
+          //   document.getElementById('localSessionDescription').value = btoa(JSON.stringify(pc.localDescription))
+          // }
+        };
+
+        pc.ontrack = function (event) {
+          var el = document.getElementById("game-screen");
+          el.srcObject = event.streams[0];
+        };
+
+        // start session
+        // window.startSession = () => {
+        pc.addTransceiver("video", { direction: "recvonly" });
+        pc.createOffer()
+          .then((offer) => {
+            log(offer);
+            $.post(
+              "http://" + location.host + "/signal",
+              btoa(JSON.stringify(offer)),
+              (data, status) => {
+                console.log(`answer ${data} and status is ${status}`);
+                pc.setRemoteDescription(
+                  new RTCSessionDescription(JSON.parse(atob(data)))
+                );
+              }
+            );
+            pc.setLocalDescription(offer);
+          })
+          .catch(log);
+        // }
+
+        // log key
+        document.addEventListener("keydown", logKey);
+        function logKey(e) {
+          console.log(e.keyCode);
+          $.post(
+            "http://" + location.host + "/key",
+            e.keyCode.toString(10),
+            (data, status) => {
+              console.log(`${data} and status is ${status}`);
+            }
+          );
+        }
+
+        const myPics = document.getElementById("game-screen");
+        // Add the event listeners for mousedown, mousemove, and mouseup
+        myPics.addEventListener("mousedown", (e) => {
+          x = e.offsetX;
+          y = e.offsetY;
+          boundRect = myPics.getBoundingClientRect();
+          console.log(e.offsetX, e.offsetY);
+          $.post(
+            "http://" + location.host + "/mousedown",
+            e.offsetX.toString() +
+              "," +
+              e.offsetY.toString() +
+              "," +
+              boundRect.width +
+              "," +
+              boundRect.height,
+            (data, status) => {
+              console.log(`${data} and status is ${status}`);
+            }
+          );
+        });
+      </script>
+    </div>
+  </body>
+</html>
