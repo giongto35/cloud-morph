@@ -121,6 +121,8 @@ HWND sendIt(HWND hwnd, int key)
     // PostMessage(hwnd, WM_KEYDOWN, key, 0x001E0001); //send
     // PostMessage(hwnd, WM_KEYUP, key, 0x001E0001);   //send
     cout << "sended key " << ' ' << key << endl;
+
+    return hwnd;
 }
 
 int MakeLParam(float x, float y)
@@ -142,43 +144,58 @@ void MouseMove(int x, int y)
     SendInput(1, &Input, sizeof(INPUT));
 }
 
-void sendMouseDown(HWND hwnd, float x, float y)
+void sendMouseDown(HWND hwnd, bool isLeft, bool isDown, float x, float y)
 {
     cout << x << ' ' << y << endl;
     INPUT Input = {0};
     MouseMove(int(x), int(y));
 
+    if (isLeft && isDown)
+    {
+        Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_ABSOLUTE;
+    }
+    else if (isLeft && !isDown)
+    {
+        Input.mi.dwFlags = MOUSEEVENTF_LEFTUP | MOUSEEVENTF_ABSOLUTE;
+    }
+    else if (!isLeft && isDown)
+    {
+        Input.mi.dwFlags = MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_ABSOLUTE;
+    }
+    else if (!isLeft && !isDown)
+    {
+        Input.mi.dwFlags = MOUSEEVENTF_RIGHTUP | MOUSEEVENTF_ABSOLUTE;
+    }
+
     // left down
     ZeroMemory(&Input, sizeof(INPUT));
     Input.type = INPUT_MOUSE;
-    Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_ABSOLUTE;
     SendInput(1, &Input, sizeof(INPUT));
     cout << "left mouse Down";
-
-    // left up
-    ZeroMemory(&Input, sizeof(INPUT));
-    Input.type = INPUT_MOUSE;
-    Input.mi.dwFlags = MOUSEEVENTF_LEFTUP | MOUSEEVENTF_ABSOLUTE;
-    SendInput(1, &Input, sizeof(INPUT));
-    cout << "left mouse up";
-
-    // PostMessage(hwnd, WM_LBUTTONDOWN, 1, MakeLParam(x, y));
-    // PostMessage(hwnd, WM_LBUTTONUP, 0, MakeLParam(x, y));
 }
 
 struct Mouse
 {
+    byte isLeft;
+    byte isDown;
     float x;
     float y;
     float relwidth;
     float relheight;
 };
 
+// TODO: Use some proper serialization
 Mouse parseMousePos(string stPos)
 {
     stringstream ss(stPos);
 
     string substr;
+    getline(ss, substr, ',');
+    bool isLeft = stof(substr);
+
+    getline(ss, substr, ',');
+    bool isDown = stof(substr);
+
     getline(ss, substr, ',');
     float x = stof(substr);
 
@@ -191,14 +208,14 @@ Mouse parseMousePos(string stPos)
     getline(ss, substr, ',');
     float h = stof(substr);
 
-    return Mouse{x, y, w, h};
+    return Mouse{isLeft, isDown, x, y, w, h};
 }
 
 int main(int argc, char *argv[])
 {
     int server = clientConnect();
 
-    char *winTitle = "Road";
+    char *winTitle = (char *)"Notepad";
     if (argc > 1)
     {
         winTitle = argv[1];
@@ -238,7 +255,7 @@ int main(int argc, char *argv[])
             float x = pos.x * screenWidth / pos.relwidth;
             float y = pos.y * screenHeight / pos.relheight;
             cout << "pos: " << x << ' ' << y << endl;
-            sendMouseDown(hwnd, x, y);
+            sendMouseDown(hwnd, pos.isLeft, pos.isDown, x, y);
         }
         else
         {

@@ -35,6 +35,9 @@ var payloadType uint8
 var ssrc uint32
 var upgrader = websocket.Upgrader{}
 
+const eventKeyDown = "KEYDOWN"
+const eventMouse = "MOUSE"
+
 type WSPacket struct {
 	PType string `json:"type"`
 	// TODO: Make Data generic: map[string]interface{} for more usecases
@@ -98,6 +101,7 @@ func NewClient(c *websocket.Conn, browserID string) *Client {
 	return &Client{
 		conn:      c,
 		SessionID: browserID,
+		done:      make(chan struct{}),
 	}
 }
 
@@ -110,8 +114,6 @@ func NewServer() *Server {
 	r.HandleFunc("/ws", server.WS)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
 	r.HandleFunc("/signal", Signalling)
-	r.HandleFunc("/key", Key)
-	r.HandleFunc("/mousedown", MouseDown)
 
 	r.PathPrefix("/").HandlerFunc(server.GetWeb)
 
@@ -181,7 +183,7 @@ func (c *Client) Heartbeat() {
 			return
 		default:
 		}
-		c.Send(WSPacket{PType: "heartbeat"})
+		// c.Send({PType: "heartbeat"})
 	}
 }
 
@@ -207,8 +209,14 @@ func (c *Client) Listen() {
 		err = json.Unmarshal(rawMsg, &wspacket)
 
 		if err != nil {
-			log.Println("Warn: error decoding", rawMsg)
+			fmt.Println("error decoding", err)
 			continue
+		}
+		switch wspacket.PType {
+		case eventKeyDown:
+			simulateKeyDown(wspacket.Data)
+		case eventMouse:
+			simulateMouseEvent(wspacket.Data)
 		}
 	}
 }
@@ -219,9 +227,7 @@ func main() {
 	http.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets"))))
 
 	server := NewServer()
-	log.Println("Launching game")
 	launchGameVM(cuRTPPort, curApp)
-	log.Println("spawn wine interact")
 	go WineInteract()
 	log.Println("done wine interact")
 	err := server.ListenAndServe()
@@ -229,12 +235,6 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-// XVFB is screen virtual buffer listening at port :99
-// func startXVFB() {
-// 	cmd := exec.Command("Xvfb", ":99", "-screen", "0", "1280x800x16")
-// 	cmd.Run()
-// }
 
 // WineInteract starts Virtual buffer + Controller utitlity
 func WineInteract() {
@@ -248,6 +248,7 @@ func WineInteract() {
 
 	listener, listenerssrc := newLocalStreamListener(cuRTPPort)
 	ssrc = listenerssrc
+	log.Println("Ssrc", ssrc)
 
 	go func() {
 		defer func() {
@@ -512,22 +513,38 @@ func Signalling(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-// Key handles key down event and send it to Virtual Machine over TCP port
-func Key(w http.ResponseWriter, r *http.Request) {
+func simulateKeyDown(jsonPayload string) {
 	if isStarted == false {
 		return
 	}
-	bodyBytes, _ := ioutil.ReadAll(r.Body)
-	key, _ := strconv.Atoi(string(bodyBytes))
-	WineConn.Write([]byte{byte(key)})
+
+	type keydownPayload struct {
+		KeyCode int `json:keycode`
+	}
+	p := &keydownPayload{}
+	json.Unmarshal([]byte(jsonPayload), &p)
+
+	WineConn.Write([]byte{byte(p.KeyCode)})
 }
 
-// MouseDown handles mouse down event and send it to Virtual Machine over TCP port
-func MouseDown(w http.ResponseWriter, r *http.Request) {
-	if isStarted == false {
-		return
+// simulateMouseEvent handles mouse down event and send it to Virtual Machine over TCP port
+func simulateMouseEvent(jsonPayload string) {
+	// if isStarted == false {
+	// 	return
+	// }
+
+	type mousedownPayload struct {
+		IsLeft byte    `json:isLeft`
+		IsDown byte    `json:isDown`
+		X      float32 `json:x`
+		Y      float32 `json:y`
+		Width  float32 `json:width`
+		Height float32 `json:height`
 	}
-	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	p := &mousedownPayload{}
+	json.Unmarshal([]byte(jsonPayload), &p)
+
 	// Mouse is in format of comma separated "12.4,52.3"
-	WineConn.Write(bodyBytes)
+	mousePayload := fmt.Sprintf("%d,%d,%f,%f,%f,%f", p.IsLeft, p.IsDown, p.X, p.Y, p.Width, p.Height)
+	WineConn.Write([]byte(mousePayload))
 }

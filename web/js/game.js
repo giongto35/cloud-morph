@@ -1,34 +1,35 @@
 const pingIntervalMs = 2000; // 2 secs
+const MOUSE_DOWN = 0;
+const MOUSE_UP = 1;
+const MOUSE_LEFT = 0;
+const MOUSE_RIGHT = 1;
 
-var log = (msg) => {
-  document.getElementById("logs").innerHTML += msg + "<br>";
-};
 // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
 // await pc.setRemoteDescription(offer);
 
 function init() {
   const address = `${location.protocol !== "https:" ? "ws" : "wss"}://${
     location.host
-  }/ws?${params}`;
+  }/ws`;
   console.info(`[ws] connecting to ${address}`);
   conn = new WebSocket(address);
 
   // Clear old roomID
   conn.onopen = () => {
-    log.info("[ws] <- open connection");
-    log.info(`[ws] -> setting ping interval to ${pingIntervalMs}ms`);
+    console.log("[ws] <- open connection");
+    console.log(`[ws] -> setting ping interval to ${pingIntervalMs}ms`);
     // !to add destructor if SPA
-    setInterval(ping, pingIntervalMs);
+    // setInterval(ping, pingIntervalMs);
   };
-  conn.onerror = (error) => log.error(`[ws] ${error}`);
-  conn.onclose = () => log.info("[ws] closed");
+  conn.onerror = (error) => console.log(`[ws] ${error}`);
+  conn.onclose = () => console.log("[ws] closed");
   // Message received from server
   conn.onmessage = (response) => {
     const data = JSON.parse(response.data);
     const message = data.id;
 
     if (message !== "heartbeat")
-      log.debug(`[ws] <- message '${message}' `, data);
+      console.log(`[ws] <- message '${message}' `, data);
 
     switch (message) {
     }
@@ -49,9 +50,6 @@ let pc = new RTCPeerConnection({
 pc.oniceconnectionstatechange = (e) => log(pc.iceConnectionState);
 pc.onicecandidate = (event) => {
   console.log(event.candidate);
-  // if (event.candidate === null) {
-  //   document.getElementById('localSessionDescription').value = btoa(JSON.stringify(pc.localDescription))
-  // }
 };
 
 pc.ontrack = function (event) {
@@ -62,55 +60,75 @@ pc.ontrack = function (event) {
 // start session
 // window.startSession = () => {
 pc.addTransceiver("video", { direction: "recvonly" });
-pc.createOffer()
-  .then((offer) => {
-    log(offer);
-    $.post(
-      "http://" + location.host + "/signal",
-      btoa(JSON.stringify(offer)),
-      (data, status) => {
-        console.log(`answer ${data} and status is ${status}`);
-        pc.setRemoteDescription(
-          new RTCSessionDescription(JSON.parse(atob(data)))
-        );
-      }
-    );
-    pc.setLocalDescription(offer);
-  })
-  .catch(log);
+pc.createOffer().then((offer) => {
+  console.log(offer);
+  $.post(
+    "http://" + location.host + "/signal",
+    btoa(JSON.stringify(offer)),
+    (data, status) => {
+      console.log(`answer ${data} and status is ${status}`);
+      pc.setRemoteDescription(
+        new RTCSessionDescription(JSON.parse(atob(data)))
+      );
+    }
+  );
+  pc.setLocalDescription(offer);
+});
+// .catch(log);
 // }
+
+init();
 
 // log key
 document.addEventListener("keydown", logKey);
 function logKey(e) {
   console.log(e.keyCode);
-  $.post(
-    "http://" + location.host + "/key",
-    e.keyCode.toString(10),
-    (data, status) => {
-      console.log(`${data} and status is ${status}`);
-    }
-  );
+  send({ type: "KEYDOWN", data: JSON.stringify({ keyCode: e.keyCode }) });
 }
 
+document.addEventListener("contextmenu", (event) => event.preventDefault());
+
 const myPics = document.getElementById("game-screen");
+
 // Add the event listeners for mousedown, mousemove, and mouseup
+myPics.addEventListener("mouseup", (e) => {
+  x = e.offsetX;
+  y = e.offsetY;
+  b = e.button;
+  boundRect = myPics.getBoundingClientRect();
+  console.log(e.offsetX, e.offsetY);
+  send({
+    type: "MOUSE",
+    data: JSON.stringify({
+      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
+      isDown: 0,
+      x: e.offsetX,
+      y: e.offsetY,
+      width: boundRect.width,
+      height: boundRect.height,
+    }),
+  });
+});
+
 myPics.addEventListener("mousedown", (e) => {
   x = e.offsetX;
   y = e.offsetY;
   boundRect = myPics.getBoundingClientRect();
   console.log(e.offsetX, e.offsetY);
-  $.post(
-    "http://" + location.host + "/mousedown",
-    e.offsetX.toString() +
-      "," +
-      e.offsetY.toString() +
-      "," +
-      boundRect.width +
-      "," +
-      boundRect.height,
-    (data, status) => {
-      console.log(`${data} and status is ${status}`);
-    }
-  );
+  send({
+    type: "MOUSE",
+    data: JSON.stringify({
+      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
+      isDown: 1,
+      x: e.offsetX,
+      y: e.offsetY,
+      width: boundRect.width,
+      height: boundRect.height,
+    }),
+  });
+});
+
+myPics.addEventListener("click", (e) => {
+  e.preventDefault();
+  return false;
 });
