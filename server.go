@@ -16,14 +16,11 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 )
-
-type PageVariables struct {
-	Date string
-	Time string
-}
 
 var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
 
@@ -36,6 +33,13 @@ var cuRTPPort = startRTPPort
 var videoStream = map[string]chan *rtp.Packet{}
 var payloadType uint8
 var ssrc uint32
+var upgrader = websocket.Upgrader{}
+
+type WSPacket struct {
+	PType string `json:"type"`
+	// TODO: Make Data generic: map[string]interface{} for more usecases
+	Data string `json:"data"`
+}
 
 type appConfig struct {
 	path        string
@@ -45,7 +49,8 @@ type appConfig struct {
 
 var appCfg = map[string]appConfig{
 	"RoadRash": {
-		path:        "/home/thanh/.wine/drive_c/Program\\ Files\\ \\(x86\\)/CGN/Road\\ Rash",
+		// path:        "/home/thanh/.wine/drive_c/Program\\ Files\\ \\(x86\\)/CGN/Road\\ Rash",
+		path:        "/games/RoadRash",
 		appName:     "ROADRASH.exe",
 		windowTitle: "Road",
 	},
@@ -61,21 +66,168 @@ var appCfg = map[string]appConfig{
 	},
 }
 
-var curApp string = "Diablo"
+var curApp string = "Notepad"
+
+const indexPage string = "web/index.html"
+const addr string = ":8080"
+
+type Server struct {
+	httpServer *http.Server
+	// browserClients are the map sessionID to browser Client
+	clients map[string]*Client
+}
+
+type Client struct {
+	conn      *websocket.Conn
+	SessionID string
+
+	done chan struct{}
+}
+
+// GetWeb returns web frontend
+func (o *Server) GetWeb(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles(indexPage)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tmpl.Execute(w, nil)
+}
+
+func NewClient(c *websocket.Conn, browserID string) *Client {
+	return &Client{
+		conn:      c,
+		SessionID: browserID,
+	}
+}
+
+func NewServer() *Server {
+	server := &Server{
+		clients: map[string]*Client{},
+	}
+
+	r := mux.NewRouter()
+	r.HandleFunc("/ws", server.WS)
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
+	r.HandleFunc("/signal", Signalling)
+	r.HandleFunc("/key", Key)
+	r.HandleFunc("/mousedown", MouseDown)
+
+	r.PathPrefix("/").HandlerFunc(server.GetWeb)
+
+	svmux := &http.ServeMux{}
+	svmux.Handle("/", r)
+
+	httpServer := &http.Server{
+		Addr:         addr,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  120 * time.Second,
+		Handler:      svmux,
+	}
+	server.httpServer = httpServer
+	log.Println("Spawn server")
+
+	return server
+}
+
+func (o *Server) ListenAndServe() error {
+	log.Println("Server is running at", addr)
+	return o.httpServer.ListenAndServe()
+}
+
+// WSO handles all connections from user/frontend to coordinator
+func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
+	log.Println("A user is connecting...")
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Warn: Something wrong. Recovered in ", r)
+		}
+	}()
+
+	// be aware of ReadBufferSize, WriteBufferSize (default 4096)
+	// https://pkg.go.dev/github.com/gorilla/websocket?tab=doc#Upgrader
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("Coordinator: [!] WS upgrade:", err)
+		return
+	}
+
+	// Generate sessionID for browserClient
+	var sessionID string
+	for {
+		sessionID = uuid.Must(uuid.NewV4()).String()
+		// check duplicate
+		if _, ok := o.clients[sessionID]; !ok {
+			break
+		}
+	}
+
+	// Create browserClient instance
+	client := NewClient(c, sessionID)
+	// Run browser listener first (to capture ping)
+	go client.Listen()
+}
+
+// Heartbeat maintains connection to server
+func (c *Client) Heartbeat() {
+	// send heartbeat every 1s
+	timer := time.Tick(time.Second)
+
+	for range timer {
+		select {
+		case <-c.done:
+			log.Println("Close heartbeat")
+			return
+		default:
+		}
+		c.Send(WSPacket{PType: "heartbeat"})
+	}
+}
+
+func (c *Client) Send(packet WSPacket) {
+	data, err := json.Marshal(packet)
+	if err != nil {
+		return
+	}
+
+	c.conn.WriteMessage(websocket.TextMessage, data)
+}
+
+func (c *Client) Listen() {
+	for {
+		_, rawMsg, err := c.conn.ReadMessage()
+		if err != nil {
+			log.Println("[!] read:", err)
+			// TODO: Check explicit disconnect error to break
+			close(c.done)
+			break
+		}
+		wspacket := WSPacket{}
+		err = json.Unmarshal(rawMsg, &wspacket)
+
+		if err != nil {
+			log.Println("Warn: error decoding", rawMsg)
+			continue
+		}
+	}
+}
 
 func main() {
 	// HTTP server
 	// TODO: Make the communication over websocket
 	http.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets"))))
 
-	http.HandleFunc("/", HomePage)
-	http.HandleFunc("/signal", Signalling)
-	http.HandleFunc("/key", Key)
-	http.HandleFunc("/mousedown", MouseDown)
-
+	server := NewServer()
+	log.Println("Launching game")
 	launchGameVM(cuRTPPort, curApp)
+	log.Println("spawn wine interact")
 	go WineInteract()
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("done wine interact")
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 // XVFB is screen virtual buffer listening at port :99
@@ -84,7 +236,7 @@ func main() {
 // 	cmd.Run()
 // }
 
-// WineInteract starts Wine + Virtual buffer
+// WineInteract starts Virtual buffer + Controller utitlity
 func WineInteract() {
 	fmt.Println("listening wine at port 9090")
 	ln, err := net.Listen("tcp", ":9090")
@@ -378,16 +530,4 @@ func MouseDown(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, _ := ioutil.ReadAll(r.Body)
 	// Mouse is in format of comma separated "12.4,52.3"
 	WineConn.Write(bodyBytes)
-}
-
-// HomePage returns homepage
-func HomePage(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("assets/homepage.html") //parse the html file homepage.html
-	if err != nil {                                       // if there is an error
-		fmt.Print("template parsing error: ", err) // log it
-	}
-	err = t.Execute(w, nil) //execute the template and pass it the HomePageVars struct to fill in the gaps
-	if err != nil {         // if there is an error
-		fmt.Print("template executing error: ", err) //log it
-	}
 }

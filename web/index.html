@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Play DiabloII together</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <link href="/static/css/main.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="game-body">
+      <!--<video src="locahost:8080/test.sdp">-->
+      <video
+        id="game-screen"
+        muted
+        playinfullscreen="false"
+        playsinline
+        onloadstart="this.volume=0.5"
+        autoplay
+      ></video>
+      <div id="logs"></div>
+
+      <script src="/static/js/game.js"></script>
+    </div>
+  </body>
+</html>
