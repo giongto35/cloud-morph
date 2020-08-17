@@ -3,9 +3,11 @@
 // #include <psapi.h>
 #include <vector>
 #include <sstream>
+// #include <pthread.h>
 using namespace std;
 
 int screenWidth, screenHeight;
+int server; // TODO: Move to local variable
 
 int clientConnect()
 {
@@ -148,6 +150,8 @@ void sendMouseDown(HWND hwnd, bool isLeft, bool isDown, float x, float y)
 {
     cout << x << ' ' << y << endl;
     INPUT Input = {0};
+    ZeroMemory(&Input, sizeof(INPUT));
+
     MouseMove(int(x), int(y));
 
     if (isLeft && isDown)
@@ -168,7 +172,6 @@ void sendMouseDown(HWND hwnd, bool isLeft, bool isDown, float x, float y)
     }
 
     // left down
-    ZeroMemory(&Input, sizeof(INPUT));
     Input.type = INPUT_MOUSE;
     SendInput(1, &Input, sizeof(INPUT));
     cout << "left mouse Down";
@@ -211,9 +214,18 @@ Mouse parseMousePos(string stPos)
     return Mouse{isLeft, isDown, x, y, w, h};
 }
 
+// void *healthCheck(void *params)
+// {
+//     cout << "PING";
+//     while (true)
+//     {
+//         send(server, "ping", strlen("ping"), 0);
+//     }
+// }
+
 int main(int argc, char *argv[])
 {
-    int server = clientConnect();
+    server = clientConnect();
 
     char *winTitle = (char *)"Notepad";
     if (argc > 1)
@@ -228,6 +240,10 @@ int main(int argc, char *argv[])
          << "Press a key to continue..." << endl;
     getDesktopResolution(screenWidth, screenHeight);
     cout << "width " << screenWidth << "height " << screenHeight;
+
+    // pthread_t th;
+    // int t = pthread_create(&th, NULL, healthCheck, NULL);
+
     do
     {
 
@@ -247,7 +263,19 @@ int main(int argc, char *argv[])
         char *buffer = new char[recv_size];
         memcpy(buffer, buf, recv_size);
         cout << "Got: " << buf << " Parsed: " << buffer << "recv size " << recv_size << " len " << strlen(buffer) << endl;
-        if (recv_size > 1)
+        if (recv_size == 1)
+        {
+            if (buffer[0] == 0)
+            {
+                // health check, continue
+                continue;
+            };
+            // use key
+            sendIt(hwnd, buffer[0]); //notepad ID
+            cout << '\n'
+                 << "Press a key to continue...";
+        }
+        else
         {
             string st(buffer);
             cout << "Mouse: " << st << endl;
@@ -256,17 +284,6 @@ int main(int argc, char *argv[])
             float y = pos.y * screenHeight / pos.relheight;
             cout << "pos: " << x << ' ' << y << endl;
             sendMouseDown(hwnd, pos.isLeft, pos.isDown, x, y);
-        }
-        else
-        {
-            // use key
-            if (buffer[0] == 'p')
-            {
-                break;
-            }
-            sendIt(hwnd, buffer[0]); //notepad ID
-            cout << '\n'
-                 << "Press a key to continue...";
         }
     } while (true);
     closesocket(server);

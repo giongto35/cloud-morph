@@ -53,12 +53,13 @@ type appConfig struct {
 var appCfg = map[string]appConfig{
 	"RoadRash": {
 		// path:        "/home/thanh/.wine/drive_c/Program\\ Files\\ \\(x86\\)/CGN/Road\\ Rash",
-		path:        "/games/RoadRash",
+		// path:        "/games/RoadRash",
+		path:        "./winvm/games/RoadRash",
 		appName:     "ROADRASH.exe",
 		windowTitle: "Road",
 	},
 	"Diablo": {
-		path:        "/games/DiabloII",
+		path:        "./winvm/games/DiabloII",
 		appName:     "Game.exe",
 		windowTitle: "Diablo",
 	},
@@ -246,10 +247,12 @@ func WineInteract() {
 
 	// go startXVFB()
 
+	// Read video stream from encoded video stream produced by FFMPEG
 	listener, listenerssrc := newLocalStreamListener(cuRTPPort)
 	ssrc = listenerssrc
 	log.Println("Ssrc", ssrc)
 
+	// Broadcast video stream
 	go func() {
 		defer func() {
 			listener.Close()
@@ -282,18 +285,29 @@ func WineInteract() {
 		}
 	}()
 
+	// Maintain input stream from server to Virtual Machine over websocket
+	// Why Websocket: because normal IPC cannot communicate cross OS.
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			// handle error
 		}
-		go handleConnection(conn)
+		handleConnection(conn)
 	}
 }
 
 func handleConnection(conn net.Conn) {
 	fmt.Println("Wine connected")
 	WineConn = conn
+	go healthCheckVM(conn)
+}
+
+// healthCheckVM to maintain connection
+func healthCheckVM(conn net.Conn) {
+	for {
+		conn.Write([]byte{0})
+		time.Sleep(2 * time.Second)
+	}
 }
 
 // Encode encodes the input in base64
@@ -347,6 +361,7 @@ func launchGameVM(rtpPort int, appName string) chan struct{} {
 	gameSpawned := make(chan struct{})
 	go func() {
 		fmt.Println("execing run-client.sh")
+		// cmd = exec.Command("./run-wine-nodocker.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
 		cmd = exec.Command("./run-wine.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
 
 		cmd.Stdout = &out
@@ -517,6 +532,9 @@ func simulateKeyDown(jsonPayload string) {
 	if isStarted == false {
 		return
 	}
+	if WineConn == nil {
+		return
+	}
 
 	type keydownPayload struct {
 		KeyCode int `json:keycode`
@@ -529,9 +547,12 @@ func simulateKeyDown(jsonPayload string) {
 
 // simulateMouseEvent handles mouse down event and send it to Virtual Machine over TCP port
 func simulateMouseEvent(jsonPayload string) {
-	// if isStarted == false {
-	// 	return
-	// }
+	if isStarted == false {
+		return
+	}
+	if WineConn == nil {
+		return
+	}
 
 	type mousedownPayload struct {
 		IsLeft byte    `json:isLeft`
