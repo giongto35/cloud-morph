@@ -59,6 +59,7 @@ var appCfg = map[string]appConfig{
 		windowTitle: "Road",
 	},
 	"Diablo": {
+		// path:        "./winvm/games/DiabloII",
 		path:        "./winvm/games/DiabloII",
 		appName:     "Game.exe",
 		windowTitle: "Diablo",
@@ -70,7 +71,7 @@ var appCfg = map[string]appConfig{
 	},
 }
 
-var curApp string = "Notepad"
+var curApp string = "Diablo"
 
 const indexPage string = "web/index.html"
 const addr string = ":8080"
@@ -361,8 +362,8 @@ func launchGameVM(rtpPort int, appName string) chan struct{} {
 	gameSpawned := make(chan struct{})
 	go func() {
 		fmt.Println("execing run-client.sh")
-		// cmd = exec.Command("./run-wine-nodocker.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
-		cmd = exec.Command("./run-wine.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
+		cmd = exec.Command("./run-wine-nodocker.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
+		// cmd = exec.Command("./run-wine.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
 
 		cmd.Stdout = &out
 		cmd.Stderr = &stderr
@@ -380,7 +381,9 @@ func launchGameVM(rtpPort int, appName string) chan struct{} {
 		time.Sleep(5 * time.Second)
 		fmt.Println("Run ffmpeg")
 		// try use wrapper libffmpeg?/ Gstreamer
-		streamCmd = exec.Command("ffmpeg", "-r", "10", "-f", "x11grab", "-draw_mouse", "0", "-s", "1280x800", "-i", ":99", "-c:v", "libvpx", "-quality", "realtime",
+		fmt.Println(exec.Command("pkill", "ffmpeg").Output())
+
+		streamCmd = exec.Command("ffmpeg", "-r", "10", "-f", "x11grab", "-draw_mouse", "0", "-s", "800x600", "-i", ":99", "-c:v", "libvpx", "-quality", "realtime",
 			"-cpu-used", "0", "-b:v", "384k", "-qmin", "10", "-qmax", "42", "-maxrate", "384k", "-bufsize", "1000k", "-an", "-f", "rtp", "rtp:/127.0.0.1:"+strconv.Itoa(rtpPort))
 		out := streamCmd.Run()
 		fmt.Println(out)

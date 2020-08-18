@@ -52,7 +52,7 @@ HWND getWindowByTitle(char *pattern)
         hwnd = FindWindowEx(NULL, hwnd, NULL, NULL);
         DWORD dwPID = 0;
         GetWindowThreadProcessId(hwnd, &dwPID);
-        cout << "searching" << hwnd << endl;
+        cout << "Searching" << hwnd << endl;
         int len = GetWindowTextLength(hwnd) + 1;
 
         char title[len];
@@ -66,7 +66,7 @@ HWND getWindowByTitle(char *pattern)
             return hwnd;
         }
     } while (hwnd != 0);
-    cout << "Searching Not found";
+    cout << "Not found";
     return hwnd; //Ignore that
 }
 
@@ -174,7 +174,7 @@ void sendMouseDown(HWND hwnd, bool isLeft, bool isDown, float x, float y)
     // left down
     Input.type = INPUT_MOUSE;
     SendInput(1, &Input, sizeof(INPUT));
-    cout << "left mouse Down";
+    cout << "mouse Down";
 }
 
 struct Mouse
@@ -223,6 +223,12 @@ Mouse parseMousePos(string stPos)
 //     }
 // }
 
+void formatWindow(HWND hwnd)
+{
+    SetWindowPos(hwnd, NULL, 0, 0, 1280, 800, 0);
+    cout << "Window formated" << endl;
+}
+
 int main(int argc, char *argv[])
 {
     server = clientConnect();
@@ -235,11 +241,19 @@ int main(int argc, char *argv[])
     cout << "Finding title " << winTitle << endl;
     HWND hwnd = getWindowByTitle(winTitle);
 
+    if (hwnd == 0)
+    {
+        return 1;
+    }
+    cout << "HWND: " << hwnd << endl;
     cout << "Connected " << server << endl;
     cout << '\n'
          << "Press a key to continue..." << endl;
     getDesktopResolution(screenWidth, screenHeight);
-    cout << "width " << screenWidth << "height " << screenHeight;
+    cout << "width " << screenWidth << " "
+         << "height " << screenHeight << endl;
+
+    formatWindow(hwnd);
 
     // pthread_t th;
     // int t = pthread_create(&th, NULL, healthCheck, NULL);
