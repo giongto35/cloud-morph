@@ -70,35 +70,6 @@ HWND getWindowByTitle(char *pattern)
     return hwnd; //Ignore that
 }
 
-HWND getWindow(DWORD dwProcessID)
-{
-    HWND hwnd = NULL;
-
-    do
-    {
-        hwnd = FindWindowEx(NULL, hwnd, NULL, NULL);
-        DWORD dwPID = 0;
-        GetWindowThreadProcessId(hwnd, &dwPID);
-        cout << "searching" << hwnd << endl;
-        if (dwPID == dwProcessID)
-        {
-            cout << "yay: " << hwnd << " :pid: " << dwPID << endl; //debug
-            int len = GetWindowTextLength(hwnd) + 1;
-            //std::string s;
-
-            //vector<char> list(len);
-            char title[len];
-            //s.reserve(len);
-            //GetWindowText(hwnd, const_cast<char*>(s.c_str()), len - 1);
-            GetWindowText(hwnd, title, len - 1);
-            cout << "len " << len << " Title : " << title << endl;
-        }
-    } while (hwnd != 0);
-    cout << "Searching done"
-         << " " << hwnd << endl;
-    return hwnd; //Ignore that
-}
-
 HWND sendIt(HWND hwnd, int key)
 {
     INPUT ip;
@@ -174,7 +145,6 @@ void sendMouseDown(HWND hwnd, bool isLeft, bool isDown, float x, float y)
     // left down
     Input.type = INPUT_MOUSE;
     SendInput(1, &Input, sizeof(INPUT));
-    cout << "mouse Down";
 }
 
 struct Mouse
@@ -239,12 +209,14 @@ int main(int argc, char *argv[])
         winTitle = argv[1];
     }
     cout << "Finding title " << winTitle << endl;
-    HWND hwnd = getWindowByTitle(winTitle);
-
-    if (hwnd == 0)
+    HWND hwnd = 0;
+    hwnd = getWindowByTitle(winTitle);
+    while (hwnd == 0)
     {
-        return 1;
+        hwnd = getWindowByTitle(winTitle);
+        Sleep(3000);
     }
+
     cout << "HWND: " << hwnd << endl;
     cout << "Connected " << server << endl;
     cout << '\n'
@@ -274,6 +246,7 @@ int main(int argc, char *argv[])
             //cout << "Rejected: " << buffer << ' ' << strlen(buffer) << endl;
             continue;
         }
+        cout << recv_size << endl;
         char *buffer = new char[recv_size];
         memcpy(buffer, buf, recv_size);
         cout << "Got: " << buf << " Parsed: " << buffer << "recv size " << recv_size << " len " << strlen(buffer) << endl;
@@ -289,14 +262,15 @@ int main(int argc, char *argv[])
             cout << '\n'
                  << "Press a key to continue...";
         }
-        else
+        else if (recv_size > 1)
         {
             string st(buffer);
             cout << "Mouse: " << st << endl;
             Mouse pos = parseMousePos(st);
             float x = pos.x * screenWidth / pos.relwidth;
             float y = pos.y * screenHeight / pos.relheight;
-            cout << "pos: " << x << ' ' << y << endl;
+            cout << "pos: " << x << ' ' << y << ' ' << screenWidth << ' '
+                 << screenHeight << ' ' << pos.relwidth << ' ' << pos.relheight << endl;
             sendMouseDown(hwnd, pos.isLeft, pos.isDown, x, y);
         }
     } while (true);
