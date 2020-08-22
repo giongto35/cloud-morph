@@ -196,6 +196,7 @@ Mouse parseMousePos(string stPos)
 void formatWindow(HWND hwnd)
 {
     SetWindowPos(hwnd, NULL, 0, 0, 800, 600, 0);
+    SetWindowLong(hwnd, GWL_STYLE, 0);
     cout << "Window formated" << endl;
 }
 
