@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"os/exec"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -375,19 +374,19 @@ func launchGameVM(rtpPort int, appName string) chan struct{} {
 		close(gameSpawned)
 	}()
 
-	go func() {
-		<-gameSpawned
-		// Better wait for docker to spawn up
-		time.Sleep(5 * time.Second)
-		fmt.Println("Run ffmpeg")
-		// try use wrapper libffmpeg?/ Gstreamer
-		fmt.Println(exec.Command("pkill", "ffmpeg").Output())
+	// go func() {
+	// 	<-gameSpawned
+	// 	// Better wait for docker to spawn up
+	// 	time.Sleep(5 * time.Second)
+	// 	fmt.Println("Run ffmpeg")
+	// 	// try use wrapper libffmpeg?/ Gstreamer
+	// 	fmt.Println(exec.Command("pkill", "ffmpeg").Output())
 
-		streamCmd = exec.Command("ffmpeg", "-r", "10", "-f", "x11grab", "-draw_mouse", "0", "-s", "800x600", "-i", ":99", "-c:v", "libvpx", "-quality", "realtime",
-			"-cpu-used", "0", "-b:v", "384k", "-qmin", "10", "-qmax", "42", "-maxrate", "384k", "-bufsize", "1000k", "-an", "-f", "rtp", "rtp:/127.0.0.1:"+strconv.Itoa(rtpPort))
-		out := streamCmd.Run()
-		fmt.Println(out)
-	}()
+	// 	streamCmd = exec.Command("ffmpeg", "-r", "10", "-f", "x11grab", "-draw_mouse", "0", "-s", "800x600", "-i", ":99", "-c:v", "libvpx", "-quality", "realtime",
+	// 		"-cpu-used", "0", "-b:v", "384k", "-qmin", "10", "-qmax", "42", "-maxrate", "384k", "-bufsize", "1000k", "-an", "-f", "rtp", "rtp:/127.0.0.1:"+strconv.Itoa(rtpPort))
+	// 	out := streamCmd.Run()
+	// 	fmt.Println(out)
+	// }()
 
 	done := make(chan struct{})
 	// clean up func

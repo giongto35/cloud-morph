@@ -2,23 +2,17 @@
 FROM ubuntu:18.04
 #FROM debian:10-slim
 
-# based on https://github.com/scottyhardy/docker-wine
 RUN apt-get update -y
 RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb
-RUN apt-get install --no-install-recommends --assume-yes wine64 mingw-w64
+RUN apt-get install --no-install-recommends --assume-yes wine64 mingw-w64 ffmpeg
 
 RUN dpkg --add-architecture i386
 RUN wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add -
 RUN add-apt-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ bionic main'
 RUN add-apt-repository ppa:cybermax-dexter/sdl2-backport
 
-#RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv F987672F
 RUN apt-get update -y
-#RUN wget -nv https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/xUbuntu_18.04/Release.key -O /tmp/Release.key
-#RUN apt-key add - < /tmp/Release.key
-#RUN apt-add-repository 'deb https://download.opensuse.org/repositories/Emulators:/Wine:/Debian/xUbuntu_18.04/ ./'
 
-#RUN apt install --install-recommends -y winehq-stable
 RUN apt install -y aptitude
 RUN aptitude install -y winehq-stable
 RUN mkdir -p /winevm
