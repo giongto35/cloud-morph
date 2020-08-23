@@ -47,7 +47,7 @@ let pc = new RTCPeerConnection({
     },
   ],
 });
-pc.oniceconnectionstatechange = (e) => log(pc.iceConnectionState);
+pc.oniceconnectionstatechange = (e) => console.log(pc.iceConnectionState);
 pc.onicecandidate = (event) => {
   console.log(event.candidate);
 };

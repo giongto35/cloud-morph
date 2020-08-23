@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
+	"gopkg.in/yaml.v2"
 )
 
 var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
@@ -36,6 +37,7 @@ var upgrader = websocket.Upgrader{}
 
 const eventKeyDown = "KEYDOWN"
 const eventMouse = "MOUSE"
+const configFilePath = "config.yaml"
 
 type WSPacket struct {
 	PType string `json:"type"`
@@ -43,34 +45,42 @@ type WSPacket struct {
 	Data string `json:"data"`
 }
 
+// type appConfig struct {
+// 	path        string
+// 	appName     string
+// 	windowTitle string // To help WinAPI search
+// }
+
 type appConfig struct {
-	path        string
-	appName     string
-	windowTitle string // To help WinAPI search
+	Path       string `yaml:"path"`
+	AppFile    string `yaml:"appFile"`
+	WidowTitle string `yaml:"windowTitle"` // To help WinAPI search the app
 }
 
-var appCfg = map[string]appConfig{
-	"RoadRash": {
-		// path:        "/home/thanh/.wine/drive_c/Program\\ Files\\ \\(x86\\)/CGN/Road\\ Rash",
-		// path:        "/games/RoadRash",
-		path:        "./winvm/games/RoadRash",
-		appName:     "ROADRASH.exe",
-		windowTitle: "Road",
-	},
-	"Diablo": {
-		// path:        "./winvm/games/DiabloII",
-		path:        "/games/DiabloII",
-		appName:     "Game.exe",
-		windowTitle: "Diablo",
-	},
-	"Notepad": {
-		path:        ".",
-		appName:     "notepad",
-		windowTitle: "Notepad",
-	},
-}
+// var appCfg = map[string]appConfig{
+// 	"RoadRash": {
+// 		path:        "/games/RoadRash",
+// 		appName:     "ROADRASH.EXE",
+// 		windowTitle: "Road",
+// 	},
+// 	"Diablo": {
+// 		path:        "/games/DiabloII",
+// 		appName:     "Game.exe",
+// 		windowTitle: "Diablo",
+// 	},
+// 	"Notepad": {
+// 		path:        "/",
+// 		appName:     "notepad",
+// 		windowTitle: "Notepad",
+// 	},
+// 	"Photoshop": {
+// 		path:        "/games/Photoshop",
+// 		appName:     "PhotoshopCS6Portable.exe",
+// 		windowTitle: "Photoshop",
+// 	},
+// }
 
-var curApp string = "Diablo"
+var curApp string = "Notepad"
 
 const indexPage string = "web/index.html"
 const addr string = ":8080"
@@ -106,7 +116,7 @@ func NewClient(c *websocket.Conn, browserID string) *Client {
 	}
 }
 
-func NewServer() *Server {
+func NewServer(cfg appConfig) *Server {
 	server := &Server{
 		clients: map[string]*Client{},
 	}
@@ -169,7 +179,10 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 	// Create browserClient instance
 	client := NewClient(c, sessionID)
 	// Run browser listener first (to capture ping)
-	go client.Listen()
+	go func(client *Client) {
+		client.Listen()
+		delete(o.clients, client.SessionID)
+	}(client)
 }
 
 // Heartbeat maintains connection to server
@@ -198,19 +211,22 @@ func (c *Client) Send(packet WSPacket) {
 }
 
 func (c *Client) Listen() {
+	defer func() {
+		close(c.done)
+	}()
+
 	for {
 		_, rawMsg, err := c.conn.ReadMessage()
 		if err != nil {
 			log.Println("[!] read:", err)
 			// TODO: Check explicit disconnect error to break
-			close(c.done)
 			break
 		}
 		wspacket := WSPacket{}
 		err = json.Unmarshal(rawMsg, &wspacket)
 
 		if err != nil {
-			fmt.Println("error decoding", err)
+			log.Println("error decoding", err)
 			continue
 		}
 		switch wspacket.PType {
@@ -222,16 +238,33 @@ func (c *Client) Listen() {
 	}
 }
 
+func initConfig() (appConfig, error) {
+	cfgyml, err := ioutil.ReadFile(configFilePath)
+	if err != nil {
+		return appConfig{}, err
+	}
+
+	cfg := appConfig{}
+	err = yaml.Unmarshal(cfgyml, &cfg)
+	return cfg, err
+}
+
 func main() {
 	// HTTP server
 	// TODO: Make the communication over websocket
 	http.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets"))))
 
-	server := NewServer()
-	launchGameVM(cuRTPPort, curApp)
+	cfg, err := initConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("%v", cfg)
+
+	server := NewServer(cfg)
+	launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WidowTitle)
 	go WineInteract()
 	log.Println("done wine interact")
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -239,7 +272,7 @@ func main() {
 
 // WineInteract starts Virtual buffer + Controller utitlity
 func WineInteract() {
-	fmt.Println("listening wine at port 9090")
+	log.Println("listening wine at port 9090")
 	ln, err := net.Listen("tcp", ":9090")
 	if err != nil {
 		// handle error
@@ -250,13 +283,12 @@ func WineInteract() {
 	// Read video stream from encoded video stream produced by FFMPEG
 	listener, listenerssrc := newLocalStreamListener(cuRTPPort)
 	ssrc = listenerssrc
-	log.Println("Ssrc", ssrc)
 
 	// Broadcast video stream
 	go func() {
 		defer func() {
 			listener.Close()
-			fmt.Println("Closing game VM")
+			log.Println("Closing game VM")
 			// close(gameVMDone)
 		}()
 
@@ -266,7 +298,7 @@ func WineInteract() {
 			inboundRTPPacket := make([]byte, 4096) // UDP MTU
 			n, _, err := listener.ReadFrom(inboundRTPPacket)
 			if err != nil {
-				fmt.Printf("error during read: %s", err)
+				log.Printf("error during read: %s", err)
 				panic(err)
 			}
 
@@ -297,7 +329,7 @@ func WineInteract() {
 }
 
 func handleConnection(conn net.Conn) {
-	fmt.Println("Wine connected")
+	log.Println("Wine connected")
 	WineConn = conn
 	go healthCheckVM(conn)
 }
@@ -336,7 +368,7 @@ func Decode(in string, obj interface{}) {
 }
 
 // done to forcefully stop all processes
-func launchGameVM(rtpPort int, appName string) chan struct{} {
+func launchGameVM(rtpPort int, appPath string, appFile string, windowTitle string) chan struct{} {
 	var cmd *exec.Cmd
 	var streamCmd *exec.Cmd
 
@@ -344,25 +376,25 @@ func launchGameVM(rtpPort int, appName string) chan struct{} {
 	var stderr bytes.Buffer
 
 	// go func() {
-	// 	fmt.Println("Reading pipe stderr")
+	// 	log.Println("Reading pipe stderr")
 	// 	for {
-	// 		fmt.Println(string(stderr.Bytes()))
+	// 		log.Println(string(stderr.Bytes()))
 	// 		time.Sleep(time.Second)
 	// 	}
 	// }()
 	// go func() {
-	// 	fmt.Println("Reading pipe stdout")
+	// 	log.Println("Reading pipe stdout")
 	// 	for {
-	// 		fmt.Println(string(out.Bytes()))
+	// 		log.Println(string(out.Bytes()))
 	// 		time.Sleep(time.Second)
 	// 	}
 	// }()
 
 	gameSpawned := make(chan struct{})
 	go func() {
-		fmt.Println("execing run-client.sh")
+		log.Println("execing run-client.sh")
 		// cmd = exec.Command("./run-wine-nodocker.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
-		cmd = exec.Command("./run-wine.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
+		cmd = exec.Command("./run-wine.sh", appPath, appFile, windowTitle)
 
 		cmd.Stdout = &out
 		cmd.Stderr = &stderr
@@ -370,35 +402,21 @@ func launchGameVM(rtpPort int, appName string) chan struct{} {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("execed run-client.sh")
+		log.Println("execed run-client.sh")
 		close(gameSpawned)
 	}()
-
-	// go func() {
-	// 	<-gameSpawned
-	// 	// Better wait for docker to spawn up
-	// 	time.Sleep(5 * time.Second)
-	// 	fmt.Println("Run ffmpeg")
-	// 	// try use wrapper libffmpeg?/ Gstreamer
-	// 	fmt.Println(exec.Command("pkill", "ffmpeg").Output())
-
-	// 	streamCmd = exec.Command("ffmpeg", "-r", "10", "-f", "x11grab", "-draw_mouse", "0", "-s", "800x600", "-i", ":99", "-c:v", "libvpx", "-quality", "realtime",
-	// 		"-cpu-used", "0", "-b:v", "384k", "-qmin", "10", "-qmax", "42", "-maxrate", "384k", "-bufsize", "1000k", "-an", "-f", "rtp", "rtp:/127.0.0.1:"+strconv.Itoa(rtpPort))
-	// 	out := streamCmd.Run()
-	// 	fmt.Println(out)
-	// }()
 
 	done := make(chan struct{})
 	// clean up func
 	go func() {
 		<-done
 		err := streamCmd.Process.Kill()
-		fmt.Println("Kill streamcmd: ", err)
+		log.Println("Kill streamcmd: ", err)
 
 		err = cmd.Process.Kill()
-		fmt.Println("Kill game: ", err)
+		log.Println("Kill game: ", err)
 
-		fmt.Println("killing", streamCmd.Process.Pid)
+		log.Println("killing", streamCmd.Process.Pid)
 		syscall.Kill(streamCmd.Process.Pid, syscall.SIGKILL)
 	}()
 
@@ -424,7 +442,7 @@ func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssr
 			break
 		}
 	}
-	fmt.Println("Payload type", payloadType)
+	log.Println("Payload type", payloadType)
 	if payloadType == 0 {
 		panic("Remote peer does not support VP8")
 	}
@@ -441,14 +459,14 @@ func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssr
 	// Set the handler for ICE connection state
 	// This will notify you when the peer has connected/disconnected
 	conn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		fmt.Printf("Connection State has changed %s \n", connectionState.String())
+		log.Printf("Connection State has changed %s \n", connectionState.String())
 	})
 
 	// Set the remote SessionDescription
 	if err = conn.SetRemoteDescription(offer); err != nil {
 		panic(err)
 	}
-	fmt.Println("Done creating videotrack")
+	log.Println("Done creating videotrack")
 
 	return videoTrack
 }
@@ -483,23 +501,23 @@ func Signalling(w http.ResponseWriter, r *http.Request) {
 	id := uuid.Must(uuid.NewV4()).String()
 	videoStream[id] = make(chan *rtp.Packet)
 
-	fmt.Println("Signalling")
+	log.Println("Signalling")
 
 	RTCConn, err := webrtc.NewPeerConnection(webrtcconfig)
 	if err != nil {
-		fmt.Println("error ", err)
+		log.Println("error ", err)
 	}
 
 	bodyBytes, _ := ioutil.ReadAll(r.Body)
 	offerString := string(bodyBytes)
-	fmt.Println("Got Offer: ", offerString)
+	log.Println("Got Offer: ", offerString)
 
 	offer := webrtc.SessionDescription{}
 	Decode(offerString, &offer)
 
 	err = RTCConn.SetRemoteDescription(offer)
 	if err != nil {
-		fmt.Println("Set remote description from peer failed", err)
+		log.Println("Set remote description from peer failed", err)
 		return
 	}
 
@@ -508,13 +526,13 @@ func Signalling(w http.ResponseWriter, r *http.Request) {
 	var answer webrtc.SessionDescription
 	answer, err = RTCConn.CreateAnswer(nil)
 	if err != nil {
-		fmt.Println("Create Answer Failed", err)
+		log.Println("Create Answer Failed", err)
 		return
 	}
 
 	err = RTCConn.SetLocalDescription(answer)
 	if err != nil {
-		fmt.Println("Set Local Description Failed", err)
+		log.Println("Set Local Description Failed", err)
 		return
 	}
 
@@ -538,6 +556,7 @@ func simulateKeyDown(jsonPayload string) {
 		return
 	}
 
+	log.Println("KeyDown event", jsonPayload)
 	type keydownPayload struct {
 		KeyCode int `json:keycode`
 	}
@@ -556,6 +575,7 @@ func simulateMouseEvent(jsonPayload string) {
 		return
 	}
 
+	log.Println("MouseDown event", jsonPayload)
 	type mousedownPayload struct {
 		IsLeft byte    `json:isLeft`
 		IsDown byte    `json:isDown`

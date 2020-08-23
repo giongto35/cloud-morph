@@ -184,15 +184,6 @@ Mouse parseMousePos(string stPos)
     return Mouse{isLeft, isDown, x, y, w, h};
 }
 
-// void *healthCheck(void *params)
-// {
-//     cout << "PING";
-//     while (true)
-//     {
-//         send(server, "ping", strlen("ping"), 0);
-//     }
-// }
-
 void formatWindow(HWND hwnd)
 {
     SetWindowPos(hwnd, NULL, 0, 0, 800, 600, 0);
