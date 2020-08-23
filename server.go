@@ -45,40 +45,11 @@ type WSPacket struct {
 	Data string `json:"data"`
 }
 
-// type appConfig struct {
-// 	path        string
-// 	appName     string
-// 	windowTitle string // To help WinAPI search
-// }
-
 type appConfig struct {
 	Path       string `yaml:"path"`
 	AppFile    string `yaml:"appFile"`
 	WidowTitle string `yaml:"windowTitle"` // To help WinAPI search the app
 }
-
-// var appCfg = map[string]appConfig{
-// 	"RoadRash": {
-// 		path:        "/games/RoadRash",
-// 		appName:     "ROADRASH.EXE",
-// 		windowTitle: "Road",
-// 	},
-// 	"Diablo": {
-// 		path:        "/games/DiabloII",
-// 		appName:     "Game.exe",
-// 		windowTitle: "Diablo",
-// 	},
-// 	"Notepad": {
-// 		path:        "/",
-// 		appName:     "notepad",
-// 		windowTitle: "Notepad",
-// 	},
-// 	"Photoshop": {
-// 		path:        "/games/Photoshop",
-// 		appName:     "PhotoshopCS6Portable.exe",
-// 		windowTitle: "Photoshop",
-// 	},
-// }
 
 var curApp string = "Notepad"
 
