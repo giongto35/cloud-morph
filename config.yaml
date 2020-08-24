@@ -1,3 +1,6 @@
-path: /games/Photoshop
-appFile: PhotoshopCS6Portable.exe
-windowTitle: Photoshop
+path: /
+appFile: notepad
+windowTitle: Notepad
+#path: /games/Photoshop
+#appFile: PhotoshopCS6Portable.exe
+#windowTitle: Photoshop

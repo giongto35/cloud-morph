@@ -6,8 +6,10 @@ apt-get update
 # install docker
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
-apt-get install golang-go
+apt-get install -y golang-go
 go build server.go
+cd ./winvm
+docker build . -t syncwine
 
 # Start server by running
 # - ./server
