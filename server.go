@@ -229,7 +229,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("%v", cfg)
+	log.Printf("%+v\n", cfg)
 
 	server := NewServer(cfg)
 	launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WidowTitle)
@@ -246,10 +246,8 @@ func WineInteract() {
 	log.Println("listening wine at port 9090")
 	ln, err := net.Listen("tcp", ":9090")
 	if err != nil {
-		// handle error
+		panic(err)
 	}
-
-	// go startXVFB()
 
 	// Read video stream from encoded video stream produced by FFMPEG
 	listener, listenerssrc := newLocalStreamListener(cuRTPPort)
@@ -291,16 +289,20 @@ func WineInteract() {
 	// Maintain input stream from server to Virtual Machine over websocket
 	// Why Websocket: because normal IPC cannot communicate cross OS.
 	for {
+		// Polling Wine socket connection (input stream)
 		conn, err := ln.Accept()
 		if err != nil {
 			// handle error
 		}
-		handleConnection(conn)
+		// Successfully obtain input stream
+		handleWineConnection(conn)
 	}
 }
 
-func handleConnection(conn net.Conn) {
-	log.Println("Wine connected")
+func handleWineConnection(conn net.Conn) {
+	// NOTE: The server is ready when you see this log
+	log.Println("Server is successfully lauched!")
+	log.Println("Listening at :8080")
 	WineConn = conn
 	go healthCheckVM(conn)
 }
@@ -361,21 +363,17 @@ func launchGameVM(rtpPort int, appPath string, appFile string, windowTitle strin
 	// 	}
 	// }()
 
-	gameSpawned := make(chan struct{})
-	go func() {
-		log.Println("execing run-client.sh")
-		// cmd = exec.Command("./run-wine-nodocker.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
-		cmd = exec.Command("./run-wine.sh", appPath, appFile, windowTitle)
+	log.Println("execing run-client.sh")
+	// cmd = exec.Command("./run-wine-nodocker.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
+	cmd = exec.Command("./run-wine.sh", appPath, appFile, windowTitle)
 
-		cmd.Stdout = &out
-		cmd.Stderr = &stderr
-		err := cmd.Run()
-		if err != nil {
-			panic(err)
-		}
-		log.Println("execed run-client.sh")
-		close(gameSpawned)
-	}()
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		panic(err)
+	}
+	log.Println("execed run-client.sh")
 
 	done := make(chan struct{})
 	// clean up func
