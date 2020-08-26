@@ -4,7 +4,7 @@ FROM ubuntu:18.04
 
 RUN apt-get update -y
 RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb
-RUN apt-get install --no-install-recommends --assume-yes wine64 mingw-w64 ffmpeg
+RUN apt-get install --no-install-recommends --assume-yes wine64 mingw-w64 ffmpeg cabextract
 
 RUN dpkg --add-architecture i386
 RUN wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add -
@@ -23,6 +23,7 @@ COPY ./supervisord.conf /etc/supervisor/conf.d/
 RUN wget -nv -O /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks \
     && chmod +x /usr/bin/winetricks
 
+RUN winetricks d3dx9_43
 
 # Download gecko and mono installers
 COPY download_gecko_and_mono.sh /root/download_gecko_and_mono.sh
