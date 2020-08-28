@@ -533,6 +533,7 @@ func simulateKeyDown(jsonPayload string) {
 	json.Unmarshal([]byte(jsonPayload), &p)
 
 	b, err := WineConn.Write([]byte{byte(p.KeyCode)})
+	log.Printf("%+v\n", WineConn)
 	log.Println("Sended key: ", b, err)
 }
 
@@ -560,5 +561,6 @@ func simulateMouseEvent(jsonPayload string) {
 	// Mouse is in format of comma separated "12.4,52.3"
 	mousePayload := fmt.Sprintf("%d,%d,%f,%f,%f,%f", p.IsLeft, p.IsDown, p.X, p.Y, p.Width, p.Height)
 	b, err := WineConn.Write([]byte(mousePayload))
+	log.Printf("%+v\n", WineConn)
 	log.Println("Sended Mouse: ", b, err)
 }
