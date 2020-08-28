@@ -532,7 +532,8 @@ func simulateKeyDown(jsonPayload string) {
 	p := &keydownPayload{}
 	json.Unmarshal([]byte(jsonPayload), &p)
 
-	WineConn.Write([]byte{byte(p.KeyCode)})
+	b, err := WineConn.Write([]byte{byte(p.KeyCode)})
+	log.Println("Sended key: ", b, err)
 }
 
 // simulateMouseEvent handles mouse down event and send it to Virtual Machine over TCP port
@@ -558,5 +559,6 @@ func simulateMouseEvent(jsonPayload string) {
 
 	// Mouse is in format of comma separated "12.4,52.3"
 	mousePayload := fmt.Sprintf("%d,%d,%f,%f,%f,%f", p.IsLeft, p.IsDown, p.X, p.Y, p.Width, p.Height)
-	WineConn.Write([]byte(mousePayload))
+	b, err := WineConn.Write([]byte(mousePayload))
+	log.Println("Sended Mouse: ", b, err)
 }
