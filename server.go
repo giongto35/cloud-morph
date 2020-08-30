@@ -1,18 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"html/template"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
-	"os/exec"
-	"syscall"
 	"time"
 
+	"github.com/giongto35/cloud-morph/core/go/cloudgame"
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -23,49 +20,35 @@ import (
 
 var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
 
-var WineConn net.Conn
 var isStarted bool
 
-const startRTPPort = 5004
-
-var cuRTPPort = startRTPPort
-var videoStream = map[string]chan *rtp.Packet{}
-var payloadType uint8
-var ssrc uint32
 var upgrader = websocket.Upgrader{}
 
-const eventKeyDown = "KEYDOWN"
-const eventMouse = "MOUSE"
 const configFilePath = "config.yaml"
-
-type WSPacket struct {
-	PType string `json:"type"`
-	// TODO: Make Data generic: map[string]interface{} for more usecases
-	Data string `json:"data"`
-}
-
-type appConfig struct {
-	Path       string `yaml:"path"`
-	AppFile    string `yaml:"appFile"`
-	WidowTitle string `yaml:"windowTitle"` // To help WinAPI search the app
-}
 
 var curApp string = "Notepad"
 
 const indexPage string = "web/index.html"
 const addr string = ":8080"
 
+// TODO: multiplex clientID
+var clientID string
+
 type Server struct {
 	httpServer *http.Server
-	// browserClients are the map sessionID to browser Client
-	clients map[string]*Client
+	// browserClients are the map clientID to browser Client
+	clients   map[string]*Client
+	eventChan chan cloudgame.WSPacket
+	cgame     cloudgame.CloudGameClient
 }
 
 type Client struct {
-	conn      *websocket.Conn
-	SessionID string
+	conn     *websocket.Conn
+	clientID string
 
-	done chan struct{}
+	eventChan   chan cloudgame.WSPacket
+	videoStream chan *rtp.Packet
+	done        chan struct{}
 }
 
 // GetWeb returns web frontend
@@ -78,23 +61,32 @@ func (o *Server) GetWeb(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
-func NewClient(c *websocket.Conn, browserID string) *Client {
+func NewClient(c *websocket.Conn, clientID string) *Client {
 	return &Client{
-		conn:      c,
-		SessionID: browserID,
-		done:      make(chan struct{}),
+		conn:        c,
+		clientID:    clientID,
+		eventChan:   make(chan cloudgame.WSPacket, 1),
+		videoStream: make(chan *rtp.Packet, 1),
+		done:        make(chan struct{}),
 	}
 }
 
-func NewServer(cfg appConfig) *Server {
+func NewServer() *Server {
+	cfg, err := readConfig(configFilePath)
+	if err != nil {
+		panic(err)
+	}
+
 	server := &Server{
-		clients: map[string]*Client{},
+		clients:   map[string]*Client{},
+		eventChan: make(chan cloudgame.WSPacket, 1),
+		cgame:     cloudgame.NewCloudGameClient(cfg),
 	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", server.WS)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
-	r.HandleFunc("/signal", Signalling)
+	r.HandleFunc("/signal", server.Signalling)
 
 	r.PathPrefix("/").HandlerFunc(server.GetWeb)
 
@@ -112,6 +104,24 @@ func NewServer(cfg appConfig) *Server {
 	log.Println("Spawn server")
 
 	return server
+}
+
+func (o *Server) Handle() {
+	// Fanin input channel
+	go func() {
+		for e := range o.eventChan {
+			o.cgame.SendInput(e)
+		}
+	}()
+
+	// Fanout output channel
+	go func() {
+		for p := range o.cgame.VideoStream() {
+			for _, client := range o.clients {
+				client.videoStream <- p
+			}
+		}
+	}()
 }
 
 func (o *Server) ListenAndServe() error {
@@ -136,23 +146,22 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate sessionID for browserClient
-	var sessionID string
+	// Generate clientID for browserClient
 	for {
-		sessionID = uuid.Must(uuid.NewV4()).String()
+		clientID = uuid.Must(uuid.NewV4()).String()
 		// check duplicate
-		if _, ok := o.clients[sessionID]; !ok {
+		if _, ok := o.clients[clientID]; !ok {
 			break
 		}
 	}
 
 	// Create browserClient instance
-	client := NewClient(c, sessionID)
+	o.clients[clientID] = NewClient(c, clientID)
 	// Run browser listener first (to capture ping)
 	go func(client *Client) {
 		client.Listen()
-		delete(o.clients, client.SessionID)
-	}(client)
+		delete(o.clients, client.clientID)
+	}(o.clients[clientID])
 }
 
 // Heartbeat maintains connection to server
@@ -171,7 +180,7 @@ func (c *Client) Heartbeat() {
 	}
 }
 
-func (c *Client) Send(packet WSPacket) {
+func (c *Client) Send(packet cloudgame.WSPacket) {
 	data, err := json.Marshal(packet)
 	if err != nil {
 		return
@@ -192,29 +201,24 @@ func (c *Client) Listen() {
 			// TODO: Check explicit disconnect error to break
 			break
 		}
-		wspacket := WSPacket{}
+		wspacket := cloudgame.WSPacket{}
 		err = json.Unmarshal(rawMsg, &wspacket)
 
 		if err != nil {
 			log.Println("error decoding", err)
 			continue
 		}
-		switch wspacket.PType {
-		case eventKeyDown:
-			simulateKeyDown(wspacket.Data)
-		case eventMouse:
-			simulateMouseEvent(wspacket.Data)
-		}
+		c.eventChan <- wspacket
 	}
 }
 
-func initConfig() (appConfig, error) {
-	cfgyml, err := ioutil.ReadFile(configFilePath)
+func readConfig(path string) (cloudgame.Config, error) {
+	cfgyml, err := ioutil.ReadFile(path)
 	if err != nil {
-		return appConfig{}, err
+		return cloudgame.Config{}, err
 	}
 
-	cfg := appConfig{}
+	cfg := cloudgame.Config{}
 	err = yaml.Unmarshal(cfgyml, &cfg)
 	return cfg, err
 }
@@ -224,93 +228,11 @@ func main() {
 	// TODO: Make the communication over websocket
 	http.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets"))))
 
-	cfg, err := initConfig()
+	server := NewServer()
+	server.Handle()
+	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
-	}
-	log.Printf("%+v\n", cfg)
-
-	server := NewServer(cfg)
-	launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WidowTitle)
-	go WineInteract()
-	log.Println("done wine interact")
-	err = server.ListenAndServe()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-// WineInteract starts Virtual buffer + Controller utitlity
-func WineInteract() {
-	log.Println("listening wine at port 9090")
-	ln, err := net.Listen("tcp", ":9090")
-	if err != nil {
-		panic(err)
-	}
-
-	// Read video stream from encoded video stream produced by FFMPEG
-	listener, listenerssrc := newLocalStreamListener(cuRTPPort)
-	ssrc = listenerssrc
-
-	// Broadcast video stream
-	go func() {
-		defer func() {
-			listener.Close()
-			log.Println("Closing game VM")
-			// close(gameVMDone)
-		}()
-
-		// Read RTP packets forever and send them to the WebRTC Client
-		for {
-			// TODO: avoid allocating new inboundRTPPacket
-			inboundRTPPacket := make([]byte, 4096) // UDP MTU
-			n, _, err := listener.ReadFrom(inboundRTPPacket)
-			if err != nil {
-				log.Printf("error during read: %s", err)
-				panic(err)
-			}
-
-			packet := &rtp.Packet{}
-			if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
-				panic(err)
-			}
-			if payloadType == 0 {
-				continue
-			}
-			packet.Header.PayloadType = payloadType
-
-			for _, stream := range videoStream {
-				stream <- packet
-			}
-		}
-	}()
-
-	// Maintain input stream from server to Virtual Machine over websocket
-	// Why Websocket: because normal IPC cannot communicate cross OS.
-	for {
-		// Polling Wine socket connection (input stream)
-		conn, err := ln.Accept()
-		if err != nil {
-			// handle error
-		}
-		// Successfully obtain input stream
-		handleWineConnection(conn)
-	}
-}
-
-func handleWineConnection(conn net.Conn) {
-	// NOTE: The server is ready when you see this log
-	log.Println("Server is successfully lauched!")
-	log.Println("Listening at :8080")
-	WineConn = conn
-	go healthCheckVM(conn)
-}
-
-// healthCheckVM to maintain connection
-func healthCheckVM(conn net.Conn) {
-	for {
-		conn.Write([]byte{0})
-		time.Sleep(2 * time.Second)
 	}
 }
 
@@ -339,58 +261,6 @@ func Decode(in string, obj interface{}) {
 	}
 }
 
-// done to forcefully stop all processes
-func launchGameVM(rtpPort int, appPath string, appFile string, windowTitle string) chan struct{} {
-	var cmd *exec.Cmd
-	var streamCmd *exec.Cmd
-
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-
-	// go func() {
-	// 	log.Println("Reading pipe stderr")
-	// 	for {
-	// 		log.Println(string(stderr.Bytes()))
-	// 		time.Sleep(time.Second)
-	// 	}
-	// }()
-	// go func() {
-	// 	log.Println("Reading pipe stdout")
-	// 	for {
-	// 		log.Println(string(out.Bytes()))
-	// 		time.Sleep(time.Second)
-	// 	}
-	// }()
-
-	log.Println("execing run-client.sh")
-	// cmd = exec.Command("./run-wine-nodocker.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
-	cmd = exec.Command("./run-wine.sh", appPath, appFile, windowTitle)
-
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		panic(err)
-	}
-	log.Println("execed run-client.sh")
-
-	done := make(chan struct{})
-	// clean up func
-	go func() {
-		<-done
-		err := streamCmd.Process.Kill()
-		log.Println("Kill streamcmd: ", err)
-
-		err = cmd.Process.Kill()
-		log.Println("Kill game: ", err)
-
-		log.Println("killing", streamCmd.Process.Pid)
-		syscall.Kill(streamCmd.Process.Pid, syscall.SIGKILL)
-	}()
-
-	return done
-}
-
 // streapRTP is based on to https://github.com/pion/webrtc/tree/master/examples/rtp-to-webrtc
 // It fetches from a RTP stream produced by FFMPEG and broadcast to all webRTC sessions
 func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssrc uint32) *webrtc.Track {
@@ -402,21 +272,8 @@ func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssr
 		panic(err)
 	}
 
-	// Search for VP8 Payload type. If the offer doesn't support VP8 exit since
-	// since they won't be able to decode anything we send them
-	for _, videoCodec := range mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeVideo) {
-		if videoCodec.Name == "VP8" {
-			payloadType = videoCodec.PayloadType
-			break
-		}
-	}
-	log.Println("Payload type", payloadType)
-	if payloadType == 0 {
-		panic("Remote peer does not support VP8")
-	}
-
 	// Create a video track, using the same SSRC as the incoming RTP Pack)
-	videoTrack, err := conn.NewTrack(payloadType, ssrc, "video", "pion")
+	videoTrack, err := conn.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "pion")
 	if err != nil {
 		panic(err)
 	}
@@ -439,38 +296,10 @@ func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssr
 	return videoTrack
 }
 
-// newLocalStreamListener returns RTP: listener and SSRC of that listener
-func newLocalStreamListener(rtpPort int) (*net.UDPConn, uint32) {
-	// Open a UDP Listener for RTP Packets on port 5004
-	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: rtpPort})
-	if err != nil {
-		panic(err)
-	}
-
-	// Listen for a single RTP Packet, we need this to determine the SSRC
-	inboundRTPPacket := make([]byte, 4096) // UDP MTU
-	n, _, err := listener.ReadFromUDP(inboundRTPPacket)
-	if err != nil {
-		panic(err)
-	}
-
-	// Unmarshal the incoming packet
-	packet := &rtp.Packet{}
-	if err = packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
-		panic(err)
-	}
-
-	return listener, packet.SSRC
-}
-
 // Signalling is to setup new webRTC connection
 // TODO: Change to Socket
-func Signalling(w http.ResponseWriter, r *http.Request) {
-	id := uuid.Must(uuid.NewV4()).String()
-	videoStream[id] = make(chan *rtp.Packet)
-
+func (o *Server) Signalling(w http.ResponseWriter, r *http.Request) {
 	log.Println("Signalling")
-
 	RTCConn, err := webrtc.NewPeerConnection(webrtcconfig)
 	if err != nil {
 		log.Println("error ", err)
@@ -489,7 +318,7 @@ func Signalling(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	videoTrack := streamRTP(RTCConn, offer, ssrc)
+	videoTrack := streamRTP(RTCConn, offer, o.cgame.GetSSRC())
 
 	var answer webrtc.SessionDescription
 	answer, err = RTCConn.CreateAnswer(nil)
@@ -507,8 +336,12 @@ func Signalling(w http.ResponseWriter, r *http.Request) {
 	isStarted = true
 	w.Write([]byte(Encode(answer)))
 
+	// Updatge clientID from connection
+	client := o.clients[clientID]
+
+	// Listen from video stream
 	go func() {
-		for packet := range videoStream[id] {
+		for packet := range client.videoStream {
 			if writeErr := videoTrack.WriteRTP(packet); writeErr != nil {
 				panic(writeErr)
 			}
