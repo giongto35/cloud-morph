@@ -26,7 +26,7 @@ type InputEvent struct {
 }
 
 type CloudGameClient interface {
-	VideoStream() chan *rtp.Packet
+	VideoStream() chan rtp.Packet
 	SendInput(WSPacket)
 	// TODO: Remove it
 	GetSSRC() uint32
@@ -35,7 +35,7 @@ type CloudGameClient interface {
 type ccImpl struct {
 	isReady     bool
 	listener    *net.UDPConn
-	videoStream chan *rtp.Packet
+	videoStream chan rtp.Packet
 	wineConn    net.Conn
 	ssrc        uint32
 	payloadType uint8
@@ -54,7 +54,9 @@ type Config struct {
 }
 
 func NewCloudGameClient(cfg Config) *ccImpl {
-	c := &ccImpl{}
+	c := &ccImpl{
+		videoStream: make(chan rtp.Packet, 1),
+	}
 
 	log.Println("listening wine at port 9090")
 	ln, err := net.Listen("tcp", ":9090")
@@ -69,7 +71,9 @@ func NewCloudGameClient(cfg Config) *ccImpl {
 	c.listener = listener
 	c.ssrc = listenerssrc
 
+	log.Println("Done getting listener", listener, listenerssrc)
 	c.listenVideoStream()
+	log.Println("Done Listen videostream")
 
 	// Maintain input stream from server to Virtual Machine over websocket
 	// Why Websocket: because normal IPC cannot communicate cross OS.
@@ -84,6 +88,7 @@ func NewCloudGameClient(cfg Config) *ccImpl {
 			// Successfully obtain input stream
 			log.Println("Server is successfully lauched!")
 			log.Println("Listening at :8080")
+			c.isReady = true
 			go c.healthCheckVM()
 		}
 	}()
@@ -164,6 +169,7 @@ func (c *ccImpl) newLocalStreamListener(rtpPort int) (*net.UDPConn, uint32) {
 		panic(err)
 	}
 
+	log.Println("Listening UDP")
 	// Listen for a single RTP Packet, we need this to determine the SSRC
 	inboundRTPPacket := make([]byte, 4096) // UDP MTU
 	n, _, err := listener.ReadFromUDP(inboundRTPPacket)
@@ -180,7 +186,7 @@ func (c *ccImpl) newLocalStreamListener(rtpPort int) (*net.UDPConn, uint32) {
 	return listener, packet.SSRC
 }
 
-func (c *ccImpl) VideoStream() chan *rtp.Packet {
+func (c *ccImpl) VideoStream() chan rtp.Packet {
 	return c.videoStream
 }
 
@@ -194,17 +200,16 @@ func (c *ccImpl) listenVideoStream() {
 			// close(gameVMDone)
 		}()
 
-		// avoid allocating new inboundRTPPacket by moving it outside
-		inboundRTPPacket := make([]byte, 4096) // UDP MTU
 		// Read RTP packets forever and send them to the WebRTC Client
 		for {
+			inboundRTPPacket := make([]byte, 4096) // UDP MTU
 			n, _, err := c.listener.ReadFrom(inboundRTPPacket)
 			if err != nil {
 				log.Printf("error during read: %s", err)
 				continue
 			}
 
-			packet := &rtp.Packet{}
+			packet := rtp.Packet{}
 			if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
 				log.Printf("error during unmarshalling a packet: %s", err)
 				continue

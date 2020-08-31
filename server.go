@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -33,22 +34,23 @@ const addr string = ":8080"
 
 // TODO: multiplex clientID
 var clientID string
+var payloadType uint8
 
 type Server struct {
 	httpServer *http.Server
 	// browserClients are the map clientID to browser Client
-	clients   map[string]*Client
-	eventChan chan cloudgame.WSPacket
-	cgame     cloudgame.CloudGameClient
+	clients map[string]*Client
+	events  chan cloudgame.WSPacket
+	cgame   cloudgame.CloudGameClient
 }
 
 type Client struct {
 	conn     *websocket.Conn
 	clientID string
 
-	eventChan   chan cloudgame.WSPacket
-	videoStream chan *rtp.Packet
-	done        chan struct{}
+	serverEvents chan cloudgame.WSPacket
+	videoStream  chan rtp.Packet
+	done         chan struct{}
 }
 
 // GetWeb returns web frontend
@@ -61,26 +63,20 @@ func (o *Server) GetWeb(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
-func NewClient(c *websocket.Conn, clientID string) *Client {
+func NewClient(c *websocket.Conn, clientID string, serverEvents chan cloudgame.WSPacket) *Client {
 	return &Client{
-		conn:        c,
-		clientID:    clientID,
-		eventChan:   make(chan cloudgame.WSPacket, 1),
-		videoStream: make(chan *rtp.Packet, 1),
-		done:        make(chan struct{}),
+		conn:         c,
+		clientID:     clientID,
+		serverEvents: serverEvents,
+		videoStream:  make(chan rtp.Packet, 1),
+		done:         make(chan struct{}),
 	}
 }
 
 func NewServer() *Server {
-	cfg, err := readConfig(configFilePath)
-	if err != nil {
-		panic(err)
-	}
-
 	server := &Server{
-		clients:   map[string]*Client{},
-		eventChan: make(chan cloudgame.WSPacket, 1),
-		cgame:     cloudgame.NewCloudGameClient(cfg),
+		clients: map[string]*Client{},
+		events:  make(chan cloudgame.WSPacket, 1),
 	}
 
 	r := mux.NewRouter()
@@ -103,13 +99,23 @@ func NewServer() *Server {
 	server.httpServer = httpServer
 	log.Println("Spawn server")
 
+	// Launch Game VM
+	cfg, err := readConfig(configFilePath)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(cfg)
+	server.cgame = cloudgame.NewCloudGameClient(cfg)
+
 	return server
 }
 
 func (o *Server) Handle() {
 	// Fanin input channel
 	go func() {
-		for e := range o.eventChan {
+		for e := range o.events {
+			log.Println("event", e)
 			o.cgame.SendInput(e)
 		}
 	}()
@@ -156,7 +162,7 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create browserClient instance
-	o.clients[clientID] = NewClient(c, clientID)
+	o.clients[clientID] = NewClient(c, clientID, o.events)
 	// Run browser listener first (to capture ping)
 	go func(client *Client) {
 		client.Listen()
@@ -194,8 +200,10 @@ func (c *Client) Listen() {
 		close(c.done)
 	}()
 
+	log.Println("Client listening")
 	for {
 		_, rawMsg, err := c.conn.ReadMessage()
+		fmt.Println("received", rawMsg)
 		if err != nil {
 			log.Println("[!] read:", err)
 			// TODO: Check explicit disconnect error to break
@@ -204,11 +212,12 @@ func (c *Client) Listen() {
 		wspacket := cloudgame.WSPacket{}
 		err = json.Unmarshal(rawMsg, &wspacket)
 
+		fmt.Println("send chan", wspacket)
 		if err != nil {
 			log.Println("error decoding", err)
 			continue
 		}
-		c.eventChan <- wspacket
+		c.serverEvents <- wspacket
 	}
 }
 
@@ -272,14 +281,25 @@ func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssr
 		panic(err)
 	}
 
+	// Search for VP8 Payload type. If the offer doesn't support VP8 exit since
+	// since they won't be able to decode anything we send them
+	for _, videoCodec := range mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeVideo) {
+		if videoCodec.Name == "VP8" {
+			payloadType = videoCodec.PayloadType
+			break
+		}
+	}
+
+	log.Println("SSRC ", ssrc, "payload", webrtc.DefaultPayloadTypeVP8, payloadType)
 	// Create a video track, using the same SSRC as the incoming RTP Pack)
-	videoTrack, err := conn.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "pion")
+	videoTrack, err := conn.NewTrack(payloadType, ssrc, "video", "pion")
 	if err != nil {
 		panic(err)
 	}
 	if _, err = conn.AddTrack(videoTrack); err != nil {
 		panic(err)
 	}
+	log.Println("video track", videoTrack)
 
 	// Set the handler for ICE connection state
 	// This will notify you when the peer has connected/disconnected
@@ -307,7 +327,6 @@ func (o *Server) Signalling(w http.ResponseWriter, r *http.Request) {
 
 	bodyBytes, _ := ioutil.ReadAll(r.Body)
 	offerString := string(bodyBytes)
-	log.Println("Got Offer: ", offerString)
 
 	offer := webrtc.SessionDescription{}
 	Decode(offerString, &offer)
@@ -318,6 +337,7 @@ func (o *Server) Signalling(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("Get SSRC", o.cgame.GetSSRC())
 	videoTrack := streamRTP(RTCConn, offer, o.cgame.GetSSRC())
 
 	var answer webrtc.SessionDescription
@@ -342,7 +362,7 @@ func (o *Server) Signalling(w http.ResponseWriter, r *http.Request) {
 	// Listen from video stream
 	go func() {
 		for packet := range client.videoStream {
-			if writeErr := videoTrack.WriteRTP(packet); writeErr != nil {
+			if writeErr := videoTrack.WriteRTP(&packet); writeErr != nil {
 				panic(writeErr)
 			}
 		}
