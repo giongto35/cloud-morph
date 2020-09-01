@@ -88,14 +88,14 @@ func NewCloudGameClient(cfg Config) *ccImpl {
 			if err != nil {
 				// handle error
 			}
-			conn.SetKeepAlive(false)
-			conn.SetKeepAlivePeriod(2 * time.Second)
+			conn.SetKeepAlive(true)
+			conn.SetKeepAlivePeriod(10 * time.Second)
 			c.wineConn = conn
 			// Successfully obtain input stream
 			log.Println("Server is successfully lauched!")
 			log.Println("Listening at :8080")
 			c.isReady = true
-			// go c.healthCheckVM()
+			go c.healthCheckVM()
 		}
 	}()
 
