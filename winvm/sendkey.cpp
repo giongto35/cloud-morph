@@ -238,32 +238,39 @@ int main(int argc, char *argv[])
             //cout << "Rejected: " << buffer << ' ' << strlen(buffer) << endl;
             continue;
         }
-        cout << recv_size << endl;
-        char *buffer = new char[recv_size];
-        memcpy(buffer, buf, recv_size);
-        cout << "Got: " << buf << " Parsed: " << buffer << "recv size " << recv_size << " len " << strlen(buffer) << endl;
-        if (recv_size == 1)
+        try
         {
-            if (buffer[0] == 0)
+            cout << recv_size << endl;
+            char *buffer = new char[recv_size];
+            memcpy(buffer, buf, recv_size);
+            cout << "Got: " << buf << " Parsed: " << buffer << "recv size " << recv_size << " len " << strlen(buffer) << endl;
+            if (recv_size == 1)
             {
-                // health check, continue
-                continue;
-            };
-            // use key
-            sendIt(hwnd, buffer[0]); //notepad ID
-            cout << '\n'
-                 << "Press a key to continue...";
+                if (buffer[0] == 0)
+                {
+                    // health check, continue
+                    continue;
+                };
+                // use key
+                sendIt(hwnd, buffer[0]); //notepad ID
+                cout << '\n'
+                     << "Press a key to continue...";
+            }
+            else if (recv_size > 1)
+            {
+                string st(buffer);
+                cout << "Mouse: " << st << endl;
+                Mouse pos = parseMousePos(st);
+                float x = pos.x * screenWidth / pos.relwidth;
+                float y = pos.y * screenHeight / pos.relheight;
+                cout << "pos: " << x << ' ' << y << ' ' << screenWidth << ' '
+                     << screenHeight << ' ' << pos.relwidth << ' ' << pos.relheight << endl;
+                sendMouseDown(hwnd, pos.isLeft, pos.isDown, x, y);
+            }
         }
-        else if (recv_size > 1)
+        catch (const std::exception &e)
         {
-            string st(buffer);
-            cout << "Mouse: " << st << endl;
-            Mouse pos = parseMousePos(st);
-            float x = pos.x * screenWidth / pos.relwidth;
-            float y = pos.y * screenHeight / pos.relheight;
-            cout << "pos: " << x << ' ' << y << ' ' << screenWidth << ' '
-                 << screenHeight << ' ' << pos.relwidth << ' ' << pos.relheight << endl;
-            sendMouseDown(hwnd, pos.isLeft, pos.isDown, x, y);
+            cout << "exception" << e.what() << endl;
         }
     } while (true);
     closesocket(server);

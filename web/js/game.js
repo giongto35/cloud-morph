@@ -31,8 +31,7 @@ function init() {
     if (message !== "heartbeat")
       console.log(`[ws] <- message '${message}' `, data);
 
-    switch (message) {
-    }
+    switch (message) {}
   };
 }
 
@@ -41,11 +40,9 @@ function send(data) {
 }
 
 let pc = new RTCPeerConnection({
-  iceServers: [
-    {
-      urls: "stun:stun.l.google.com:19302",
-    },
-  ],
+  iceServers: [{
+    urls: "stun:stun.l.google.com:19302",
+  }, ],
 });
 pc.oniceconnectionstatechange = (e) => console.log(pc.iceConnectionState);
 pc.onicecandidate = (event) => {
@@ -59,7 +56,9 @@ pc.ontrack = function (event) {
 
 // start session
 // window.startSession = () => {
-pc.addTransceiver("video", { direction: "recvonly" });
+pc.addTransceiver("video", {
+  direction: "recvonly"
+});
 pc.createOffer().then((offer) => {
   console.log(offer);
   $.post(
@@ -81,9 +80,15 @@ init();
 
 // log key
 document.addEventListener("keydown", logKey);
+
 function logKey(e) {
   console.log(e.keyCode);
-  send({ type: "KEYDOWN", data: JSON.stringify({ keyCode: e.keyCode }) });
+  send({
+    type: "KEYDOWN",
+    data: JSON.stringify({
+      keyCode: e.keyCode
+    })
+  });
 }
 
 document.addEventListener("contextmenu", (event) => event.preventDefault());
