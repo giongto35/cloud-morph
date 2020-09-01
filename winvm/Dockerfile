@@ -4,7 +4,7 @@ FROM ubuntu:18.04
 
 RUN apt-get update -y
 RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb
-RUN apt-get install --no-install-recommends --assume-yes wine64 mingw-w64 ffmpeg cabextract
+RUN apt-get install --no-install-recommends --assume-yes wine64 mingw-w64 ffmpeg cabextract vim
 
 RUN dpkg --add-architecture i386
 RUN wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add -
