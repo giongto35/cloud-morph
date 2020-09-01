@@ -65,15 +65,15 @@ func NewCloudGameClient(cfg Config) *ccImpl {
 	}
 
 	c.launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WidowTitle)
+	log.Println("Launched application VM")
 
 	// Read video stream from encoded video stream produced by FFMPEG
 	listener, listenerssrc := c.newLocalStreamListener(cuRTPPort)
 	c.listener = listener
 	c.ssrc = listenerssrc
 
-	log.Println("Done getting listener", listener, listenerssrc)
 	c.listenVideoStream()
-	log.Println("Done Listen videostream")
+	log.Println("Launched Video stream listener")
 
 	// Maintain input stream from server to Virtual Machine over websocket
 	// Why Websocket: because normal IPC cannot communicate cross OS.
@@ -162,14 +162,12 @@ func (c *ccImpl) healthCheckVM() {
 
 // newLocalStreamListener returns RTP: listener and SSRC of that listener
 func (c *ccImpl) newLocalStreamListener(rtpPort int) (*net.UDPConn, uint32) {
-	log.Println("setup local stream listener")
 	// Open a UDP Listener for RTP Packets on port 5004
 	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: rtpPort})
 	if err != nil {
 		panic(err)
 	}
 
-	log.Println("Listening UDP")
 	// Listen for a single RTP Packet, we need this to determine the SSRC
 	inboundRTPPacket := make([]byte, 4096) // UDP MTU
 	n, _, err := listener.ReadFromUDP(inboundRTPPacket)

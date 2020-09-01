@@ -34,7 +34,6 @@ const addr string = ":8080"
 
 // TODO: multiplex clientID
 var clientID string
-var payloadType uint8
 
 type Server struct {
 	httpServer *http.Server
@@ -115,7 +114,6 @@ func (o *Server) Handle() {
 	// Fanin input channel
 	go func() {
 		for e := range o.events {
-			log.Println("event", e)
 			o.cgame.SendInput(e)
 		}
 	}()
@@ -281,18 +279,8 @@ func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssr
 		panic(err)
 	}
 
-	// Search for VP8 Payload type. If the offer doesn't support VP8 exit since
-	// since they won't be able to decode anything we send them
-	for _, videoCodec := range mediaEngine.GetCodecsByKind(webrtc.RTPCodecTypeVideo) {
-		if videoCodec.Name == "VP8" {
-			payloadType = videoCodec.PayloadType
-			break
-		}
-	}
-
-	log.Println("SSRC ", ssrc, "payload", webrtc.DefaultPayloadTypeVP8, payloadType)
 	// Create a video track, using the same SSRC as the incoming RTP Pack)
-	videoTrack, err := conn.NewTrack(payloadType, ssrc, "video", "pion")
+	videoTrack, err := conn.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "pion")
 	if err != nil {
 		panic(err)
 	}
