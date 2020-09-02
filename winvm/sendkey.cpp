@@ -3,11 +3,15 @@
 // #include <psapi.h>
 #include <vector>
 #include <sstream>
-// #include <pthread.h>
+#include <pthread.h>
+#include <ctime>
+#include <chrono>
 using namespace std;
 
 int screenWidth, screenHeight;
 int server; // TODO: Move to local variable
+chrono::_V2::system_clock::time_point last_ping;
+bool done;
 
 int clientConnect()
 {
@@ -191,6 +195,25 @@ void formatWindow(HWND hwnd)
     cout << "Window formated" << endl;
 }
 
+void *healthcheck(void *args)
+{
+    while (true)
+    {
+        cout << "Health check pipe" << endl;
+        auto cur = chrono::system_clock::now();
+        chrono::duration<double> elapsed_seconds = cur - last_ping;
+        cout << elapsed_seconds.count() << endl;
+        if (elapsed_seconds.count() > 5)
+        {
+            // socket is died
+            cout << "Broken pipe" << endl;
+            done = true;
+            return NULL;
+        }
+        Sleep(3000);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     server = clientConnect();
@@ -211,22 +234,26 @@ int main(int argc, char *argv[])
 
     cout << "HWND: " << hwnd << endl;
     cout << "Connected " << server << endl;
-    cout << '\n'
-         << "Press a key to continue..." << endl;
     getDesktopResolution(screenWidth, screenHeight);
     cout << "width " << screenWidth << " "
          << "height " << screenHeight << endl;
 
     formatWindow(hwnd);
 
-    // pthread_t th;
-    // int t = pthread_create(&th, NULL, healthCheck, NULL);
+    // setup socket watcher. TODO: How to check if a socket pipe is broken?
+    done = false;
+    last_ping = chrono::system_clock::now();
+    pthread_t th;
+    int t = pthread_create(&th, NULL, healthcheck, NULL);
 
     do
     {
-
         int recv_size;
         char buf[2000];
+        if (done)
+        {
+            exit(1);
+        }
         //Receive a reply from the server
         if ((recv_size = recv(server, buf, 1024, 0)) == SOCKET_ERROR)
         {
@@ -248,7 +275,8 @@ int main(int argc, char *argv[])
             {
                 if (buffer[0] == 0)
                 {
-                    // health check, continue
+                    // Received ping
+                    last_ping = chrono::system_clock::now();
                     continue;
                 };
                 // use key

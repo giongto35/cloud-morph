@@ -4,7 +4,7 @@ FROM ubuntu:18.04
 
 RUN apt-get update -y
 RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb
-RUN apt-get install --no-install-recommends --assume-yes wine64 mingw-w64 ffmpeg cabextract vim
+RUN apt-get install --no-install-recommends --assume-yes wine64 mingw-w64 ffmpeg cabextract
 
 RUN dpkg --add-architecture i386
 RUN wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add -
@@ -31,5 +31,5 @@ RUN chmod +x /root/download_gecko_and_mono.sh \
     && /root/download_gecko_and_mono.sh "$(dpkg -s wine-stable | grep "^Version:\s" | awk '{print $2}' | sed -E 's/~.*$//')"
 
 # Compile synckey.exe
-RUN x86_64-w64-mingw32-g++ ./sendkey.cpp -o /winevm/synckey.exe -lws2_32 -static-libgcc -static-libstdc++
+RUN x86_64-w64-mingw32-g++ ./sendkey.cpp -o /winevm/synckey.exe -lws2_32 -lpthread -static
 ## ENTRYPOINT ["/winevm/supervisord"]
