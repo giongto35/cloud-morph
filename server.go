@@ -54,6 +54,7 @@ type Client struct {
 
 // GetWeb returns web frontend
 func (o *Server) GetWeb(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("page")
 	tmpl, err := template.ParseFiles(indexPage)
 	if err != nil {
 		log.Fatal(err)
@@ -105,16 +106,30 @@ func NewServer() *Server {
 	}
 
 	fmt.Println(cfg)
-	server.cgame = cloudgame.NewCloudGameClient(cfg)
+	// server.cgame = cloudgame.NewCloudGameClient(cfg)
 
 	return server
+}
+
+func (o *Server) Chat() {
+	for _, client := range o.clients {
+		client.Send(
+			cloudgame.WSPacket{
+				PType: "CHAT",
+				Data:
+			}
+		)
+	}
 }
 
 func (o *Server) Handle() {
 	// Fanin input channel
 	go func() {
 		for e := range o.events {
-			o.cgame.SendInput(e)
+			if e.PType == "CHAT" {
+			} else {
+				o.cgame.SendInput(e)
+			}
 		}
 	}()
 

@@ -1,7 +1,7 @@
 #game-screen {
   overflow: hidden;
-  width: 100%;
-  height: 100%;
+  width: 800px;
+  height: 600px;
   /* display: none; */
   background-color: #222222;
 }
@@ -9,4 +9,28 @@
 #game-body {
   position: fixed;
   overflow: hidden;
+  display: flex;
+  flex-direction: row;
+}
+
+#chatprofile {
+  display: flex;
+  flex-direction: row;
+}
+
+#chatoutput {
+  height: 70%;
+}
+
+#chatinput {
+  display: flex;
+  flex-direction: row;
+}
+
+#usernamelabel {
+  width: 80px;
+}
+
+#messagelabel {
+  width: 80px;
 }

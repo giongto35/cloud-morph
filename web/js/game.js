@@ -137,3 +137,19 @@ myPics.addEventListener("click", (e) => {
   e.preventDefault();
   return false;
 });
+
+// move to chat.js
+const chatsubmit = document.getElementById("chatsubmit");
+const username = document.getElementById("chatusername");
+const message = document.getElementById("chatmessage");
+
+object.addEventListener("click", (e) => {
+  username
+  send({
+    type: "CHAT",
+    data: JSON.stringify({
+      user: username.innerText(),
+      message: chatmessage.innerText(),
+    }),
+  });
+});
