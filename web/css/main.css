@@ -1,12 +1,72 @@
-#game-screen {
-  overflow: hidden;
-  width: 100%;
-  height: 100%;
+#game {
+  width: 800px;
+  height: 600px;
   /* display: none; */
   background-color: #222222;
+  flex-grow: 0;
+}
+
+#game-screen {
+  width: 800px;
+  height: 600px;
+  /* display: none; */
+  background-color: #222222;
+  flex-grow: 0;
+}
+
+#game-meta {
+  display: block;
+}
+
+#chat {
+  margin: 5px;
+  flex-grow: 0;
 }
 
 #game-body {
   position: fixed;
   overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  width: 100%;
+}
+
+#chatprofile {
+  display: flex;
+  flex-direction: row;
+}
+
+#chatoutput {
+  max-height: 70%;
+  height: 70%;
+  overflow: scroll;
+  overflow-wrap: break-word;
+}
+
+#chatinput {
+  display: flex;
+  flex-direction: row;
+}
+
+#usernamelabel {
+  width: 80px;
+}
+
+#messagelabel {
+  width: 80px;
+}
+
+.output-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.output-user-label {
+  width: 80px;
+  flex: 0 0 33.33%;
+}
+
+.output-message-label {
+  width: 80px;
 }
