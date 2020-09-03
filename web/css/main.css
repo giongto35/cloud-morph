@@ -1,9 +1,26 @@
-#game-screen {
-  overflow: hidden;
+#game {
   width: 800px;
   height: 600px;
   /* display: none; */
   background-color: #222222;
+  flex-grow: 0;
+}
+
+#game-screen {
+  width: 800px;
+  height: 600px;
+  /* display: none; */
+  background-color: #222222;
+  flex-grow: 0;
+}
+
+#game-meta {
+  display: block;
+}
+
+#chat {
+  margin: 5px;
+  flex-grow: 0;
 }
 
 #game-body {
@@ -11,6 +28,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: row;
+  height: 100%;
+  width: 100%;
 }
 
 #chatprofile {
@@ -19,7 +38,10 @@
 }
 
 #chatoutput {
+  max-height: 70%;
   height: 70%;
+  overflow: scroll;
+  overflow-wrap: break-word;
 }
 
 #chatinput {
@@ -32,5 +54,19 @@
 }
 
 #messagelabel {
+  width: 80px;
+}
+
+.output-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.output-user-label {
+  width: 80px;
+  flex: 0 0 33.33%;
+}
+
+.output-message-label {
   width: 80px;
 }

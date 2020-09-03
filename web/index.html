@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>CloudMorph</title>
+  <title>Cloud Diablo</title>
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <link href="/static/css/main.css" rel="stylesheet" />
@@ -11,7 +11,17 @@
 <body>
   <div id="game-body">
     <!--<video src="locahost:8080/test.sdp">-->
-    <video id="game-screen" muted playinfullscreen="false" playsinline onloadstart="this.volume=0.5" autoplay></video>
+    <div id="game">
+      <video id="game-screen" oncontextmenu="return false;" muted playinfullscreen="false" playsinline
+        onloadstart="this.volume=0.5" autoplay></video>
+      <div id="game-meta">
+        <label id="numplayers">Number of players:</label></br>
+        <!-- <button id="fullscreen" type="submit">toggle fullscreen</button> -->
+        <p>Powered by Cloud Morph. <a
+            href="https://github.com/giongto35/cloud-morph">github.com/giongto35/cloud-morph</a> </p>
+        <p>Copyright by <a href=https://www.linkedin.com/in/huuthanhnguyen />giongto35</a></p>
+      </div>
+    </div>
     <div id="chat">
       <pre id="chatoutput" class="messages"></pre>
       <div id="chatprofile">
@@ -22,9 +32,8 @@
         <label id="messagelabel">Message</label>
         <textarea id="chatmessage" placeholder="Start typing the message" rows="3"></textarea>
       </div>
-      <button type="chatsubmit">Send</button>
+      <button id="chatsubmit" type="submit">Send</button>
     </div>
-    <div id="logs"></div>
 
     <script src="/static/js/game.js"></script>
     <script src="/static/js/chat.js"></script>

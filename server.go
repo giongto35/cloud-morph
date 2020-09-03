@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/giongto35/cloud-morph/core/go/cloudgame"
@@ -49,6 +50,7 @@ type Client struct {
 
 	serverEvents chan cloudgame.WSPacket
 	videoStream  chan rtp.Packet
+	videoTrack   *webrtc.Track
 	done         chan struct{}
 }
 
@@ -106,19 +108,14 @@ func NewServer() *Server {
 	}
 
 	fmt.Println(cfg)
-	// server.cgame = cloudgame.NewCloudGameClient(cfg)
+	server.cgame = cloudgame.NewCloudGameClient(cfg)
 
 	return server
 }
 
-func (o *Server) Chat() {
+func (o *Server) broadcast(e cloudgame.WSPacket) {
 	for _, client := range o.clients {
-		client.Send(
-			cloudgame.WSPacket{
-				PType: "CHAT",
-				Data:
-			}
-		)
+		client.Send(e)
 	}
 }
 
@@ -127,6 +124,7 @@ func (o *Server) Handle() {
 	go func() {
 		for e := range o.events {
 			if e.PType == "CHAT" {
+				o.broadcast(e)
 			} else {
 				o.cgame.SendInput(e)
 			}
@@ -176,10 +174,20 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 
 	// Create browserClient instance
 	o.clients[clientID] = NewClient(c, clientID, o.events)
+	// TODO: Update packet
+	o.broadcast(cloudgame.WSPacket{
+		PType: "NUMPLAYER",
+		Data:  strconv.Itoa(len(o.clients)),
+	})
 	// Run browser listener first (to capture ping)
 	go func(client *Client) {
 		client.Listen()
 		delete(o.clients, client.clientID)
+		// Update the remaining
+		o.broadcast(cloudgame.WSPacket{
+			PType: "NUMPLAYER",
+			Data:  strconv.Itoa(len(o.clients)),
+		})
 	}(o.clients[clientID])
 }
 
@@ -213,6 +221,15 @@ func (c *Client) Listen() {
 		close(c.done)
 	}()
 
+	// Listen from video stream
+	go func() {
+		for packet := range c.videoStream {
+			if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
+				panic(writeErr)
+			}
+		}
+	}()
+
 	log.Println("Client listening")
 	for {
 		_, rawMsg, err := c.conn.ReadMessage()
@@ -232,6 +249,7 @@ func (c *Client) Listen() {
 		}
 		c.serverEvents <- wspacket
 	}
+
 }
 
 func readConfig(path string) (cloudgame.Config, error) {
@@ -359,15 +377,7 @@ func (o *Server) Signalling(w http.ResponseWriter, r *http.Request) {
 	isStarted = true
 	w.Write([]byte(Encode(answer)))
 
-	// Updatge clientID from connection
-	client := o.clients[clientID]
-
-	// Listen from video stream
-	go func() {
-		for packet := range client.videoStream {
-			if writeErr := videoTrack.WriteRTP(&packet); writeErr != nil {
-				panic(writeErr)
-			}
-		}
-	}()
+	if client, ok := o.clients[clientID]; ok {
+		client.videoTrack = videoTrack
+	}
 }

@@ -3,6 +3,7 @@ const MOUSE_DOWN = 0;
 const MOUSE_UP = 1;
 const MOUSE_LEFT = 0;
 const MOUSE_RIGHT = 1;
+var isFullscreen = false;
 
 // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
 // await pc.setRemoteDescription(offer);
@@ -26,12 +27,16 @@ function init() {
   // Message received from server
   conn.onmessage = (response) => {
     const data = JSON.parse(response.data);
-    const message = data.id;
+    const ptype = data.type;
 
-    if (message !== "heartbeat")
-      console.log(`[ws] <- message '${message}' `, data);
+    console.log(`[ws] <- message '${data}' `, ptype);
 
-    switch (message) {}
+    switch (ptype) {
+      case "CHAT":
+        appendChatMessage(data);
+      case "NUMPLAYER":
+        updateNumPlayers(data);
+    }
   };
 }
 
@@ -78,6 +83,10 @@ pc.createOffer().then((offer) => {
 
 init();
 
+// document.addEventListener("contextmenu", (event) => event.preventDefault());
+
+const gamescreen = document.getElementById("game-screen");
+
 // log key
 document.addEventListener("keydown", logKey);
 
@@ -91,16 +100,12 @@ function logKey(e) {
   });
 }
 
-document.addEventListener("contextmenu", (event) => event.preventDefault());
-
-const myPics = document.getElementById("game-screen");
-
 // Add the event listeners for mousedown, mousemove, and mouseup
-myPics.addEventListener("mouseup", (e) => {
+gamescreen.addEventListener("mouseup", (e) => {
   x = e.offsetX;
   y = e.offsetY;
   b = e.button;
-  boundRect = myPics.getBoundingClientRect();
+  boundRect = gamescreen.getBoundingClientRect();
   console.log(e.offsetX, e.offsetY);
   send({
     type: "MOUSE",
@@ -115,10 +120,10 @@ myPics.addEventListener("mouseup", (e) => {
   });
 });
 
-myPics.addEventListener("mousedown", (e) => {
+gamescreen.addEventListener("mousedown", (e) => {
   x = e.offsetX;
   y = e.offsetY;
-  boundRect = myPics.getBoundingClientRect();
+  boundRect = gamescreen.getBoundingClientRect();
   console.log(e.offsetX, e.offsetY);
   send({
     type: "MOUSE",
@@ -133,23 +138,65 @@ myPics.addEventListener("mousedown", (e) => {
   });
 });
 
-myPics.addEventListener("click", (e) => {
+gamescreen.addEventListener("click", (e) => {
   e.preventDefault();
   return false;
 });
 
-// move to chat.js
+// TODO: move to chat.js // Non core logic
+const chatoutput = document.getElementById("chatoutput");
 const chatsubmit = document.getElementById("chatsubmit");
 const username = document.getElementById("chatusername");
 const message = document.getElementById("chatmessage");
+const fullscreen = document.getElementById("fullscreen");
+const gamed = document.getElementById("game");
+const chatd = document.getElementById("chat");
+const numplayers = document.getElementById("numplayers");
 
-object.addEventListener("click", (e) => {
-  username
+chatsubmit.addEventListener("click", (e) => {
   send({
     type: "CHAT",
     data: JSON.stringify({
-      user: username.innerText(),
-      message: chatmessage.innerText(),
+      user: username.value,
+      message: chatmessage.value,
     }),
   });
 });
+
+fullscreen.addEventListener("click", (e) => {
+  if (!isFullscreen) {
+    chatd.style.display = "none";
+    gamed.style.width = "100%";
+    gamed.style.height = "100%";
+  } else {
+    chatd.style.display = "block";
+    gamed.style.width = "800px";
+    gamed.style.height = "600px";
+  }
+  isFullscreen = !isFullscreen
+});
+
+function appendChatMessage(data) {
+  chatrow = JSON.parse(data.data)
+
+  var divNode = document.createElement("div");
+  var userSpanNode = document.createElement("span");
+  var boldNode = document.createElement("strong");
+  var messageSpanNode = document.createElement("span");
+  userSpanNode.setAttribute("class", "output-user-label");
+  messageSpanNode.setAttribute("class", "output-message-label");
+  divNode.setAttribute("class", "output-row");
+  var userTextnode = document.createTextNode(chatrow.user);
+  var messageTextnode = document.createTextNode(chatrow.message);
+  boldNode.appendChild(userTextnode);
+  userSpanNode.appendChild(boldNode);
+  messageSpanNode.appendChild(messageTextnode);
+  divNode.appendChild(userSpanNode);
+  divNode.appendChild(messageSpanNode);
+  chatoutput.appendChild(divNode);
+}
+
+function updateNumPlayers(data) {
+  sNumPlayers = JSON.parse(data.data);
+  numplayers.innerText = "Number of players: " + sNumPlayers
+}
