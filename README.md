@@ -13,7 +13,8 @@ Users can either spawn up a cloud service by themself or optionally attach your 
 | :----------------------------------------------------: | :-------------------------------------------------------: |
 | ![screenshot](docs/img/screenshotDiablo.png) Diablo II | ![screenshot](docs/img/screenshotPhotoshop.png) Photoshop |
 
-[Cloud Diablo](http://159.65.133.220/) (Running on lowest machine type + Singapore server)
+
+[Cloud Diablo](http://clouddiablo.com/) (Running on Singapore server)
 ***To be updated with demo of cloud application!**
 
 ## Deployment
