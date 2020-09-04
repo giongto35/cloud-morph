@@ -1,28 +1,3 @@
-#game {
-  width: 800px;
-  height: 600px;
-  /* display: none; */
-  background-color: #222222;
-  flex-grow: 0;
-}
-
-#game-screen {
-  width: 800px;
-  height: 600px;
-  /* display: none; */
-  background-color: #222222;
-  flex-grow: 0;
-}
-
-#game-meta {
-  display: block;
-}
-
-#chat {
-  margin: 5px;
-  flex-grow: 0;
-}
-
 #game-body {
   position: fixed;
   overflow: hidden;
@@ -30,6 +5,30 @@
   flex-direction: row;
   height: 100%;
   width: 100%;
+}
+
+#game {
+  /* display: none; */
+  flex-grow: 0;
+}
+
+#game-screen {
+  /* width: 80vw;
+  height: 60vw; */
+  height: 85vh;
+  width: calc(85*8/6)vh;
+  /* display: none; */
+  background-color: #222222;
+}
+
+#game-meta {
+  display: block;
+}
+
+#chat {
+  margin-left: 5px;
+  /* width: 20%; */
+  /* flex-grow: 1; */
 }
 
 #chatprofile {

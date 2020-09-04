@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/pprof"
 	"strconv"
 	"time"
 
@@ -107,7 +108,7 @@ func NewServer() *Server {
 		panic(err)
 	}
 
-	fmt.Println(cfg)
+	log.Println("config: ", cfg)
 	server.cgame = cloudgame.NewCloudGameClient(cfg)
 
 	return server
@@ -224,6 +225,9 @@ func (c *Client) Listen() {
 	// Listen from video stream
 	go func() {
 		for packet := range c.videoStream {
+			if c.videoTrack == nil {
+				continue
+			}
 			if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
 				panic(writeErr)
 			}
@@ -263,11 +267,39 @@ func readConfig(path string) (cloudgame.Config, error) {
 	return cfg, err
 }
 
+func monitor() {
+	monitoringServerMux := http.NewServeMux()
+
+	srv := http.Server{
+		Addr:    fmt.Sprintf(":%d", 3535),
+		Handler: monitoringServerMux,
+	}
+	log.Println("Starting monitoring server at", srv.Addr)
+
+	pprofPath := fmt.Sprintf("/debug/pprof")
+	log.Println("Profiling is enabled at", srv.Addr+pprofPath)
+	monitoringServerMux.Handle(pprofPath+"/", http.HandlerFunc(pprof.Index))
+	monitoringServerMux.Handle(pprofPath+"/cmdline", http.HandlerFunc(pprof.Cmdline))
+	monitoringServerMux.Handle(pprofPath+"/profile", http.HandlerFunc(pprof.Profile))
+	monitoringServerMux.Handle(pprofPath+"/symbol", http.HandlerFunc(pprof.Symbol))
+	monitoringServerMux.Handle(pprofPath+"/trace", http.HandlerFunc(pprof.Trace))
+	// pprof handler for custom pprof path needs to be explicitly specified, according to: https://github.com/gin-contrib/pprof/issues/8 . Don't know why this is not fired as ticket
+	// https://golang.org/src/net/http/pprof/pprof.go?s=7411:7461#L305 only render index page
+	monitoringServerMux.Handle(pprofPath+"/allocs", pprof.Handler("allocs"))
+	monitoringServerMux.Handle(pprofPath+"/block", pprof.Handler("block"))
+	monitoringServerMux.Handle(pprofPath+"/goroutine", pprof.Handler("goroutine"))
+	monitoringServerMux.Handle(pprofPath+"/heap", pprof.Handler("heap"))
+	monitoringServerMux.Handle(pprofPath+"/mutex", pprof.Handler("mutex"))
+	monitoringServerMux.Handle(pprofPath+"/threadcreate", pprof.Handler("threadcreate"))
+	go srv.ListenAndServe()
+
+}
+
 func main() {
 	// HTTP server
 	// TODO: Make the communication over websocket
 	http.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets"))))
-
+	monitor()
 	server := NewServer()
 	server.Handle()
 	err := server.ListenAndServe()

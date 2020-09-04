@@ -5,6 +5,16 @@ const MOUSE_LEFT = 0;
 const MOUSE_RIGHT = 1;
 var isFullscreen = false;
 
+// TODO: move to chat.js // Non core logic
+const chatoutput = document.getElementById("chatoutput");
+const chatsubmit = document.getElementById("chatsubmit");
+const username = document.getElementById("chatusername");
+const message = document.getElementById("chatmessage");
+const fullscreen = document.getElementById("fullscreen");
+const gamed = document.getElementById("game");
+const chatd = document.getElementById("chat");
+const numplayers = document.getElementById("numplayers");
+
 // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
 // await pc.setRemoteDescription(offer);
 
@@ -92,6 +102,9 @@ document.addEventListener("keydown", logKey);
 
 function logKey(e) {
   console.log(e.keyCode);
+  if (document.activeElement === username || document.activeElement === chatmessage) {
+    return;
+  }
   send({
     type: "KEYDOWN",
     data: JSON.stringify({
@@ -143,16 +156,6 @@ gamescreen.addEventListener("click", (e) => {
   return false;
 });
 
-// TODO: move to chat.js // Non core logic
-const chatoutput = document.getElementById("chatoutput");
-const chatsubmit = document.getElementById("chatsubmit");
-const username = document.getElementById("chatusername");
-const message = document.getElementById("chatmessage");
-const fullscreen = document.getElementById("fullscreen");
-const gamed = document.getElementById("game");
-const chatd = document.getElementById("chat");
-const numplayers = document.getElementById("numplayers");
-
 chatsubmit.addEventListener("click", (e) => {
   send({
     type: "CHAT",
@@ -164,16 +167,19 @@ chatsubmit.addEventListener("click", (e) => {
 });
 
 fullscreen.addEventListener("click", (e) => {
-  if (!isFullscreen) {
+  isFullscreen = !isFullscreen
+  if (isFullscreen) {
     chatd.style.display = "none";
-    gamed.style.width = "100%";
-    gamed.style.height = "100%";
+    gamed.style.display = "flex";
+    gamed.style.flexDirection = "row";
+    gamescreen.style.height = "100vh";
+    gamescreen.style.width = "133.33vh"; // maintain 800x600
   } else {
     chatd.style.display = "block";
-    gamed.style.width = "800px";
-    gamed.style.height = "600px";
+    gamed.style.display = "block";
+    gamescreen.style.height = "85vh";
+    gamescreen.style.width = `${85 * 8 / 6}vh`; // maintain 800x600
   }
-  isFullscreen = !isFullscreen
 });
 
 function appendChatMessage(data) {
