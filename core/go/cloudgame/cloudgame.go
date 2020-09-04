@@ -36,7 +36,7 @@ type ccImpl struct {
 	isReady     bool
 	listener    *net.UDPConn
 	videoStream chan rtp.Packet
-	wineConn    net.Conn
+	wineConn    *net.TCPConn
 	ssrc        uint32
 	payloadType uint8
 }
@@ -58,8 +58,12 @@ func NewCloudGameClient(cfg Config) *ccImpl {
 		videoStream: make(chan rtp.Packet, 1),
 	}
 
+	la, err := net.ResolveTCPAddr("tcp4", ":9090")
+	if err != nil {
+		panic(err)
+	}
 	log.Println("listening wine at port 9090")
-	ln, err := net.Listen("tcp", ":9090")
+	ln, err := net.ListenTCP("tcp", la)
 	if err != nil {
 		panic(err)
 	}
@@ -80,10 +84,12 @@ func NewCloudGameClient(cfg Config) *ccImpl {
 	go func() {
 		for {
 			// Polling Wine socket connection (input stream)
-			conn, err := ln.Accept()
+			conn, err := ln.AcceptTCP()
 			if err != nil {
 				// handle error
 			}
+			conn.SetKeepAlive(true)
+			conn.SetKeepAlivePeriod(10 * time.Second)
 			c.wineConn = conn
 			// Successfully obtain input stream
 			log.Println("Server is successfully lauched!")
@@ -124,7 +130,7 @@ func (c *ccImpl) launchGameVM(rtpPort int, appPath string, appFile string, windo
 	// }()
 
 	log.Println("execing run-client.sh")
-	// cmd = exec.Command("./run-wine-nodocker.sh", appCfg[appName].path, appCfg[appName].appName, appCfg[appName].windowTitle)
+	// cmd = exec.Command("./run-wine-nodocker.sh", appPath, appFile, windowTitle)
 	cmd = exec.Command("./run-wine.sh", appPath, appFile, windowTitle)
 
 	cmd.Stdout = &out
