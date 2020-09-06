@@ -15,6 +15,7 @@ const gamed = document.getElementById("game");
 const chatd = document.getElementById("chat");
 const numplayers = document.getElementById("numplayers");
 
+var offerst;
 // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
 // await pc.setRemoteDescription(offer);
 
@@ -44,8 +45,13 @@ function init() {
     switch (ptype) {
       case "CHAT":
         appendChatMessage(data);
+        break;
       case "NUMPLAYER":
         updateNumPlayers(data);
+        break;
+      case "ANSWER":
+        updateAnswer(data);
+        break;
     }
   };
 }
@@ -53,6 +59,8 @@ function init() {
 function send(data) {
   conn.send(JSON.stringify(data));
 }
+
+init();
 
 let pc = new RTCPeerConnection({
   iceServers: [{
@@ -74,24 +82,17 @@ pc.ontrack = function (event) {
 pc.addTransceiver("video", {
   direction: "recvonly"
 });
-pc.createOffer().then((offer) => {
-  console.log(offer);
-  $.post(
-    "http://" + location.host + "/signal",
-    btoa(JSON.stringify(offer)),
-    (data, status) => {
-      console.log(`answer ${data} and status is ${status}`);
-      pc.setRemoteDescription(
-        new RTCSessionDescription(JSON.parse(atob(data)))
-      );
-    }
-  );
+pc.createOffer().then(async (offer) => {
+  while (conn.readyState === WebSocket.CONNECTING) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  send({
+    type: "OFFER",
+    data: btoa(JSON.stringify(offer)),
+  })
   pc.setLocalDescription(offer);
 });
-// .catch(log);
-// }
-
-init();
 
 // document.addEventListener("contextmenu", (event) => event.preventDefault());
 
@@ -205,4 +206,11 @@ function appendChatMessage(data) {
 function updateNumPlayers(data) {
   sNumPlayers = JSON.parse(data.data);
   numplayers.innerText = "Number of players: " + sNumPlayers
+}
+
+function updateAnswer(data) {
+  console.log(`answer ${data.data}`);
+  pc.setRemoteDescription(
+    new RTCSessionDescription(JSON.parse(atob(data.data)))
+  );
 }

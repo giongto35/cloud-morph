@@ -37,12 +37,20 @@ const addr string = ":8080"
 // TODO: multiplex clientID
 var clientID string
 
+type ChatMessage struct {
+	User    string `json:"user"`
+	Message string `json:"message"`
+}
+
 type Server struct {
 	httpServer *http.Server
 	// browserClients are the map clientID to browser Client
 	clients map[string]*Client
 	events  chan cloudgame.WSPacket
 	cgame   cloudgame.CloudGameClient
+
+	// TODO: Move chat logic to dedicated module
+	chatMsgs []ChatMessage
 }
 
 type Client struct {
@@ -53,6 +61,8 @@ type Client struct {
 	videoStream  chan rtp.Packet
 	videoTrack   *webrtc.Track
 	done         chan struct{}
+	// TODO: Get rid of ssrc
+	ssrc uint32
 }
 
 // GetWeb returns web frontend
@@ -66,12 +76,13 @@ func (o *Server) GetWeb(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
-func NewClient(c *websocket.Conn, clientID string, serverEvents chan cloudgame.WSPacket) *Client {
+func NewClient(c *websocket.Conn, clientID string, ssrc uint32, serverEvents chan cloudgame.WSPacket) *Client {
 	return &Client{
 		conn:         c,
 		clientID:     clientID,
 		serverEvents: serverEvents,
 		videoStream:  make(chan rtp.Packet, 1),
+		ssrc:         ssrc,
 		done:         make(chan struct{}),
 	}
 }
@@ -85,7 +96,7 @@ func NewServer() *Server {
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", server.WS)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
-	r.HandleFunc("/signal", server.Signalling)
+	// r.HandleFunc("/signal", server.Signalling)
 
 	r.PathPrefix("/").HandlerFunc(server.GetWeb)
 
@@ -125,6 +136,12 @@ func (o *Server) Handle() {
 	go func() {
 		for e := range o.events {
 			if e.PType == "CHAT" {
+				chatMsg := ChatMessage{}
+				err := json.Unmarshal([]byte(e.Data), &chatMsg)
+				if err != nil {
+					panic(err)
+				}
+				o.chatMsgs = append(o.chatMsgs, chatMsg)
 				o.broadcast(e)
 			} else {
 				o.cgame.SendInput(e)
@@ -174,12 +191,14 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create browserClient instance
-	o.clients[clientID] = NewClient(c, clientID, o.events)
+	client := NewClient(c, clientID, o.cgame.GetSSRC(), o.events)
+	o.clients[clientID] = client
 	// TODO: Update packet
 	o.broadcast(cloudgame.WSPacket{
 		PType: "NUMPLAYER",
 		Data:  strconv.Itoa(len(o.clients)),
 	})
+	client.sendChatHistory(o.chatMsgs)
 	// Run browser listener first (to capture ping)
 	go func(client *Client) {
 		client.Listen()
@@ -190,6 +209,26 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 			Data:  strconv.Itoa(len(o.clients)),
 		})
 	}(o.clients[clientID])
+}
+
+func (c *Client) sendChatHistory(chatMsgs []ChatMessage) {
+	for _, msg := range chatMsgs {
+		data, err := json.Marshal(ChatMessage{
+			User:    msg.User,
+			Message: msg.Message,
+		})
+		if err != nil {
+			log.Println("Failed to send ", msg)
+			panic(err)
+			continue
+		}
+		fmt.Println("chat history ", data)
+
+		c.Send(cloudgame.WSPacket{
+			PType: "CHAT",
+			Data:  string(data),
+		})
+	}
 }
 
 // Heartbeat maintains connection to server
@@ -246,6 +285,14 @@ func (c *Client) Listen() {
 		wspacket := cloudgame.WSPacket{}
 		err = json.Unmarshal(rawMsg, &wspacket)
 
+		// TODO: Refactor
+		if wspacket.PType == "OFFER" {
+			c.signal(wspacket.Data)
+			// c.Send(cloudgame.WSPacket{
+			// 	PType: "Answer
+			// })
+			continue
+		}
 		fmt.Println("send chan", wspacket)
 		if err != nil {
 			log.Println("error decoding", err)
@@ -369,17 +416,12 @@ func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssr
 	return videoTrack
 }
 
-// Signalling is to setup new webRTC connection
-// TODO: Change to Socket
-func (o *Server) Signalling(w http.ResponseWriter, r *http.Request) {
+func (c *Client) signal(offerString string) {
 	log.Println("Signalling")
 	RTCConn, err := webrtc.NewPeerConnection(webrtcconfig)
 	if err != nil {
 		log.Println("error ", err)
 	}
-
-	bodyBytes, _ := ioutil.ReadAll(r.Body)
-	offerString := string(bodyBytes)
 
 	offer := webrtc.SessionDescription{}
 	Decode(offerString, &offer)
@@ -390,8 +432,8 @@ func (o *Server) Signalling(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Get SSRC", o.cgame.GetSSRC())
-	videoTrack := streamRTP(RTCConn, offer, o.cgame.GetSSRC())
+	log.Println("Get SSRC", c.ssrc)
+	videoTrack := streamRTP(RTCConn, offer, c.ssrc)
 
 	var answer webrtc.SessionDescription
 	answer, err = RTCConn.CreateAnswer(nil)
@@ -407,9 +449,10 @@ func (o *Server) Signalling(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isStarted = true
-	w.Write([]byte(Encode(answer)))
-
-	if client, ok := o.clients[clientID]; ok {
-		client.videoTrack = videoTrack
-	}
+	log.Println("Sending answer", answer)
+	c.Send(cloudgame.WSPacket{
+		PType: "ANSWER",
+		Data:  Encode(answer),
+	})
+	c.videoTrack = videoTrack
 }
