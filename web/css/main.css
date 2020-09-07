@@ -27,11 +27,12 @@
 
 #chat {
   margin-left: 5px;
-  /* width: 20%; */
+  width: 100%;
   /* flex-grow: 1; */
 }
 
 #chatprofile {
+  width: 100%;
   display: flex;
   flex-direction: row;
 }
@@ -44,6 +45,7 @@
 }
 
 #chatinput {
+  width: 100%;
   display: flex;
   flex-direction: row;
 }
