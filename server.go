@@ -202,7 +202,12 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 	// Run browser listener first (to capture ping)
 	go func(client *Client) {
 		client.Listen()
+		if client.conn != nil {
+			client.conn.Close()
+			client.conn = nil
+		}
 		delete(o.clients, client.clientID)
+		close(client.videoStream)
 		// Update the remaining
 		o.broadcast(cloudgame.WSPacket{
 			PType: "NUMPLAYER",
@@ -219,7 +224,6 @@ func (c *Client) sendChatHistory(chatMsgs []ChatMessage) {
 		})
 		if err != nil {
 			log.Println("Failed to send ", msg)
-			panic(err)
 			continue
 		}
 		fmt.Println("chat history ", data)
