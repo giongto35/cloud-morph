@@ -201,6 +201,7 @@ function appendChatMessage(data) {
   divNode.appendChild(userSpanNode);
   divNode.appendChild(messageSpanNode);
   chatoutput.appendChild(divNode);
+  chatoutput.scrollTop = chatoutput.scrollHeight
 }
 
 function updateNumPlayers(data) {
