@@ -1,6 +1,11 @@
 path: /
 appFile: notepad
 windowTitle: Notepad
+hardwareKey: false #Direct X Input use different input set
+gameMode: collaborative #collaborative game mode (multiple user using same game session)
+#path: /games
+#appFile: virtuacop2.exe
+#windowTitle: VIRT
 # path: /games/samurai
 # appFile: SSVS.exe
 # windowTitle: SAMURAI

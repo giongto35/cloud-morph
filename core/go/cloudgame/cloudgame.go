@@ -54,6 +54,7 @@ type Config struct {
 	Path       string `yaml:"path"`
 	AppFile    string `yaml:"appFile"`
 	WidowTitle string `yaml:"windowTitle"` // To help WinAPI search the app
+	HWKey      bool   `yaml:"hardwareKey"`
 }
 
 func NewCloudGameClient(cfg Config) *ccImpl {
@@ -71,7 +72,7 @@ func NewCloudGameClient(cfg Config) *ccImpl {
 		panic(err)
 	}
 
-	c.launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WidowTitle)
+	c.launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WidowTitle, cfg.HWKey)
 	log.Println("Launched application VM")
 
 	// Read video stream from encoded video stream produced by FFMPEG
@@ -110,31 +111,21 @@ func (c *ccImpl) GetSSRC() uint32 {
 }
 
 // done to forcefully stop all processes
-func (c *ccImpl) launchGameVM(rtpPort int, appPath string, appFile string, windowTitle string) chan struct{} {
+func (c *ccImpl) launchGameVM(rtpPort int, appPath string, appFile string, windowTitle string, hwKey bool) chan struct{} {
 	var cmd *exec.Cmd
 	var streamCmd *exec.Cmd
 
 	var out bytes.Buffer
 	var stderr bytes.Buffer
-
-	// go func() {
-	// 	log.Println("Reading pipe stderr")
-	// 	for {
-	// 		log.Println(string(stderr.Bytes()))
-	// 		time.Sleep(time.Second)
-	// 	}
-	// }()
-	// go func() {
-	// 	log.Println("Reading pipe stdout")
-	// 	for {
-	// 		log.Println(string(out.Bytes()))
-	// 		time.Sleep(time.Second)
-	// 	}
-	// }()
+	var params []string
 
 	log.Println("execing run-client.sh")
-	cmd = exec.Command("./run-wine-nodocker.sh", appPath, appFile, windowTitle)
-	// cmd = exec.Command("./run-wine.sh", appPath, appFile, windowTitle)
+	// cmd = exec.Command("./run-wine-nodocker.sh", appPath, appFile, windowTitle, hwKey)
+	params = []string{appPath, appFile, windowTitle}
+	if hwKey {
+		params = append(params, "game")
+	}
+	cmd = exec.Command("./run-wine.sh", params...)
 
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
@@ -164,7 +155,6 @@ func (c *ccImpl) launchGameVM(rtpPort int, appPath string, appFile string, windo
 // healthCheckVM to maintain connection
 func (c *ccImpl) healthCheckVM() {
 	for {
-		fmt.Println("Health check")
 		c.wineConn.Write([]byte{0})
 		time.Sleep(2 * time.Second)
 	}

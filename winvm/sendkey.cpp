@@ -81,7 +81,7 @@ HWND getWindowByTitle(char *pattern)
 }
 
 // isDxGame use hardware keys
-HWND sendIt(HWND hwnd, bool key, bool state, bool isDxGame)
+HWND sendIt(HWND hwnd, int key, bool state, bool isDxGame)
 {
     cout << "Sending key " << ' ' << key << endl;
     HWND temp = SetActiveWindow(hwnd);
@@ -111,6 +111,10 @@ HWND sendIt(HWND hwnd, bool key, bool state, bool isDxGame)
     else
     {
         ip.ki.wVk = key; // virtual-key code for the "a" key
+    }
+    if (state == KEY_UP)
+    {
+        ip.ki.dwFlags |= KEYEVENTF_KEYUP;
     }
     //cout << temp << endl;
     SendInput(1, &ip, sizeof(INPUT));
@@ -337,7 +341,6 @@ int main(int argc, char *argv[])
             puts("recv failed");
             continue;
         }
-
         char *buffer = new char[recv_size];
         memcpy(buffer, buf, recv_size);
         if (recv_size == 1)
