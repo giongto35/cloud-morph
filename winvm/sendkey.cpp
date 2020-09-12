@@ -13,6 +13,12 @@ int server; // TODO: Move to local variable
 chrono::_V2::system_clock::time_point last_ping;
 bool done;
 
+const byte MOUSE_MOVE = 0;
+const byte MOUSE_DOWN = 1;
+const byte MOUSE_UP = 2;
+const byte KEY_UP = 0;
+const byte KEY_DOWN = 1;
+
 int clientConnect()
 {
     WSADATA wsa_data;
@@ -74,29 +80,44 @@ HWND getWindowByTitle(char *pattern)
     return hwnd; //Ignore that
 }
 
-HWND sendIt(HWND hwnd, int key)
+// isDxGame use hardware keys
+HWND sendIt(HWND hwnd, bool key, bool state, bool isDxGame)
 {
-    INPUT ip;
-
-    // Set up a generic keyboard event.
-    ip.type = INPUT_KEYBOARD;
-    ip.ki.wScan = 0; // hardware scan code for key
-    ip.ki.time = 0;
-    ip.ki.dwExtraInfo = 0;
-    ip.ki.wVk = key;   // virtual-key code for the "a" key
-    ip.ki.dwFlags = 0; // 0 for key press
-
     cout << "Sending key " << ' ' << key << endl;
     HWND temp = SetActiveWindow(hwnd);
     ShowWindow(hwnd, SW_RESTORE);
     SetFocus(hwnd);
     BringWindowToTop(hwnd);
 
+    INPUT ip;
+    ZeroMemory(&ip, sizeof(INPUT));
+    // Set up a generic keyboard event.
+    ip.type = INPUT_KEYBOARD;
+    ip.ki.time = 0;
+    ip.ki.dwExtraInfo = 0;
+    cout << "pre" << key << ' ';
+    if (isDxGame)
+    {
+        if (key == VK_UP || key == VK_DOWN || key == VK_LEFT || key == VK_RIGHT)
+        {
+            ip.ki.dwFlags = KEYEVENTF_EXTENDEDKEY;
+            cout << "after" << key << endl;
+        }
+        key = MapVirtualKey(key, 0);
+        ip.ki.wScan = key; // hardware scan code for key
+        ip.ki.dwFlags |= KEYEVENTF_SCANCODE;
+        cout << "after" << key << endl;
+    }
+    else
+    {
+        ip.ki.wVk = key; // virtual-key code for the "a" key
+    }
     //cout << temp << endl;
     SendInput(1, &ip, sizeof(INPUT));
 
-    // PostMessage(hwnd, WM_KEYDOWN, key, 0x001E0001); //send
-    // PostMessage(hwnd, WM_KEYUP, key, 0x001E0001);   //send
+    // ip.ki.dwFlags |= KEYEVENTF_KEYUP;
+    // //cout << temp << endl;
+    // SendInput(1, &ip, sizeof(INPUT));
     cout << "sended key " << ' ' << key << endl;
 
     return hwnd;
@@ -121,7 +142,7 @@ void MouseMove(int x, int y)
     SendInput(1, &Input, sizeof(INPUT));
 }
 
-void sendMouseDown(HWND hwnd, bool isLeft, bool isDown, float x, float y)
+void sendMouseDown(HWND hwnd, bool isLeft, byte state, float x, float y)
 {
     cout << x << ' ' << y << endl;
     INPUT Input = {0};
@@ -129,19 +150,19 @@ void sendMouseDown(HWND hwnd, bool isLeft, bool isDown, float x, float y)
 
     MouseMove(int(x), int(y));
 
-    if (isLeft && isDown)
+    if (isLeft && state == MOUSE_DOWN)
     {
         Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_ABSOLUTE;
     }
-    else if (isLeft && !isDown)
+    else if (isLeft && state == MOUSE_UP)
     {
         Input.mi.dwFlags = MOUSEEVENTF_LEFTUP | MOUSEEVENTF_ABSOLUTE;
     }
-    else if (!isLeft && isDown)
+    else if (!isLeft && state == MOUSE_DOWN)
     {
         Input.mi.dwFlags = MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_ABSOLUTE;
     }
-    else if (!isLeft && !isDown)
+    else if (!isLeft && state == MOUSE_UP)
     {
         Input.mi.dwFlags = MOUSEEVENTF_RIGHTUP | MOUSEEVENTF_ABSOLUTE;
     }
@@ -154,15 +175,36 @@ void sendMouseDown(HWND hwnd, bool isLeft, bool isDown, float x, float y)
 struct Mouse
 {
     byte isLeft;
-    byte isDown;
+    byte state;
     float x;
     float y;
     float relwidth;
     float relheight;
 };
 
-// TODO: Use some proper serialization
-Mouse parseMousePos(string stPos)
+struct Key
+{
+    byte key;
+    byte state;
+};
+
+// TODO: Use some proper serialization?
+Key parseKeyPayload(string stPos)
+{
+    stringstream ss(stPos);
+
+    string substr;
+    getline(ss, substr, ',');
+    byte key = stof(substr);
+
+    getline(ss, substr, ',');
+    byte state = stof(substr);
+
+    return Key{key, state};
+}
+
+// TODO: Use some proper serialization?
+Mouse parseMousePayload(string stPos)
 {
     stringstream ss(stPos);
 
@@ -171,7 +213,7 @@ Mouse parseMousePos(string stPos)
     bool isLeft = stof(substr);
 
     getline(ss, substr, ',');
-    bool isDown = stof(substr);
+    byte state = stof(substr);
 
     getline(ss, substr, ',');
     float x = stof(substr);
@@ -185,7 +227,7 @@ Mouse parseMousePos(string stPos)
     getline(ss, substr, ',');
     float h = stof(substr);
 
-    return Mouse{isLeft, isDown, x, y, w, h};
+    return Mouse{isLeft, state, x, y, w, h};
 }
 
 void formatWindow(HWND hwnd)
@@ -214,14 +256,46 @@ void *healthcheck(void *args)
     }
 }
 
+void processEvent(HWND hwnd, string ev, bool isDxGame)
+{
+    // Mouse payload
+    cout << "Got: " << ev << endl;
+    if (ev[0] == 'K')
+    {
+        Key key = parseKeyPayload(ev.substr(1, ev.length() - 1));
+        cout << "Key: " << key.key << " " << key.state << endl;
+        // use key
+        sendIt(hwnd, key.key, key.state, isDxGame); //notepad ID
+        cout << '\n'
+             << "Press a key to continue...";
+    }
+    else if (ev[0] == 'M')
+    {
+        Mouse mouse = parseMousePayload(ev.substr(1, ev.length() - 1));
+        float x = mouse.x * screenWidth / mouse.relwidth;
+        float y = mouse.y * screenHeight / mouse.relheight;
+        cout << "Mouse: " << ' ' << mouse.state << ' ' << x << ' ' << y << ' ' << screenWidth << ' '
+             << screenHeight << ' ' << mouse.relwidth << ' ' << mouse.relheight << endl;
+        sendMouseDown(hwnd, mouse.isLeft, mouse.state, x, y);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     server = clientConnect();
 
     char *winTitle = (char *)"Notepad";
+    bool isDxGame = false;
     if (argc > 1)
     {
         winTitle = argv[1];
+    }
+    if (argc > 2)
+    {
+        if (argv[2] == "game")
+        {
+            isDxGame = true;
+        }
     }
     cout << "Finding title " << winTitle << endl;
     HWND hwnd = 0;
@@ -246,10 +320,13 @@ int main(int argc, char *argv[])
     pthread_t th;
     int t = pthread_create(&th, NULL, healthcheck, NULL);
 
+    int recv_size;
+    char buf[2000];
+    istringstream iss("");
+    string ev;
+
     do
     {
-        int recv_size;
-        char buf[2000];
         if (done)
         {
             exit(1);
@@ -260,40 +337,24 @@ int main(int argc, char *argv[])
             puts("recv failed");
             continue;
         }
-        if (recv_size == 0)
+
+        char *buffer = new char[recv_size];
+        memcpy(buffer, buf, recv_size);
+        if (recv_size == 1)
         {
-            //cout << "Rejected: " << buffer << ' ' << strlen(buffer) << endl;
-            continue;
+            if (buffer[0] == 0)
+            {
+                // Received ping
+                last_ping = chrono::system_clock::now();
+            };
         }
+
         try
         {
-            cout << recv_size << endl;
-            char *buffer = new char[recv_size];
-            memcpy(buffer, buf, recv_size);
-            cout << "Got: " << buf << " Parsed: " << buffer << "recv size " << recv_size << " len " << strlen(buffer) << endl;
-            if (recv_size == 1)
+            stringstream ss(buffer);
+            while (getline(ss, ev, '|'))
             {
-                if (buffer[0] == 0)
-                {
-                    // Received ping
-                    last_ping = chrono::system_clock::now();
-                    continue;
-                };
-                // use key
-                sendIt(hwnd, buffer[0]); //notepad ID
-                cout << '\n'
-                     << "Press a key to continue...";
-            }
-            else if (recv_size > 1)
-            {
-                string st(buffer);
-                cout << "Mouse: " << st << endl;
-                Mouse pos = parseMousePos(st);
-                float x = pos.x * screenWidth / pos.relwidth;
-                float y = pos.y * screenHeight / pos.relheight;
-                cout << "pos: " << x << ' ' << y << ' ' << screenWidth << ' '
-                     << screenHeight << ' ' << pos.relwidth << ' ' << pos.relheight << endl;
-                sendMouseDown(hwnd, pos.isLeft, pos.isDown, x, y);
+                processEvent(hwnd, ev, isDxGame);
             }
         }
         catch (const std::exception &e)

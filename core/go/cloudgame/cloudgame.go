@@ -43,7 +43,10 @@ type ccImpl struct {
 
 const startRTPPort = 5004
 const eventKeyDown = "KEYDOWN"
-const eventMouse = "MOUSE"
+const eventKeyUp = "KEYUP"
+const eventMouseMove = "MOUSEMOVE"
+const eventMouseDown = "MOUSEDOWN"
+const eventMouseUp = "MOUSEUP"
 
 var cuRTPPort = startRTPPort
 
@@ -130,8 +133,8 @@ func (c *ccImpl) launchGameVM(rtpPort int, appPath string, appFile string, windo
 	// }()
 
 	log.Println("execing run-client.sh")
-	// cmd = exec.Command("./run-wine-nodocker.sh", appPath, appFile, windowTitle)
-	cmd = exec.Command("./run-wine.sh", appPath, appFile, windowTitle)
+	cmd = exec.Command("./run-wine-nodocker.sh", appPath, appFile, windowTitle)
+	// cmd = exec.Command("./run-wine.sh", appPath, appFile, windowTitle)
 
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
@@ -161,6 +164,7 @@ func (c *ccImpl) launchGameVM(rtpPort int, appPath string, appFile string, windo
 // healthCheckVM to maintain connection
 func (c *ccImpl) healthCheckVM() {
 	for {
+		fmt.Println("Health check")
 		c.wineConn.Write([]byte{0})
 		time.Sleep(2 * time.Second)
 	}
@@ -228,23 +232,23 @@ func (c *ccImpl) listenVideoStream() {
 
 func (c *ccImpl) SendInput(packet WSPacket) {
 	switch packet.PType {
+	case eventKeyUp:
+		c.simulateKey(packet.Data, 0)
 	case eventKeyDown:
-		c.simulateKeyDown(packet.Data)
-	case eventMouse:
-		c.simulateMouseEvent(packet.Data)
+		c.simulateKey(packet.Data, 1)
+	case eventMouseMove:
+		c.simulateMouseEvent(packet.Data, 0)
+	case eventMouseDown:
+		c.simulateMouseEvent(packet.Data, 1)
+	case eventMouseUp:
+		c.simulateMouseEvent(packet.Data, 2)
 	}
 }
 
-func (c *ccImpl) simulateKeyDown(jsonPayload string) {
+func (c *ccImpl) simulateKey(jsonPayload string, keyState byte) {
 	if !c.isReady {
 		return
 	}
-	// if isStarted == false {
-	// 	return
-	// }
-	// if WineConn == nil {
-	// 	return
-	// }
 
 	log.Println("KeyDown event", jsonPayload)
 	type keydownPayload struct {
@@ -253,38 +257,32 @@ func (c *ccImpl) simulateKeyDown(jsonPayload string) {
 	p := &keydownPayload{}
 	json.Unmarshal([]byte(jsonPayload), &p)
 
-	b, err := c.wineConn.Write([]byte{byte(p.KeyCode)})
+	vmKeyMsg := fmt.Sprintf("K%d,%b|", p.KeyCode, keyState)
+	b, err := c.wineConn.Write([]byte(vmKeyMsg))
 	log.Printf("%+v\n", c.wineConn)
 	log.Println("Sended key: ", b, err)
 }
 
 // simulateMouseEvent handles mouse down event and send it to Virtual Machine over TCP port
-func (c *ccImpl) simulateMouseEvent(jsonPayload string) {
-	// if isStarted == false {
-	// 	return
-	// }
-	// if WineConn == nil {
-	// 	return
-	// }
+func (c *ccImpl) simulateMouseEvent(jsonPayload string, mouseState int) {
 	if !c.isReady {
 		return
 	}
 
 	log.Println("MouseDown event", jsonPayload)
-	type mousedownPayload struct {
+	type mousePayload struct {
 		IsLeft byte    `json:isLeft`
-		IsDown byte    `json:isDown`
 		X      float32 `json:x`
 		Y      float32 `json:y`
 		Width  float32 `json:width`
 		Height float32 `json:height`
 	}
-	p := &mousedownPayload{}
+	p := &mousePayload{}
 	json.Unmarshal([]byte(jsonPayload), &p)
 
 	// Mouse is in format of comma separated "12.4,52.3"
-	mousePayload := fmt.Sprintf("%d,%d,%f,%f,%f,%f", p.IsLeft, p.IsDown, p.X, p.Y, p.Width, p.Height)
-	b, err := c.wineConn.Write([]byte(mousePayload))
+	vmMouseMsg := fmt.Sprintf("M%d,%d,%f,%f,%f,%f|", p.IsLeft, mouseState, p.X, p.Y, p.Width, p.Height)
+	b, err := c.wineConn.Write([]byte(vmMouseMsg))
 	// log.Printf("%+v\n", WineConn)
 	log.Println("Sended Mouse: ", b, err)
 }
