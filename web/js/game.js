@@ -99,9 +99,7 @@ pc.createOffer().then(async (offer) => {
 const gamescreen = document.getElementById("game-screen");
 
 // log key
-document.addEventListener("keydown", logKey);
-
-function logKey(e) {
+document.addEventListener("keydown", (e) => {
   console.log(e.keyCode);
   if (document.activeElement === username || document.activeElement === chatmessage) {
     return;
@@ -112,20 +110,31 @@ function logKey(e) {
       keyCode: e.keyCode
     })
   });
-}
+});
+
+document.addEventListener("keyup", (e) => {
+  console.log(e.keyCode);
+  if (document.activeElement === username || document.activeElement === chatmessage) {
+    return;
+  }
+  send({
+    type: "KEYUP",
+    data: JSON.stringify({
+      keyCode: e.keyCode
+    })
+  });
+});
 
 // Add the event listeners for mousedown, mousemove, and mouseup
-gamescreen.addEventListener("mouseup", (e) => {
+gamescreen.addEventListener("mousedown", (e) => {
   x = e.offsetX;
   y = e.offsetY;
-  b = e.button;
   boundRect = gamescreen.getBoundingClientRect();
   console.log(e.offsetX, e.offsetY);
   send({
-    type: "MOUSE",
+    type: "MOUSEDOWN",
     data: JSON.stringify({
       isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-      isDown: 0,
       x: e.offsetX,
       y: e.offsetY,
       width: boundRect.width,
@@ -134,16 +143,32 @@ gamescreen.addEventListener("mouseup", (e) => {
   });
 });
 
-gamescreen.addEventListener("mousedown", (e) => {
+gamescreen.addEventListener("mouseup", (e) => {
   x = e.offsetX;
   y = e.offsetY;
   boundRect = gamescreen.getBoundingClientRect();
   console.log(e.offsetX, e.offsetY);
   send({
-    type: "MOUSE",
+    type: "MOUSEUP",
     data: JSON.stringify({
       isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-      isDown: 1,
+      x: e.offsetX,
+      y: e.offsetY,
+      width: boundRect.width,
+      height: boundRect.height,
+    }),
+  });
+});
+
+gamescreen.addEventListener("mousemove", function (e) {
+  x = e.offsetX;
+  y = e.offsetY;
+  boundRect = gamescreen.getBoundingClientRect();
+  console.log(e.offsetX, e.offsetY);
+  send({
+    type: "MOUSEMOVE",
+    data: JSON.stringify({
+      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
       x: e.offsetX,
       y: e.offsetY,
       width: boundRect.width,

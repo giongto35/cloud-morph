@@ -1,10 +1,18 @@
 path: /
 appFile: notepad
 windowTitle: Notepad
-# path: /games/DiabloII
-# appFile: Game.exe
-# windowTitle: Diablo
+hardwareKey: false #Direct X Input use different input set
+gameMode: collaborative #collaborative game mode (multiple user using same game session)
 
+# path: /games/samurai
+# appFile: SSVS.exe
+# windowTitle: SAMURAI
+# hardwareKey: true #Direct X Input use different input set
+# gameMode: collaborative #collaborative game mode (multiple user using same game session)
+
+#path: /games
+#appFile: virtuacop2.exe
+#windowTitle: VIRT
 #path: /games/Photoshop
 #appFile: PhotoshopCS6Portable.exe
 #windowTitle: Photoshop
