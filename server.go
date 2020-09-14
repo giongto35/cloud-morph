@@ -9,11 +9,10 @@ import (
 	"log"
 	"net/http"
 	"net/http/pprof"
-	"strconv"
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
-	"github.com/giongto35/cloud-morph/pkg/common"
+	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudgame"
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
@@ -42,10 +41,11 @@ var clientID string
 type Server struct {
 	httpServer *http.Server
 	// browserClients are the map clientID to browser Client
-	clients map[string]*Client
-	events  chan cloudgame.WSPacket
-	cgame   cloudgame.CloudGameClient
-	chat    textchat.TextChat
+	clients    map[string]*Client
+	gameEvents chan cloudgame.WSPacket
+	chatEvents chan textchat.ChatMessage
+	cgame      cloudgame.CloudGameClient
+	chat       *textchat.TextChat
 }
 
 type Client struct {
@@ -85,9 +85,9 @@ func NewClient(c *websocket.Conn, clientID string, ssrc uint32, serverEvents cha
 
 func NewServer() *Server {
 	server := &Server{
-		clients:    map[string]*Client{},
-		gameEvents: make(chan cloudgame.WSPacket, 1),
-		chatEvents: make(chan textchat.ChatMessage, 1),
+		clients: map[string]*Client{},
+		// gameEvents: make(chan cloudgame.WSPacket, 1),
+		// chatEvents: make(chan textchat.ChatMessage, 1),
 	}
 
 	r := mux.NewRouter()
@@ -117,16 +117,10 @@ func NewServer() *Server {
 	}
 
 	log.Println("config: ", cfg)
-	server.cgame = cloudgame.NewCloudGameClient(cfg, gameEvents)
-	server.chat = textchat.NewTextChat(chatEvents)
+	server.cgame = cloudgame.NewCloudGameClient(cfg, server.gameEvents)
+	server.chat = textchat.NewTextChat(server.chatEvents)
 
 	return server
-}
-
-func (o *Server) broadcast(e cloudgame.WSPacket) {
-	for _, client := range o.clients {
-		client.Send(e)
-	}
 }
 
 func (o *Server) Handle() {
@@ -177,14 +171,16 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create browserClient instance
-	client := NewClient(c, clientID, o.cgame.GetSSRC(), o.events)
+	client := NewClient(c, clientID, o.cgame.GetSSRC(), o.gameEvents)
 	o.clients[clientID] = client
+	// Add client to chat management
+	o.chat.AddClient(clientID, ws.NewClient(client.conn))
 	// TODO: Update packet
-	o.broadcast(cloudgame.WSPacket{
-		PType: "NUMPLAYER",
-		Data:  strconv.Itoa(len(o.clients)),
-	})
-	client.sendChatHistory(o.chatMsgs)
+	// o.broadcast(cloudgame.WSPacket{
+	// 	PType: "NUMPLAYER",
+	// 	Data:  strconv.Itoa(len(o.clients)),
+	// })
+	// client.sendChatHistory(o.chatMsgs)
 	// Run browser listener first (to capture ping)
 	go func(client *Client) {
 		client.Listen()
@@ -195,10 +191,10 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 		delete(o.clients, client.clientID)
 		close(client.videoStream)
 		// Update the remaining
-		o.broadcast(cloudgame.WSPacket{
-			PType: "NUMPLAYER",
-			Data:  strconv.Itoa(len(o.clients)),
-		})
+		// o.broadcast(cloudgame.WSPacket{
+		// 	PType: "NUMPLAYER",
+		// 	Data:  strconv.Itoa(len(o.clients)),
+		// })
 	}(o.clients[clientID])
 }
 
@@ -253,7 +249,7 @@ func (c *Client) Listen() {
 			// TODO: Check explicit disconnect error to break
 			break
 		}
-		wspacket := common.WSPacket{}
+		wspacket := ws.Packet{}
 		err = json.Unmarshal(rawMsg, &wspacket)
 
 		// TODO: Refactor
@@ -272,7 +268,7 @@ func (c *Client) Listen() {
 		if wspacket.PType == "CHAT" {
 			c.chatEvents <- textchat.Convert(wspacket)
 		} else {
-			c.gameEvents <- cloudgame.Convert(wspacket)
+			c.serverEvents <- cloudgame.Convert(wspacket)
 		}
 	}
 

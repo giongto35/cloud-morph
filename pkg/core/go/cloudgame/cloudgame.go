@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 )
@@ -28,6 +29,7 @@ type InputEvent struct {
 type CloudGameClient interface {
 	VideoStream() chan rtp.Packet
 	SendInput(WSPacket)
+	Handle()
 	// TODO: Remove it
 	GetSSRC() uint32
 }
@@ -107,6 +109,13 @@ func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
 	}()
 
 	return c
+}
+
+func Convert(packet ws.Packet) WSPacket {
+	return WSPacket{
+		PType: packet.PType,
+		Data:  packet.Data,
+	}
 }
 
 func (c *ccImpl) GetSSRC() uint32 {

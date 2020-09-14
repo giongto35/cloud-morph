@@ -5,16 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/giongto35/cloud-morph/pkg/common"
-	"github.com/giongto35/cloud-morph/pkg/core/go/cloudgame"
+	"github.com/giongto35/cloud-morph/pkg/common/ws"
 )
-
-type TextClient interface {
-	Send(packet cloudgame.WSPacket)
-}
-
-type TextServer interface {
-}
 
 type ChatMessage struct {
 	User    string `json:"user"`
@@ -22,21 +14,20 @@ type ChatMessage struct {
 }
 
 type TextChat struct {
-	chatMsgs  []ChatMessage
-	textEvent chan ChatMessage
-	clients   map[string]TextClient
-	server    TextServer
+	chatMsgs []ChatMessage
+	events   chan ChatMessage
+	clients  map[string]*ws.Client
 }
 
-func NewTextChat(client TextClient, server TextServer) *TextChat {
+func NewTextChat(events chan ChatMessage) *TextChat {
 	return &TextChat{
 		chatMsgs: []ChatMessage{},
-		clients:  map[string]TextClient{},
-		server:   server,
+		clients:  map[string]*ws.Client{},
+		events:   events,
 	}
 }
 
-func Convert(packet common.WSPacket) ChatMessage {
+func Convert(packet ws.Packet) ChatMessage {
 	chatMsg := ChatMessage{}
 	err := json.Unmarshal([]byte(packet.Data), &chatMsg)
 	if err != nil {
@@ -46,11 +37,40 @@ func Convert(packet common.WSPacket) ChatMessage {
 	return chatMsg
 }
 
-func (t *TextChat) sendChatHistory(clientID string, chatMsgs []ChatMessage) {
+func (t *TextChat) broadcast(e ChatMessage) error {
+	data, err := json.Marshal(ChatMessage{
+		User:    e.User,
+		Message: e.Message,
+	})
+	if err != nil {
+		return err
+	}
+	for _, client := range t.clients {
+		client.Send(ws.Packet{
+			PType: "CHAT",
+			Data:  string(data),
+		})
+	}
+
+	return nil
+}
+
+func (t *TextChat) Handle() {
+	for e := range t.events {
+		t.broadcast(e)
+	}
+}
+
+func (t *TextChat) AddClient(clientID string, client *ws.Client) {
+	t.clients[clientID] = client
+}
+
+func (t *TextChat) SendChatHistory(clientID string, chatMsgs []ChatMessage) {
 	client, ok := t.clients[clientID]
 	if !ok {
 		return
 	}
+
 	for _, msg := range chatMsgs {
 		data, err := json.Marshal(ChatMessage{
 			User:    msg.User,
@@ -62,7 +82,7 @@ func (t *TextChat) sendChatHistory(clientID string, chatMsgs []ChatMessage) {
 		}
 		fmt.Println("chat history ", data)
 
-		client.Send(cloudgame.WSPacket{
+		client.Send(ws.Packet{
 			PType: "CHAT",
 			Data:  string(data),
 		})
