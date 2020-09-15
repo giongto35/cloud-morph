@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 )
@@ -28,6 +29,7 @@ type InputEvent struct {
 type CloudGameClient interface {
 	VideoStream() chan rtp.Packet
 	SendInput(WSPacket)
+	Handle()
 	// TODO: Remove it
 	GetSSRC() uint32
 }
@@ -36,6 +38,7 @@ type ccImpl struct {
 	isReady     bool
 	listener    *net.UDPConn
 	videoStream chan rtp.Packet
+	gameEvents  chan WSPacket
 	wineConn    *net.TCPConn
 	ssrc        uint32
 	payloadType uint8
@@ -57,9 +60,11 @@ type Config struct {
 	HWKey      bool   `yaml:"hardwareKey"`
 }
 
-func NewCloudGameClient(cfg Config) *ccImpl {
+// NewCloudGameClient returns new cloudgame client
+func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
 	c := &ccImpl{
 		videoStream: make(chan rtp.Packet, 1),
+		gameEvents:  gameEvents,
 	}
 
 	la, err := net.ResolveTCPAddr("tcp4", ":9090")
@@ -104,6 +109,13 @@ func NewCloudGameClient(cfg Config) *ccImpl {
 	}()
 
 	return c
+}
+
+func Convert(packet ws.Packet) WSPacket {
+	return WSPacket{
+		PType: packet.PType,
+		Data:  packet.Data,
+	}
 }
 
 func (c *ccImpl) GetSSRC() uint32 {
@@ -157,6 +169,12 @@ func (c *ccImpl) healthCheckVM() {
 	for {
 		c.wineConn.Write([]byte{0})
 		time.Sleep(2 * time.Second)
+	}
+}
+
+func (c *ccImpl) Handle() {
+	for event := range c.gameEvents {
+		c.SendInput(event)
 	}
 }
 
