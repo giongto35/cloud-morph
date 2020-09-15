@@ -63,7 +63,6 @@ type Client struct {
 
 // GetWeb returns web frontend
 func (o *Server) GetWeb(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("page")
 	tmpl, err := template.ParseFiles(indexPage)
 	if err != nil {
 		log.Fatal(err)
@@ -72,11 +71,12 @@ func (o *Server) GetWeb(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
-func NewClient(c *websocket.Conn, clientID string, ssrc uint32, serverEvents chan cloudgame.WSPacket) *Client {
+func NewClient(c *websocket.Conn, clientID string, ssrc uint32, serverEvents chan cloudgame.WSPacket, chatEvents chan textchat.ChatMessage) *Client {
 	return &Client{
 		conn:         c,
 		clientID:     clientID,
 		serverEvents: serverEvents,
+		chatEvents:   chatEvents,
 		videoStream:  make(chan rtp.Packet, 1),
 		ssrc:         ssrc,
 		done:         make(chan struct{}),
@@ -85,9 +85,9 @@ func NewClient(c *websocket.Conn, clientID string, ssrc uint32, serverEvents cha
 
 func NewServer() *Server {
 	server := &Server{
-		clients: map[string]*Client{},
-		// gameEvents: make(chan cloudgame.WSPacket, 1),
-		// chatEvents: make(chan textchat.ChatMessage, 1),
+		clients:    map[string]*Client{},
+		gameEvents: make(chan cloudgame.WSPacket, 1),
+		chatEvents: make(chan textchat.ChatMessage, 1),
 	}
 
 	r := mux.NewRouter()
@@ -171,7 +171,7 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create browserClient instance
-	client := NewClient(c, clientID, o.cgame.GetSSRC(), o.gameEvents)
+	client := NewClient(c, clientID, o.cgame.GetSSRC(), o.gameEvents, o.chatEvents)
 	o.clients[clientID] = client
 	// Add client to chat management
 	o.chat.AddClient(clientID, ws.NewClient(client.conn))
@@ -180,7 +180,7 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 	// 	PType: "NUMPLAYER",
 	// 	Data:  strconv.Itoa(len(o.clients)),
 	// })
-	// client.sendChatHistory(o.chatMsgs)
+	o.chat.SendChatHistory(clientID)
 	// Run browser listener first (to capture ping)
 	go func(client *Client) {
 		client.Listen()
@@ -260,7 +260,6 @@ func (c *Client) Listen() {
 			// })
 			continue
 		}
-		fmt.Println("send chan", wspacket)
 		if err != nil {
 			log.Println("error decoding", err)
 			continue

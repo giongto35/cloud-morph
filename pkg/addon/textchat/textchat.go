@@ -51,6 +51,7 @@ func (t *TextChat) broadcast(e ChatMessage) error {
 			Data:  string(data),
 		})
 	}
+	t.chatMsgs = append(t.chatMsgs, e)
 
 	return nil
 }
@@ -65,13 +66,14 @@ func (t *TextChat) AddClient(clientID string, client *ws.Client) {
 	t.clients[clientID] = client
 }
 
-func (t *TextChat) SendChatHistory(clientID string, chatMsgs []ChatMessage) {
+func (t *TextChat) SendChatHistory(clientID string) {
 	client, ok := t.clients[clientID]
 	if !ok {
+		fmt.Println("Client not found", clientID)
 		return
 	}
 
-	for _, msg := range chatMsgs {
+	for _, msg := range t.chatMsgs {
 		data, err := json.Marshal(ChatMessage{
 			User:    msg.User,
 			Message: msg.Message,
