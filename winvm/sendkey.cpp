@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
     }
     if (argc > 2)
     {
-        if (argv[2] == "game")
+        if (strcmp(argv[2], "game") == 0)
         {
             isDxGame = true;
         }
