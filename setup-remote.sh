@@ -1,19 +1,7 @@
-ssh root@$1 cat <<EOF >> setup.sh
-#!/usr/bin/env bash
-apt-get update
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-apt-get install -y golang-go
-go build server.go
-mkdir -p ./winvm/games/
-cd ./winvm
-docker build . -t syncwine
-EOF
-
-#ssh root@$1 "bash setup.sh"
-# scp ./config.yaml root@$1:cloud-morph/
-
-# Start server by running
-# - ./server
-# open browser at addresss :8080
+RPATH=/root
+ssh root@$1 "cd $RPATH;git clone https://github.com/giongto35/cloud-morph.git"
+scp ./config.yaml root@$1:cloud-morph/
+ssh root@$1 "cd $RPATH/cloud-morph; ./setup.sh"
+scp -r $2 root@$1:$RPATH/cloud-morph/winvm/games
+ssh root@$1:"cd $RPATH; ./server"
 
