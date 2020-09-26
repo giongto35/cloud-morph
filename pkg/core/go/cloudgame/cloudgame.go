@@ -1,3 +1,4 @@
+// cloudgame package is an individual cloud application
 package cloudgame
 
 import (
@@ -53,13 +54,6 @@ const eventMouseUp = "MOUSEUP"
 
 var cuRTPPort = startRTPPort
 
-type Config struct {
-	Path       string `yaml:"path"`
-	AppFile    string `yaml:"appFile"`
-	WidowTitle string `yaml:"windowTitle"` // To help WinAPI search the app
-	HWKey      bool   `yaml:"hardwareKey"`
-}
-
 // NewCloudGameClient returns new cloudgame client
 func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
 	c := &ccImpl{
@@ -67,46 +61,46 @@ func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
 		gameEvents:  gameEvents,
 	}
 
-	la, err := net.ResolveTCPAddr("tcp4", ":9090")
-	if err != nil {
-		panic(err)
-	}
-	log.Println("listening wine at port 9090")
-	ln, err := net.ListenTCP("tcp", la)
-	if err != nil {
-		panic(err)
-	}
+	// la, err := net.ResolveTCPAddr("tcp4", ":9090")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// log.Println("listening wine at port 9090")
+	// ln, err := net.ListenTCP("tcp", la)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	c.launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WidowTitle, cfg.HWKey)
-	log.Println("Launched application VM")
+	// c.launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WidowTitle, cfg.HWKey)
+	// log.Println("Launched application VM")
 
-	// Read video stream from encoded video stream produced by FFMPEG
-	listener, listenerssrc := c.newLocalStreamListener(cuRTPPort)
-	c.listener = listener
-	c.ssrc = listenerssrc
+	// // Read video stream from encoded video stream produced by FFMPEG
+	// listener, listenerssrc := c.newLocalStreamListener(cuRTPPort)
+	// c.listener = listener
+	// c.ssrc = listenerssrc
 
-	c.listenVideoStream()
-	log.Println("Launched Video stream listener")
+	// c.listenVideoStream()
+	// log.Println("Launched Video stream listener")
 
-	// Maintain input stream from server to Virtual Machine over websocket
-	// Why Websocket: because normal IPC cannot communicate cross OS.
-	go func() {
-		for {
-			// Polling Wine socket connection (input stream)
-			conn, err := ln.AcceptTCP()
-			if err != nil {
-				// handle error
-			}
-			conn.SetKeepAlive(true)
-			conn.SetKeepAlivePeriod(10 * time.Second)
-			c.wineConn = conn
-			// Successfully obtain input stream
-			log.Println("Server is successfully lauched!")
-			log.Println("Listening at :8080")
-			c.isReady = true
-			go c.healthCheckVM()
-		}
-	}()
+	// // Maintain input stream from server to Virtual Machine over websocket
+	// // Why Websocket: because normal IPC cannot communicate cross OS.
+	// go func() {
+	// 	for {
+	// 		// Polling Wine socket connection (input stream)
+	// 		conn, err := ln.AcceptTCP()
+	// 		if err != nil {
+	// 			// handle error
+	// 		}
+	// 		conn.SetKeepAlive(true)
+	// 		conn.SetKeepAlivePeriod(10 * time.Second)
+	// 		c.wineConn = conn
+	// 		// Successfully obtain input stream
+	// 		log.Println("Server is successfully lauched!")
+	// 		log.Println("Listening at :8080")
+	// 		c.isReady = true
+	// 		go c.healthCheckVM()
+	// 	}
+	// }()
 
 	return c
 }

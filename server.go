@@ -44,8 +44,9 @@ type Server struct {
 	clients    map[string]*Client
 	gameEvents chan cloudgame.WSPacket
 	chatEvents chan textchat.ChatMessage
-	cgame      cloudgame.CloudGameClient
-	chat       *textchat.TextChat
+	// cgame      cloudgame.CloudGameClient
+	cgame *cloudgame.Service
+	chat  *textchat.TextChat
 }
 
 type Client struct {
@@ -117,8 +118,11 @@ func NewServer() *Server {
 	}
 
 	log.Println("config: ", cfg)
-	server.cgame = cloudgame.NewCloudGameClient(cfg, server.gameEvents)
+	// server.cgame = cloudgame.NewCloudGameClient(cfg, server.gameEvents)
+	server.cgame = cloudgame.NewCloudService(cfg, server.gameEvents)
+	chosts := server.cgame.GetAppHosts()
 	server.chat = textchat.NewTextChat(server.chatEvents)
+	fmt.Println("All connecting host", chosts)
 
 	return server
 }
