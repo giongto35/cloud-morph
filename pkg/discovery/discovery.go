@@ -28,7 +28,7 @@ type kvstorage struct {
 }
 
 type appHost struct {
-	IP      string `json:"ip"`
+	Addr    string `json:"addr"`
 	AppName string `json:"app_name"`
 }
 
@@ -124,11 +124,12 @@ func (d *appDiscovery) getApps() []appHost {
 		}
 		apps = append(apps, app)
 	}
+	fmt.Println("all apps:", apps)
 
 	return apps
 }
 
-func (s *server) connect(w http.ResponseWriter, r *http.Request) {
+func (s *server) register(w http.ResponseWriter, r *http.Request) {
 	var h appHost
 
 	// Try to decode the request body into the struct. If there is an error,
@@ -146,11 +147,10 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) getApps(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Received Get Request")
-	type appsResp struct {
+	type GetAppHostsResponse struct {
 		Apps []appHost `json:"apps"`
 	}
-	resp := appsResp{
+	resp := GetAppHostsResponse{
 		Apps: s.discovery.getApps(),
 	}
 
@@ -166,7 +166,7 @@ func NewServer() server {
 	server := server{}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/connect", server.connect)
+	r.HandleFunc("/register", server.register)
 	r.HandleFunc("/get-apps", server.getApps)
 
 	svmux := &http.ServeMux{}
