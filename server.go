@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/pprof"
@@ -19,7 +18,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
-	"gopkg.in/yaml.v2"
 )
 
 var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
@@ -44,8 +42,9 @@ type Server struct {
 	clients    map[string]*Client
 	gameEvents chan cloudgame.WSPacket
 	chatEvents chan textchat.ChatMessage
-	cgame      cloudgame.CloudGameClient
-	chat       *textchat.TextChat
+	// cgame      cloudgame.CloudGameClient
+	cgame *cloudgame.Service
+	chat  *textchat.TextChat
 }
 
 type Client struct {
@@ -111,13 +110,7 @@ func NewServer() *Server {
 	log.Println("Spawn server")
 
 	// Launch Game VM
-	cfg, err := readConfig(configFilePath)
-	if err != nil {
-		panic(err)
-	}
-
-	log.Println("config: ", cfg)
-	server.cgame = cloudgame.NewCloudGameClient(cfg, server.gameEvents)
+	server.cgame = cloudgame.NewCloudService(configFilePath, server.gameEvents)
 	server.chat = textchat.NewTextChat(server.chatEvents)
 
 	return server
@@ -271,17 +264,6 @@ func (c *Client) Listen() {
 		}
 	}
 
-}
-
-func readConfig(path string) (cloudgame.Config, error) {
-	cfgyml, err := ioutil.ReadFile(path)
-	if err != nil {
-		return cloudgame.Config{}, err
-	}
-
-	cfg := cloudgame.Config{}
-	err = yaml.Unmarshal(cfgyml, &cfg)
-	return cfg, err
 }
 
 func monitor() {

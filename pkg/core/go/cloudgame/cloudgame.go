@@ -1,3 +1,4 @@
+// cloudgame package is an individual cloud application
 package cloudgame
 
 import (
@@ -53,13 +54,6 @@ const eventMouseUp = "MOUSEUP"
 
 var cuRTPPort = startRTPPort
 
-type Config struct {
-	Path       string `yaml:"path"`
-	AppFile    string `yaml:"appFile"`
-	WidowTitle string `yaml:"windowTitle"` // To help WinAPI search the app
-	HWKey      bool   `yaml:"hardwareKey"`
-}
-
 // NewCloudGameClient returns new cloudgame client
 func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
 	c := &ccImpl{
@@ -77,7 +71,7 @@ func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
 		panic(err)
 	}
 
-	c.launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WidowTitle, cfg.HWKey)
+	c.launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WindowTitle, cfg.HWKey)
 	log.Println("Launched application VM")
 
 	// Read video stream from encoded video stream produced by FFMPEG
