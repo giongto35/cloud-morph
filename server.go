@@ -49,6 +49,7 @@ type Server struct {
 
 type Client struct {
 	conn     *websocket.Conn
+	rtcConn  *webrtc.PeerConnection
 	clientID string
 
 	serverEvents chan cloudgame.WSPacket
@@ -180,6 +181,10 @@ func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
 		if client.conn != nil {
 			client.conn.Close()
 			client.conn = nil
+		}
+		if client.rtcConn != nil {
+			client.rtcConn.Close()
+			client.rtcConn = nil
 		}
 		delete(o.clients, client.clientID)
 		close(client.videoStream)
@@ -374,6 +379,7 @@ func (c *Client) signal(offerString string) {
 	if err != nil {
 		log.Println("error ", err)
 	}
+	c.rtcConn = RTCConn
 
 	offer := webrtc.SessionDescription{}
 	Decode(offerString, &offer)
