@@ -10,19 +10,12 @@ import (
 	"net/http/pprof"
 	"time"
 
-	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
-	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudgame"
-	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 )
-
-var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
-
-var isStarted bool
 
 var upgrader = websocket.Upgrader{}
 
@@ -36,29 +29,16 @@ const addr string = ":8080"
 // TODO: multiplex clientID
 var clientID string
 
+type Client struct {
+	clientID string
+}
+
 type Server struct {
 	httpServer *http.Server
 	// browserClients are the map clientID to browser Client
 	clients    map[string]*Client
-	gameEvents chan cloudgame.WSPacket
-	chatEvents chan textchat.ChatMessage
 	// cgame      cloudgame.CloudGameClient
 	cgame *cloudgame.Service
-	chat  *textchat.TextChat
-}
-
-type Client struct {
-	conn     *websocket.Conn
-	rtcConn  *webrtc.PeerConnection
-	clientID string
-
-	serverEvents chan cloudgame.WSPacket
-	chatEvents   chan textchat.ChatMessage
-	videoStream  chan rtp.Packet
-	videoTrack   *webrtc.Track
-	done         chan struct{}
-	// TODO: Get rid of ssrc
-	ssrc uint32
 }
 
 // GetWeb returns web frontend
@@ -86,8 +66,6 @@ func NewClient(c *websocket.Conn, clientID string, ssrc uint32, serverEvents cha
 func NewServer() *Server {
 	server := &Server{
 		clients:    map[string]*Client{},
-		gameEvents: make(chan cloudgame.WSPacket, 1),
-		chatEvents: make(chan textchat.ChatMessage, 1),
 	}
 
 	r := mux.NewRouter()
@@ -117,158 +95,9 @@ func NewServer() *Server {
 	return server
 }
 
-func (o *Server) Handle() {
-	// Spawn CloudGaming Handle
-	go o.cgame.Handle()
-	// Spawn Chat Handle
-	go o.chat.Handle()
-
-	// Fanout output channel
-	go func() {
-		for p := range o.cgame.VideoStream() {
-			for _, client := range o.clients {
-				client.videoStream <- p
-			}
-		}
-	}()
-}
-
 func (o *Server) ListenAndServe() error {
 	log.Println("Server is running at", addr)
 	return o.httpServer.ListenAndServe()
-}
-
-// WSO handles all connections from user/frontend to coordinator
-func (o *Server) WS(w http.ResponseWriter, r *http.Request) {
-	log.Println("A user is connecting...")
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("Warn: Something wrong. Recovered in ", r)
-		}
-	}()
-
-	// be aware of ReadBufferSize, WriteBufferSize (default 4096)
-	// https://pkg.go.dev/github.com/gorilla/websocket?tab=doc#Upgrader
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("Coordinator: [!] WS upgrade:", err)
-		return
-	}
-
-	// Generate clientID for browserClient
-	for {
-		clientID = uuid.Must(uuid.NewV4()).String()
-		// check duplicate
-		if _, ok := o.clients[clientID]; !ok {
-			break
-		}
-	}
-
-	// Create browserClient instance
-	client := NewClient(c, clientID, o.cgame.GetSSRC(), o.gameEvents, o.chatEvents)
-	o.clients[clientID] = client
-	// Add client to chat management
-	o.chat.AddClient(clientID, ws.NewClient(client.conn))
-	// TODO: Update packet
-	// o.broadcast(cloudgame.WSPacket{
-	// 	PType: "NUMPLAYER",
-	// 	Data:  strconv.Itoa(len(o.clients)),
-	// })
-	o.chat.SendChatHistory(clientID)
-	// Run browser listener first (to capture ping)
-	go func(client *Client) {
-		client.Listen()
-		if client.conn != nil {
-			client.conn.Close()
-			client.conn = nil
-		}
-		if client.rtcConn != nil {
-			client.rtcConn.Close()
-			client.rtcConn = nil
-		}
-		delete(o.clients, client.clientID)
-		close(client.videoStream)
-		// Update the remaining
-		// o.broadcast(cloudgame.WSPacket{
-		// 	PType: "NUMPLAYER",
-		// 	Data:  strconv.Itoa(len(o.clients)),
-		// })
-	}(o.clients[clientID])
-}
-
-// Heartbeat maintains connection to server
-func (c *Client) Heartbeat() {
-	// send heartbeat every 1s
-	timer := time.Tick(time.Second)
-
-	for range timer {
-		select {
-		case <-c.done:
-			log.Println("Close heartbeat")
-			return
-		default:
-		}
-		// c.Send({PType: "heartbeat"})
-	}
-}
-
-func (c *Client) Send(packet cloudgame.WSPacket) {
-	data, err := json.Marshal(packet)
-	if err != nil {
-		return
-	}
-
-	c.conn.WriteMessage(websocket.TextMessage, data)
-}
-
-func (c *Client) Listen() {
-	defer func() {
-		close(c.done)
-	}()
-
-	// Listen from video stream
-	go func() {
-		for packet := range c.videoStream {
-			if c.videoTrack == nil {
-				continue
-			}
-			if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
-				panic(writeErr)
-			}
-		}
-	}()
-
-	log.Println("Client listening")
-	for {
-		_, rawMsg, err := c.conn.ReadMessage()
-		fmt.Println("received", rawMsg)
-		if err != nil {
-			log.Println("[!] read:", err)
-			// TODO: Check explicit disconnect error to break
-			break
-		}
-		wspacket := ws.Packet{}
-		err = json.Unmarshal(rawMsg, &wspacket)
-
-		// TODO: Refactor
-		if wspacket.PType == "OFFER" {
-			c.signal(wspacket.Data)
-			// c.Send(cloudgame.WSPacket{
-			// 	PType: "Answer
-			// })
-			continue
-		}
-		if err != nil {
-			log.Println("error decoding", err)
-			continue
-		}
-		if wspacket.PType == "CHAT" {
-			c.chatEvents <- textchat.Convert(wspacket)
-		} else {
-			c.serverEvents <- cloudgame.Convert(wspacket)
-		}
-	}
-
 }
 
 func monitor() {
@@ -371,46 +200,4 @@ func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssr
 	log.Println("Done creating videotrack")
 
 	return videoTrack
-}
-
-func (c *Client) signal(offerString string) {
-	log.Println("Signalling")
-	RTCConn, err := webrtc.NewPeerConnection(webrtcconfig)
-	if err != nil {
-		log.Println("error ", err)
-	}
-	c.rtcConn = RTCConn
-
-	offer := webrtc.SessionDescription{}
-	Decode(offerString, &offer)
-
-	err = RTCConn.SetRemoteDescription(offer)
-	if err != nil {
-		log.Println("Set remote description from peer failed", err)
-		return
-	}
-
-	log.Println("Get SSRC", c.ssrc)
-	videoTrack := streamRTP(RTCConn, offer, c.ssrc)
-
-	var answer webrtc.SessionDescription
-	answer, err = RTCConn.CreateAnswer(nil)
-	if err != nil {
-		log.Println("Create Answer Failed", err)
-		return
-	}
-
-	err = RTCConn.SetLocalDescription(answer)
-	if err != nil {
-		log.Println("Set Local Description Failed", err)
-		return
-	}
-
-	isStarted = true
-	log.Println("Sending answer", answer)
-	c.Send(cloudgame.WSPacket{
-		PType: "ANSWER",
-		Data:  Encode(answer),
-	})
-	c.videoTrack = videoTrack
 }
