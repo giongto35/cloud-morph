@@ -121,12 +121,13 @@ func (s *Service) AddClient(clientID string, conn *websocket.Conn) *Client {
 
 func NewServiceClient(clientID string, conn *websocket.Conn, ssrc uint32, serverEvents chan ws.Packet, wsEvents chan ws.Packet) *Client {
 	return &Client{
-		clientID:    clientID,
-		conn:        conn,
-		ssrc:        ssrc,
-		WSEvents:    wsEvents,
-		videoStream: make(chan rtp.Packet, 1),
-		done:        make(chan struct{}),
+		clientID:     clientID,
+		conn:         conn,
+		ssrc:         ssrc,
+		WSEvents:     wsEvents,
+		serverEvents: serverEvents,
+		videoStream:  make(chan rtp.Packet, 1),
+		done:         make(chan struct{}),
 	}
 }
 
@@ -143,48 +144,14 @@ func (c *Client) StreamListen() {
 
 func (c *Client) WebsocketListen() {
 	// Listen from video stream
-	log.Println("Game client listening")
 	for wspacket := range c.WSEvents {
 		if wspacket.PType == "OFFER" {
 			c.signal(wspacket.Data)
 			continue
 		}
-		if wspacket.PType == "CHAT" {
-			continue
-		}
 
 		c.serverEvents <- Convert(wspacket)
 	}
-	// for {
-	// 	_, rawMsg, err := c.conn.ReadMessage()
-	// 	fmt.Println("received", rawMsg)
-	// 	if err != nil {
-	// 		log.Println("[!] read:", err)
-	// 		// TODO: Check explicit disconnect error to break
-	// 		break
-	// 	}
-	// 	wspacket := ws.Packet{}
-	// 	err = json.Unmarshal(rawMsg, &wspacket)
-
-	// 	// TODO: Refactor
-	// 	if wspacket.PType == "OFFER" {
-	// 		c.signal(wspacket.Data)
-	// 		// c.Send(cloudgame.WSPacket{
-	// 		// 	PType: "Answer
-	// 		// })
-	// 		continue
-	// 	}
-	// 	if err != nil {
-	// 		log.Println("error decoding", err)
-	// 		continue
-	// 	}
-	// 	if wspacket.PType == "CHAT" {
-	// 		c.chatEvents <- textchat.Convert(wspacket)
-	// 	} else {
-	// 		c.serverEvents <- Convert(wspacket)
-	// 	}
-	// }
-
 }
 
 func (c *Client) Send(packet ws.Packet) {
@@ -328,7 +295,7 @@ func NewCloudService(configFilePath string) *Service {
 	return &Service{
 		clients:          map[string]*Client{},
 		appEvents:        appEvents,
-		serverEvents:     make(chan ws.Packet, 1),
+		serverEvents:     make(chan ws.Packet, 10),
 		appModeHandler:   NewAppMode(cfg.AppMode),
 		discoveryHandler: NewDiscovery(cfg.DiscoveryHost),
 		ccApp:            NewCloudGameClient(cfg, appEvents),
@@ -349,8 +316,6 @@ func (s *Service) GetSSRC() uint32 {
 }
 
 func (s *Service) Handle() {
-	s.ccApp.Handle()
-
 	go func() {
 		for p := range s.ccApp.VideoStream() {
 			for _, client := range s.clients {
@@ -364,6 +329,8 @@ func (s *Service) Handle() {
 			s.appEvents <- e
 		}
 	}()
+
+	s.ccApp.Handle()
 }
 
 // Encode encodes the input in base64

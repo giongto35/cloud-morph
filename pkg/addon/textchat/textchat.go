@@ -86,14 +86,7 @@ func (c *chatClient) Listen() {
 
 	log.Println("Client listening")
 	for wspacket := range c.WSEvents {
-		// data := Convert(wspacket)
-		// data, err := json.Marshal(Convert(wspacket))
-		fmt.Println("wspacket", wspacket)
 		c.broadcastCh <- Convert(wspacket)
-		// c.Send(ws.Packet{
-		// 	PType: "CHAT",
-		// 	Data:  string(data),
-		// })
 	}
 }
 
@@ -120,7 +113,6 @@ func (t *TextChat) SendChatHistory(clientID string) {
 			log.Println("Failed to send ", msg)
 			continue
 		}
-		fmt.Println("chat history ", data)
 
 		client.Send(ws.Packet{
 			PType: "CHAT",

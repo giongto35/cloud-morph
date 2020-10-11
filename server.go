@@ -28,7 +28,7 @@ const indexPage string = "web/index.html"
 const addr string = ":8080"
 
 var chatEventTypes []string = []string{"CHAT"}
-var gameEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE"}
+var gameEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
 
 // TODO: multiplex clientID
 var clientID string
@@ -59,11 +59,11 @@ func (o *Server) GetWeb(w http.ResponseWriter, r *http.Request) {
 // WSO handles all connections from user/frontend to coordinator
 func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	log.Println("A user is connecting...")
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("Warn: Something wrong. Recovered in ", r)
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		log.Println("Warn: Something wrong. Recovered in ", r)
+	// 	}
+	// }()
 
 	// be aware of ReadBufferSize, WriteBufferSize (default 4096)
 	// https://pkg.go.dev/github.com/gorilla/websocket?tab=doc#Upgrader
@@ -89,10 +89,12 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	chatClient := s.chat.AddClient(clientID, client.conn)
 	client.Route(chatEventTypes, chatClient.WSEvents)
 	s.chat.SendChatHistory(clientID)
+	fmt.Println("Initialized Chat")
 	// TODO: Update packet
 	// Run browser listener first (to capture ping)
 	serviceClient := s.cgame.AddClient(clientID, client.conn)
 	client.Route(gameEventTypes, serviceClient.WSEvents)
+	fmt.Println("Initialized ServiceClient")
 
 	go func(client *Client) {
 		client.Listen()
@@ -102,8 +104,8 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	}(client)
 }
 
-func (c *Client) Route(ptype []string, ch chan ws.Packet) {
-	for _, t := range ptype {
+func (c *Client) Route(ptypes []string, ch chan ws.Packet) {
+	for _, t := range ptypes {
 		c.routes[t] = ch
 	}
 }
@@ -118,7 +120,6 @@ func (c *Client) Listen() {
 
 	for {
 		_, rawMsg, err := c.conn.ReadMessage()
-		fmt.Println("received", rawMsg)
 		if err != nil {
 			log.Println("[!] read:", err)
 			// TODO: Check explicit disconnect error to break
@@ -139,6 +140,7 @@ func NewClient(c *websocket.Conn, clientID string) *Client {
 	return &Client{
 		clientID: clientID,
 		conn:     c,
+		routes:   make(map[string]chan ws.Packet, 1),
 	}
 }
 
