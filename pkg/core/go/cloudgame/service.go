@@ -33,23 +33,25 @@ var isStarted bool
 
 type Service struct {
 	clients          map[string]*Client
-	gameEvents       chan WSPacket
-	chatEvents       chan textchat.ChatMessage
 	appModeHandler   *appModeHandler
 	discoveryHandler *discoveryHandler
 	ccApp            CloudGameClient
 	config           Config
 	chat             *textchat.TextChat
+	// communicate with client
+	serverEvents chan ws.Packet
+	// communicate with cloud app
+	appEvents chan ws.Packet
 }
 
 type Client struct {
 	clientID     string
 	conn         *websocket.Conn
 	rtcConn      *webrtc.PeerConnection
-	chatEvents   chan textchat.ChatMessage
 	videoStream  chan rtp.Packet
 	videoTrack   *webrtc.Track
-	serverEvents chan WSPacket
+	serverEvents chan ws.Packet
+	WSEvents     chan ws.Packet
 	done         chan struct{}
 	// TODO: Get rid of ssrc
 	ssrc uint32
@@ -109,63 +111,96 @@ func (c *Client) Heartbeat() {
 	}
 }
 
-func (c *Client) Listen() {
-	defer func() {
-		close(c.done)
-	}()
+func (s *Service) AddClient(clientID string, conn *websocket.Conn) *Client {
+	client := NewServiceClient(clientID, conn, s.ccApp.GetSSRC(), s.serverEvents, make(chan ws.Packet, 1))
+	s.clients[clientID] = client
+	go client.WebsocketListen()
+	go client.StreamListen()
+	return client
+}
 
-	// Listen from video stream
-	go func() {
-		for packet := range c.videoStream {
-			if c.videoTrack == nil {
-				continue
-			}
-			if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
-				panic(writeErr)
-			}
-		}
-	}()
+func NewServiceClient(clientID string, conn *websocket.Conn, ssrc uint32, serverEvents chan ws.Packet, wsEvents chan ws.Packet) *Client {
+	return &Client{
+		clientID:    clientID,
+		conn:        conn,
+		ssrc:        ssrc,
+		WSEvents:    wsEvents,
+		videoStream: make(chan rtp.Packet, 1),
+		done:        make(chan struct{}),
+	}
+}
 
-	log.Println("Client listening")
-	for {
-		_, rawMsg, err := c.conn.ReadMessage()
-		fmt.Println("received", rawMsg)
-		if err != nil {
-			log.Println("[!] read:", err)
-			// TODO: Check explicit disconnect error to break
-			break
-		}
-		wspacket := ws.Packet{}
-		err = json.Unmarshal(rawMsg, &wspacket)
-
-		// TODO: Refactor
-		if wspacket.PType == "OFFER" {
-			c.signal(wspacket.Data)
-			// c.Send(cloudgame.WSPacket{
-			// 	PType: "Answer
-			// })
+func (c *Client) StreamListen() {
+	for packet := range c.videoStream {
+		if c.videoTrack == nil {
 			continue
 		}
-		if err != nil {
-			log.Println("error decoding", err)
+		if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
+			panic(writeErr)
+		}
+	}
+}
+
+func (c *Client) WebsocketListen() {
+	// Listen from video stream
+	log.Println("Game client listening")
+	for wspacket := range c.WSEvents {
+		if wspacket.PType == "OFFER" {
+			c.signal(wspacket.Data)
 			continue
 		}
 		if wspacket.PType == "CHAT" {
-			c.chatEvents <- textchat.Convert(wspacket)
-		} else {
-			c.serverEvents <- Convert(wspacket)
+			continue
 		}
+
+		c.serverEvents <- Convert(wspacket)
 	}
+	// for {
+	// 	_, rawMsg, err := c.conn.ReadMessage()
+	// 	fmt.Println("received", rawMsg)
+	// 	if err != nil {
+	// 		log.Println("[!] read:", err)
+	// 		// TODO: Check explicit disconnect error to break
+	// 		break
+	// 	}
+	// 	wspacket := ws.Packet{}
+	// 	err = json.Unmarshal(rawMsg, &wspacket)
+
+	// 	// TODO: Refactor
+	// 	if wspacket.PType == "OFFER" {
+	// 		c.signal(wspacket.Data)
+	// 		// c.Send(cloudgame.WSPacket{
+	// 		// 	PType: "Answer
+	// 		// })
+	// 		continue
+	// 	}
+	// 	if err != nil {
+	// 		log.Println("error decoding", err)
+	// 		continue
+	// 	}
+	// 	if wspacket.PType == "CHAT" {
+	// 		c.chatEvents <- textchat.Convert(wspacket)
+	// 	} else {
+	// 		c.serverEvents <- Convert(wspacket)
+	// 	}
+	// }
 
 }
 
-func (c *Client) Send(packet WSPacket) {
+func (c *Client) Send(packet ws.Packet) {
 	data, err := json.Marshal(packet)
 	if err != nil {
 		return
 	}
 
 	c.conn.WriteMessage(websocket.TextMessage, data)
+}
+
+func (c *Client) Close() {
+	if c.rtcConn != nil {
+		c.rtcConn.Close()
+		c.rtcConn = nil
+	}
 }
 
 func (c *Client) signal(offerString string) {
@@ -203,7 +238,7 @@ func (c *Client) signal(offerString string) {
 
 	isStarted = true
 	log.Println("Sending answer", answer)
-	c.Send(WSPacket{
+	c.Send(ws.Packet{
 		PType: "ANSWER",
 		Data:  Encode(answer),
 	})
@@ -282,28 +317,21 @@ func readConfig(path string) (Config, error) {
 	return cfg, err
 }
 
-func NewServer() *Server {
-	server := &Server{
-		clients:    map[string]*Client{},
-		gameEvents: make(chan WSPacket, 1),
-		chatEvents: make(chan textchat.ChatMessage, 1),
-	}
-
-	return server
-}
-
 // func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
-func NewCloudService(configFilePath string, gameEvents chan WSPacket) *Service {
+func NewCloudService(configFilePath string) *Service {
 	cfg, err := readConfig(configFilePath)
 	if err != nil {
 		panic(err)
 	}
+	appEvents := make(chan ws.Packet, 1)
 
 	return &Service{
-		server:           NewServer(),
+		clients:          map[string]*Client{},
+		appEvents:        appEvents,
+		serverEvents:     make(chan ws.Packet, 1),
 		appModeHandler:   NewAppMode(cfg.AppMode),
 		discoveryHandler: NewDiscovery(cfg.DiscoveryHost),
-		ccApp:            NewCloudGameClient(cfg, gameEvents),
+		ccApp:            NewCloudGameClient(cfg, appEvents),
 		config:           cfg,
 	}
 }
@@ -312,7 +340,7 @@ func (s *Service) VideoStream() chan rtp.Packet {
 	return s.ccApp.VideoStream()
 }
 
-func (s *Service) SendInput(packet WSPacket) {
+func (s *Service) SendInput(packet ws.Packet) {
 	s.ccApp.SendInput(packet)
 }
 
@@ -322,6 +350,20 @@ func (s *Service) GetSSRC() uint32 {
 
 func (s *Service) Handle() {
 	s.ccApp.Handle()
+
+	go func() {
+		for p := range s.ccApp.VideoStream() {
+			for _, client := range s.clients {
+				client.videoStream <- p
+			}
+		}
+	}()
+
+	go func() {
+		for e := range s.serverEvents {
+			s.appEvents <- e
+		}
+	}()
 }
 
 // Encode encodes the input in base64
@@ -383,20 +425,4 @@ func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssr
 	log.Println("Done creating videotrack")
 
 	return videoTrack
-}
-
-func (o *Server) Handle() {
-	// Spawn CloudGaming Handle
-	go o.cgame.Handle()
-	// Spawn Chat Handle
-	go o.chat.Handle()
-
-	// Fanout output channel
-	go func() {
-		for p := range o.cgame.VideoStream() {
-			for _, client := range o.clients {
-				client.videoStream <- p
-			}
-		}
-	}()
 }
