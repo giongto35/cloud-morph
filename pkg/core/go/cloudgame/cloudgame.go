@@ -16,11 +16,11 @@ import (
 	"github.com/pion/webrtc/v2"
 )
 
-type WSPacket struct {
-	PType string `json:"type"`
-	// TODO: Make Data generic: map[string]interface{} for more usecases
-	Data string `json:"data"`
-}
+// type WSPacket struct {
+// 	PType string `json:"type"`
+// 	// TODO: Make Data generic: map[string]interface{} for more usecases
+// 	Data string `json:"data"`
+// }
 
 type InputEvent struct {
 	inputType    bool
@@ -29,7 +29,7 @@ type InputEvent struct {
 
 type CloudGameClient interface {
 	VideoStream() chan rtp.Packet
-	SendInput(WSPacket)
+	SendInput(ws.Packet)
 	Handle()
 	// TODO: Remove it
 	GetSSRC() uint32
@@ -39,7 +39,7 @@ type ccImpl struct {
 	isReady     bool
 	listener    *net.UDPConn
 	videoStream chan rtp.Packet
-	gameEvents  chan WSPacket
+	gameEvents  chan ws.Packet
 	wineConn    *net.TCPConn
 	ssrc        uint32
 	payloadType uint8
@@ -55,7 +55,7 @@ const eventMouseUp = "MOUSEUP"
 var cuRTPPort = startRTPPort
 
 // NewCloudGameClient returns new cloudgame client
-func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
+func NewCloudGameClient(cfg Config, gameEvents chan ws.Packet) *ccImpl {
 	c := &ccImpl{
 		videoStream: make(chan rtp.Packet, 1),
 		gameEvents:  gameEvents,
@@ -105,8 +105,8 @@ func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
 	return c
 }
 
-func Convert(packet ws.Packet) WSPacket {
-	return WSPacket{
+func Convert(packet ws.Packet) ws.Packet {
+	return ws.Packet{
 		PType: packet.PType,
 		Data:  packet.Data,
 	}
@@ -232,7 +232,7 @@ func (c *ccImpl) listenVideoStream() {
 
 }
 
-func (c *ccImpl) SendInput(packet WSPacket) {
+func (c *ccImpl) SendInput(packet ws.Packet) {
 	switch packet.PType {
 	case eventKeyUp:
 		c.simulateKey(packet.Data, 0)
