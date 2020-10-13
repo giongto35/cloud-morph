@@ -5,18 +5,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
 
+	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v2"
-
-	"gopkg.in/yaml.v2"
 
 	"github.com/pion/rtp"
 )
@@ -36,7 +34,7 @@ type Service struct {
 	appModeHandler   *appModeHandler
 	discoveryHandler *discoveryHandler
 	ccApp            CloudGameClient
-	config           Config
+	config           config.Config
 	chat             *textchat.TextChat
 	// communicate with client
 	serverEvents chan ws.Packet
@@ -61,18 +59,6 @@ type AppHost struct {
 	// Host string `json:"host"`
 	Addr    string `json:"addr"`
 	AppName string `json:"app_name"`
-}
-
-type Config struct {
-	Path    string `yaml:"path"`
-	AppFile string `yaml:"appFile"`
-	// To help WinAPI search the app
-	WindowTitle string `yaml:"windowTitle"`
-	HWKey       bool   `yaml:"hardwareKey"`
-	AppMode     string `yaml:"appMode"`
-	AppName     string `yaml:"appName"`
-	// Discovery service
-	DiscoveryHost string `yaml:"discoveryHost"`
 }
 
 type instance struct {
@@ -269,27 +255,8 @@ func (s *Service) Register(addr string) error {
 	return s.discoveryHandler.Register(addr, s.config.AppName)
 }
 
-func readConfig(path string) (Config, error) {
-	cfgyml, err := ioutil.ReadFile(path)
-	if err != nil {
-		return Config{}, err
-	}
-
-	cfg := Config{}
-	err = yaml.Unmarshal(cfgyml, &cfg)
-
-	if cfg.AppName == "" {
-		cfg.AppName = cfg.WindowTitle
-	}
-	return cfg, err
-}
-
 // func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
-func NewCloudService(configFilePath string) *Service {
-	cfg, err := readConfig(configFilePath)
-	if err != nil {
-		panic(err)
-	}
+func NewCloudService(cfg config.Config) *Service {
 	appEvents := make(chan ws.Packet, 1)
 
 	return &Service{

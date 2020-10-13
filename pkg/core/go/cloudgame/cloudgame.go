@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
@@ -55,7 +56,7 @@ const eventMouseUp = "MOUSEUP"
 var cuRTPPort = startRTPPort
 
 // NewCloudGameClient returns new cloudgame client
-func NewCloudGameClient(cfg Config, gameEvents chan ws.Packet) *ccImpl {
+func NewCloudGameClient(cfg config.Config, gameEvents chan ws.Packet) *ccImpl {
 	c := &ccImpl{
 		videoStream: make(chan rtp.Packet, 1),
 		gameEvents:  gameEvents,
