@@ -73,6 +73,7 @@ type appModeHandler struct {
 type discoveryHandler struct {
 	httpClient    *http.Client
 	discoveryHost string
+	curAppHosts   []AppHost
 }
 
 func NewAppMode(appMode string) *appModeHandler {
@@ -197,6 +198,7 @@ func (c *Client) signal(offerString string) {
 	})
 	c.videoTrack = videoTrack
 }
+
 func (d *discoveryHandler) GetAppHosts() []AppHost {
 	type GetAppHostsResponse struct {
 		AppHosts []AppHost `json:"apps"`
@@ -213,6 +215,33 @@ func (d *discoveryHandler) GetAppHosts() []AppHost {
 	json.NewDecoder(rawResp.Body).Decode(&resp)
 
 	return resp.AppHosts
+}
+
+func (d *discoveryHandler) AppListUpdate() chan []AppHost {
+	updatedApps := make(chan []AppHost, 1)
+	go func() {
+		// TODO: Change to subscription based
+		for range time.Tick(5 * time.Second) {
+			appHosts := d.GetAppHosts()
+			log.Println("getting AppHosts: ", appHosts)
+			if len(appHosts) != len(d.curAppHosts) {
+				// if the list is different => Update
+				updatedApps <- appHosts
+				d.curAppHosts = make([]AppHost, len(appHosts))
+				copy(d.curAppHosts, appHosts)
+			} else {
+				for i, app := range appHosts {
+					// if the list is different => Update
+					if app != d.curAppHosts[i] {
+						updatedApps <- appHosts
+						copy(d.curAppHosts, appHosts)
+					}
+				}
+			}
+		}
+	}()
+
+	return updatedApps
 }
 
 func (d *discoveryHandler) Register(addr string, appName string) error {
@@ -255,11 +284,14 @@ func (s *Service) Register(addr string) error {
 	return s.discoveryHandler.Register(addr, s.config.AppName)
 }
 
+func (s *Service) AppListUpdate() chan []AppHost {
+	return s.discoveryHandler.AppListUpdate()
+}
+
 // func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
 func NewCloudService(cfg config.Config) *Service {
 	appEvents := make(chan ws.Packet, 1)
-
-	return &Service{
+	s := &Service{
 		clients:          map[string]*Client{},
 		appEvents:        appEvents,
 		serverEvents:     make(chan ws.Packet, 10),
@@ -268,6 +300,9 @@ func NewCloudService(cfg config.Config) *Service {
 		ccApp:            NewCloudGameClient(cfg, appEvents),
 		config:           cfg,
 	}
+	s.Register("1111.1111")
+
+	return s
 }
 
 func (s *Service) VideoStream() chan rtp.Packet {
