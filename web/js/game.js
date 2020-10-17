@@ -14,6 +14,7 @@ const fullscreen = document.getElementById("fullscreen");
 const gamed = document.getElementById("game");
 const chatd = document.getElementById("chat");
 const numplayers = document.getElementById("numplayers");
+const discoverydropdown = document.getElementById("discoverydropdown");
 
 var offerst;
 // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
@@ -41,7 +42,6 @@ function init() {
     const ptype = data.type;
 
     console.log(`[ws] <- message '${data}' `, ptype);
-
     switch (ptype) {
       case "CHAT":
         appendChatMessage(data);
@@ -51,6 +51,9 @@ function init() {
         break;
       case "ANSWER":
         updateAnswer(data);
+        break;
+      case "UPDATEGAMELIST":
+        updateGameList(data);
         break;
     }
   };
@@ -232,6 +235,15 @@ function appendChatMessage(data) {
 function updateNumPlayers(data) {
   sNumPlayers = JSON.parse(data.data);
   numplayers.innerText = "Number of players: " + sNumPlayers
+}
+
+function updateGameList(data) {
+  updatedGameList = JSON.parse(data.data);
+  for (game of updatedGameList) {
+    gameEntry = document.createElement("option");
+    gameEntry.innerText = game
+    discoverydropdown.appendChild(gameEntry);
+  }
 }
 
 function updateAnswer(data) {

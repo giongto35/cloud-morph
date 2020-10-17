@@ -115,6 +115,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	serviceClient := s.cgame.AddClient(clientID, client.conn)
 	client.Route(gameEventTypes, serviceClient.WSEvents)
 	fmt.Println("Initialized ServiceClient")
+	go s.ListenAppListUpdate()
 
 	go func(client *Client) {
 		client.Listen()
@@ -122,6 +123,19 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 		serviceClient.Close()
 		delete(s.clients, clientID)
 	}(client)
+}
+
+func (s *Server) ListenAppListUpdate() {
+	for updatedApps := range s.cgame.AppListUpdate() {
+		log.Println("Get updated apps: ", updatedApps)
+		for _, client := range s.clients {
+			data, _ := json.Marshal(updatedApps)
+			client.Send(ws.Packet{
+				PType: "UPDATEGAMELIST",
+				Data:  string(data),
+			})
+		}
+	}
 }
 
 func (c *Client) Route(ptypes []string, ch chan ws.Packet) {
@@ -154,6 +168,15 @@ func (c *Client) Listen() {
 
 		rChan <- wspacket
 	}
+}
+
+func (c *Client) Send(packet ws.Packet) {
+	data, err := json.Marshal(packet)
+	if err != nil {
+		return
+	}
+
+	c.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 func NewClient(c *websocket.Conn, clientID string) *Client {
