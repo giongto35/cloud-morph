@@ -32,6 +32,7 @@ const addr string = ":8080"
 
 var chatEventTypes []string = []string{"CHAT"}
 var gameEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
+var dscvEventTypes []string = []string{"SELECTHOST"}
 
 // TODO: multiplex clientID
 var clientID string
@@ -91,6 +92,10 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println("Coordinator: [!] WS upgrade:", err)
 		return
+	}
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		// TODO: can we be stricter?
+		return true
 	}
 
 	// Generate clientID for browserClient
