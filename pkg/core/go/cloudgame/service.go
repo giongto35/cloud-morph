@@ -293,7 +293,6 @@ func (s *Service) AppListUpdate() chan []AppHost {
 	return s.discoveryHandler.AppListUpdate()
 }
 
-// func NewCloudGameClient(cfg Config, gameEvents chan WSPacket) *ccImpl {
 func NewCloudService(cfg config.Config) *Service {
 	appEvents := make(chan ws.Packet, 1)
 	s := &Service{
@@ -305,6 +304,7 @@ func NewCloudService(cfg config.Config) *Service {
 		ccApp:            NewCloudGameClient(cfg, appEvents),
 		config:           cfg,
 	}
+	s.Register(cfg.InstanceAddr)
 
 	return s
 }
