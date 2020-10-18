@@ -131,7 +131,7 @@ func (s *Server) ListenAppListUpdate() {
 		for _, client := range s.clients {
 			data, _ := json.Marshal(updatedApps)
 			client.Send(ws.Packet{
-				PType: "UPDATEGAMELIST",
+				PType: "UPDATEAPPLIST",
 				Data:  string(data),
 			})
 		}

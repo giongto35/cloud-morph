@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -124,7 +123,8 @@ func (c *Client) StreamListen() {
 			continue
 		}
 		if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
-			panic(writeErr)
+			log.Println(writeErr)
+			continue
 		}
 	}
 }
@@ -207,8 +207,8 @@ func (d *discoveryHandler) GetAppHosts() []AppHost {
 
 	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
 	if err != nil {
-		// log.Warn(err)
-		fmt.Println(err)
+		log.Println(err)
+		return []AppHost{}
 	}
 
 	defer rawResp.Body.Close()
@@ -217,26 +217,31 @@ func (d *discoveryHandler) GetAppHosts() []AppHost {
 	return resp.AppHosts
 }
 
+func (d *discoveryHandler) isNeedAppListUpdate(appHosts []AppHost) bool {
+	if len(appHosts) != len(d.curAppHosts) {
+		return true
+	}
+
+	for i, app := range appHosts {
+		if app != d.curAppHosts[i] {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (d *discoveryHandler) AppListUpdate() chan []AppHost {
 	updatedApps := make(chan []AppHost, 1)
 	go func() {
 		// TODO: Change to subscription based
 		for range time.Tick(5 * time.Second) {
 			appHosts := d.GetAppHosts()
-			log.Println("getting AppHosts: ", appHosts)
-			if len(appHosts) != len(d.curAppHosts) {
-				// if the list is different => Update
+			if d.isNeedAppListUpdate(appHosts) {
+				log.Println("Update AppHosts: ", appHosts)
 				updatedApps <- appHosts
 				d.curAppHosts = make([]AppHost, len(appHosts))
 				copy(d.curAppHosts, appHosts)
-			} else {
-				for i, app := range appHosts {
-					// if the list is different => Update
-					if app != d.curAppHosts[i] {
-						updatedApps <- appHosts
-						copy(d.curAppHosts, appHosts)
-					}
-				}
 			}
 		}
 	}()
