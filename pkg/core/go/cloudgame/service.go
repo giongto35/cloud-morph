@@ -124,7 +124,7 @@ func (c *Client) StreamListen() {
 		}
 		if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
 			log.Println(writeErr)
-			continue
+			return
 		}
 	}
 }
@@ -305,7 +305,6 @@ func NewCloudService(cfg config.Config) *Service {
 		ccApp:            NewCloudGameClient(cfg, appEvents),
 		config:           cfg,
 	}
-	s.Register("1111.1111")
 
 	return s
 }

@@ -127,7 +127,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) ListenAppListUpdate() {
 	for updatedApps := range s.cgame.AppListUpdate() {
-		log.Println("Get updated apps: ", updatedApps)
+		log.Println("Get updated apps: ", updatedApps, s.clients)
 		for _, client := range s.clients {
 			data, _ := json.Marshal(updatedApps)
 			client.Send(ws.Packet{
