@@ -238,8 +238,8 @@ function updateNumPlayers(data) {
 }
 
 function updateAppList(data) {
-  AppList = JSON.parse(data.data);
-  for (app of updatedAppList) {
+  appList = JSON.parse(data.data);
+  for (app of appList) {
     appEntry = document.createElement("option");
     appEntry.innerText = app.app_name
     discoverydropdown.appendChild(appEntry);
