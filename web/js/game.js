@@ -52,8 +52,8 @@ function init() {
       case "ANSWER":
         updateAnswer(data);
         break;
-      case "UPDATEGAMELIST":
-        updateGameList(data);
+      case "UPDATEAPPLIST":
+        updateAppList(data);
         break;
     }
   };
@@ -237,12 +237,12 @@ function updateNumPlayers(data) {
   numplayers.innerText = "Number of players: " + sNumPlayers
 }
 
-function updateGameList(data) {
-  updatedGameList = JSON.parse(data.data);
-  for (game of updatedGameList) {
-    gameEntry = document.createElement("option");
-    gameEntry.innerText = game
-    discoverydropdown.appendChild(gameEntry);
+function updateAppList(data) {
+  AppList = JSON.parse(data.data);
+  for (app of updatedAppList) {
+    appEntry = document.createElement("option");
+    appEntry.innerText = app.app_name
+    discoverydropdown.appendChild(appEntry);
   }
 }
 

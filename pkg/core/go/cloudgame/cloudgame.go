@@ -272,7 +272,6 @@ func (c *ccImpl) simulateMouseEvent(jsonPayload string, mouseState int) {
 		return
 	}
 
-	log.Println("MouseDown event", jsonPayload)
 	type mousePayload struct {
 		IsLeft byte    `json:isLeft`
 		X      float32 `json:x`
@@ -285,7 +284,8 @@ func (c *ccImpl) simulateMouseEvent(jsonPayload string, mouseState int) {
 
 	// Mouse is in format of comma separated "12.4,52.3"
 	vmMouseMsg := fmt.Sprintf("M%d,%d,%f,%f,%f,%f|", p.IsLeft, mouseState, p.X, p.Y, p.Width, p.Height)
-	b, err := c.wineConn.Write([]byte(vmMouseMsg))
-	// log.Printf("%+v\n", WineConn)
-	log.Println("Sended Mouse: ", b, err)
+	_, err := c.wineConn.Write([]byte(vmMouseMsg))
+	if err != nil {
+		fmt.Println("Err: ", err)
+	}
 }
