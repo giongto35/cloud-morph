@@ -2,9 +2,13 @@ path: /
 appFile: notepad
 windowTitle: Notepad
 hardwareKey: false #Direct X Input use different input set
-appMode: collaborative #collaborative game mode (multiple user using same game session)
 appName: Notepad
 discoveryHost: http://127.0.0.1:7700
+
+pageTitle: "Cloud Morph Demo"
+appMode: collaborative #collaborative game mode (multiple user using same game session)
+hasChat: false
+
 # path: /games/samurai
 # appFile: SSVS.exe
 # windowTitle: SAMURAI

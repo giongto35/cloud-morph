@@ -5,17 +5,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/pprof"
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
+	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudgame"
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"gopkg.in/yaml.v2"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -46,15 +49,32 @@ type Server struct {
 	chat       *textchat.TextChat
 }
 
-// GetWeb returns web frontend
-func (o *Server) GetWeb(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles(indexPage)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tmpl.Execute(w, nil)
+type TemplateData struct {
+	Chat          bool
+	PageTitle     string
+	Collaborative bool
 }
+
+// GetWeb returns web frontend
+func (o *Server) GetWebWithData(templateData TemplateData) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.ParseFiles(indexPage)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		tmpl.Execute(w, templateData)
+	}
+}
+
+//GetWeb(w http.ResponseWriter, r *http.Request) {
+//tmpl, err := template.ParseFiles(indexPage)
+//if err != nil {
+//log.Fatal(err)
+//}
+
+//tmpl.Execute(w, templateData)
+//}
 
 // WSO handles all connections from user/frontend to coordinator
 func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
@@ -149,11 +169,21 @@ func NewServer() *Server {
 		clients: map[string]*Client{},
 	}
 
+	cfg, err := readConfig(configFilePath)
+	if err != nil {
+		panic(err)
+	}
+
+	templateData := TemplateData{
+		Chat:          cfg.HasChat,
+		PageTitle:     cfg.PageTitle,
+		Collaborative: cfg.AppMode == "collaborative",
+	}
+
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", server.WS)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
-
-	r.PathPrefix("/").HandlerFunc(server.GetWeb)
+	r.PathPrefix("/").HandlerFunc(server.GetWebWithData(templateData))
 
 	svmux := &http.ServeMux{}
 	svmux.Handle("/", r)
@@ -169,10 +199,25 @@ func NewServer() *Server {
 	log.Println("Spawn server")
 
 	// Launch Game VM
-	server.cgame = cloudgame.NewCloudService(configFilePath)
+	server.cgame = cloudgame.NewCloudService(cfg)
 	server.chat = textchat.NewTextChat()
 
 	return server
+}
+
+func readConfig(path string) (config.Config, error) {
+	cfgyml, err := ioutil.ReadFile(path)
+	if err != nil {
+		return config.Config{}, err
+	}
+
+	cfg := config.Config{}
+	err = yaml.Unmarshal(cfgyml, &cfg)
+
+	if cfg.AppName == "" {
+		cfg.AppName = cfg.WindowTitle
+	}
+	return cfg, err
 }
 
 func (o *Server) Handle() {
