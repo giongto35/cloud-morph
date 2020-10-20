@@ -32,6 +32,7 @@ const addr string = ":8080"
 
 var chatEventTypes []string = []string{"CHAT"}
 var gameEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
+var dscvEventTypes []string = []string{"SELECTHOST"}
 
 // TODO: multiplex clientID
 var clientID string
@@ -92,6 +93,10 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 		log.Println("Coordinator: [!] WS upgrade:", err)
 		return
 	}
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		// TODO: can we be stricter?
+		return true
+	}
 
 	// Generate clientID for browserClient
 	for {
@@ -115,6 +120,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	serviceClient := s.cgame.AddClient(clientID, client.conn)
 	client.Route(gameEventTypes, serviceClient.WSEvents)
 	fmt.Println("Initialized ServiceClient")
+	go s.ListenAppListUpdate()
 
 	go func(client *Client) {
 		client.Listen()
@@ -122,6 +128,19 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 		serviceClient.Close()
 		delete(s.clients, clientID)
 	}(client)
+}
+
+func (s *Server) ListenAppListUpdate() {
+	for updatedApps := range s.cgame.AppListUpdate() {
+		log.Println("Get updated apps: ", updatedApps, s.clients)
+		for _, client := range s.clients {
+			data, _ := json.Marshal(updatedApps)
+			client.Send(ws.Packet{
+				PType: "UPDATEAPPLIST",
+				Data:  string(data),
+			})
+		}
+	}
 }
 
 func (c *Client) Route(ptypes []string, ch chan ws.Packet) {
@@ -154,6 +173,15 @@ func (c *Client) Listen() {
 
 		rChan <- wspacket
 	}
+}
+
+func (c *Client) Send(packet ws.Packet) {
+	data, err := json.Marshal(packet)
+	if err != nil {
+		return
+	}
+
+	c.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 func NewClient(c *websocket.Conn, clientID string) *Client {

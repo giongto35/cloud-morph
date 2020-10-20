@@ -132,6 +132,7 @@ func (d *appDiscovery) getApps() []appHost {
 func (s *server) register(w http.ResponseWriter, r *http.Request) {
 	var h appHost
 
+	log.Println("Received Register Request")
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	err := json.NewDecoder(r.Body).Decode(&h)
@@ -154,6 +155,7 @@ func (s *server) getApps(w http.ResponseWriter, r *http.Request) {
 		Apps: s.discovery.getApps(),
 	}
 
+	log.Println("Received GetApps Request")
 	encodedResp, err := json.Marshal(resp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

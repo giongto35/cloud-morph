@@ -14,18 +14,23 @@ const fullscreen = document.getElementById("fullscreen");
 const gamed = document.getElementById("game");
 const chatd = document.getElementById("chat");
 const numplayers = document.getElementById("numplayers");
+const discoverydropdown = document.getElementById("discoverydropdown");
 
 var offerst;
 // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
 // await pc.setRemoteDescription(offer);
+var appList = [];
 
 function init() {
-  const address = `${location.protocol !== "https:" ? "ws" : "wss"}://${
-    location.host
+  connect(location.protocol, location.host);
+}
+
+function connect(protocol, host) {
+  const address = `${protocol !== "https:" ? "ws" : "wss"}://${
+    host
   }/ws`;
   console.info(`[ws] connecting to ${address}`);
   conn = new WebSocket(address);
-
   // Clear old roomID
   conn.onopen = () => {
     console.log("[ws] <- open connection");
@@ -41,7 +46,6 @@ function init() {
     const ptype = data.type;
 
     console.log(`[ws] <- message '${data}' `, ptype);
-
     switch (ptype) {
       case "CHAT":
         appendChatMessage(data);
@@ -51,6 +55,9 @@ function init() {
         break;
       case "ANSWER":
         updateAnswer(data);
+        break;
+      case "UPDATEAPPLIST":
+        updateAppList(data);
         break;
     }
   };
@@ -124,6 +131,11 @@ document.addEventListener("keyup", (e) => {
     })
   });
 });
+
+discoverydropdown.addEventListener("change", () => {
+  app = appList[discoverydropdown.selectedIndex];
+  connect("http", app.addr)
+})
 
 // Add the event listeners for mousedown, mousemove, and mouseup
 gamescreen.addEventListener("mousedown", (e) => {
@@ -232,6 +244,15 @@ function appendChatMessage(data) {
 function updateNumPlayers(data) {
   sNumPlayers = JSON.parse(data.data);
   numplayers.innerText = "Number of players: " + sNumPlayers
+}
+
+function updateAppList(data) {
+  appList = JSON.parse(data.data);
+  for (app of appList) {
+    appEntry = document.createElement("option");
+    appEntry.innerText = app.app_name
+    discoverydropdown.appendChild(appEntry);
+  }
 }
 
 function updateAnswer(data) {
