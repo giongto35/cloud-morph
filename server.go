@@ -86,16 +86,16 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	// 	}
 	// }()
 
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		// TODO: can we be stricter?
+		return true
+	}
 	// be aware of ReadBufferSize, WriteBufferSize (default 4096)
 	// https://pkg.go.dev/github.com/gorilla/websocket?tab=doc#Upgrader
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Coordinator: [!] WS upgrade:", err)
 		return
-	}
-	upgrader.CheckOrigin = func(r *http.Request) bool {
-		// TODO: can we be stricter?
-		return true
 	}
 
 	// Generate clientID for browserClient

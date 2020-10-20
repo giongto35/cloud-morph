@@ -61,6 +61,7 @@ function connect(protocol, host) {
         break;
     }
   };
+  initWebrtc();
 }
 
 function send(data) {
@@ -68,38 +69,39 @@ function send(data) {
 }
 
 init();
+function initWebrtc() {
+  pc = new RTCPeerConnection({
+    iceServers: [{
+      urls: "stun:stun.l.google.com:19302",
+    }, ],
+  });
+  pc.oniceconnectionstatechange = (e) => console.log(pc.iceConnectionState);
+  pc.onicecandidate = (event) => {
+    console.log(event.candidate);
+  };
 
-let pc = new RTCPeerConnection({
-  iceServers: [{
-    urls: "stun:stun.l.google.com:19302",
-  }, ],
-});
-pc.oniceconnectionstatechange = (e) => console.log(pc.iceConnectionState);
-pc.onicecandidate = (event) => {
-  console.log(event.candidate);
-};
+  pc.ontrack = function (event) {
+    var el = document.getElementById("game-screen");
+    el.srcObject = event.streams[0];
+  };
 
-pc.ontrack = function (event) {
-  var el = document.getElementById("game-screen");
-  el.srcObject = event.streams[0];
-};
+  // start session
+  // window.startSession = () => {
+  pc.addTransceiver("video", {
+    direction: "recvonly"
+  });
+  pc.createOffer().then(async (offer) => {
+    while (conn.readyState === WebSocket.CONNECTING) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
 
-// start session
-// window.startSession = () => {
-pc.addTransceiver("video", {
-  direction: "recvonly"
-});
-pc.createOffer().then(async (offer) => {
-  while (conn.readyState === WebSocket.CONNECTING) {
-    await new Promise(r => setTimeout(r, 1000));
-  }
-
-  send({
-    type: "OFFER",
-    data: btoa(JSON.stringify(offer)),
-  })
-  pc.setLocalDescription(offer);
-});
+    send({
+      type: "OFFER",
+      data: btoa(JSON.stringify(offer)),
+    })
+    pc.setLocalDescription(offer);
+  });
+}
 
 // document.addEventListener("contextmenu", (event) => event.preventDefault());
 
