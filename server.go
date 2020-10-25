@@ -62,11 +62,12 @@ type discoveryHandler struct {
 }
 
 type appDiscoveryMeta struct {
-	ID        string `yaml:"id"`
-	Addr      string `yaml:"addr"`
-	AppMode   string `yaml:"app_mode"`
-	HasChat   bool   `yaml:"has_chat"`
-	PageTitle string `yaml:"page_title"`
+	ID        string `json:"id"`
+	AppName   string `json:"app_name"`
+	Addr      string `json:"addr"`
+	AppMode   string `json:"app_mode"`
+	HasChat   bool   `json:"has_chat"`
+	PageTitle string `json:"page_title"`
 }
 
 // WSO handles all connections from user/frontend to coordinator
@@ -127,6 +128,7 @@ func (s *Server) ListenAppListUpdate() {
 		log.Println("Get updated apps: ", updatedApps, s.clients)
 		for _, client := range s.clients {
 			data, _ := json.Marshal(updatedApps)
+			fmt.Println(string(data))
 			client.Send(ws.Packet{
 				PType: "UPDATEAPPLIST",
 				Data:  string(data),
@@ -232,20 +234,20 @@ func NewServer() *Server {
 	server.cgame = cloudgame.NewCloudService(cfg)
 	server.chat = textchat.NewTextChat()
 	appID, err := server.RegisterApp(appDiscoveryMeta{
-		Addr:      addr,
+		Addr:      cfg.InstanceAddr,
+		AppName:   cfg.AppName,
 		AppMode:   cfg.AppMode,
 		HasChat:   cfg.HasChat,
 		PageTitle: cfg.PageTitle,
 	})
 	server.appID = appID
+	log.Println("Registered with AppID", server.appID)
 
 	return server
 }
 
 func (o *Server) Shutdown() {
-	fmt.Println("send remove")
 	err := o.RemoveApp(o.appID)
-	fmt.Println("Removed")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -315,18 +317,18 @@ func main() {
 	server.Handle()
 
 	go func() {
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt)
-		select {
-		case <-stop:
-			fmt.Println("Received SIGTERM, Quiting")
-			server.Shutdown()
+		err := server.ListenAndServe()
+		if err != nil {
+			log.Fatal(err)
 		}
 	}()
 
-	err := server.ListenAndServe()
-	if err != nil {
-		log.Fatal(err)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	select {
+	case <-stop:
+		fmt.Println("Received SIGTERM, Quiting")
+		server.Shutdown()
 	}
 }
 
@@ -382,20 +384,18 @@ func (s *Server) AppListUpdate() chan []appDiscoveryMeta {
 
 func (d *discoveryHandler) GetApps() []appDiscoveryMeta {
 	type GetAppsResponse struct {
-		apps []appDiscoveryMeta `json:"apps"`
+		Apps []appDiscoveryMeta `json:"apps"`
 	}
 	var resp GetAppsResponse
 
 	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
-	fmt.Println(rawResp)
 	if err != nil {
-		log.Println(err)
 		return []appDiscoveryMeta{}
 	}
 
 	json.NewDecoder(rawResp.Body).Decode(&resp)
 
-	return resp.apps
+	return resp.Apps
 }
 
 func (d *discoveryHandler) isNeedAppListUpdate(newApps []appDiscoveryMeta) bool {
@@ -417,9 +417,7 @@ func (d *discoveryHandler) AppListUpdate() chan []appDiscoveryMeta {
 	go func() {
 		// TODO: Change to subscription based
 		for range time.Tick(5 * time.Second) {
-			fmt.Println("getting apps")
 			newApps := d.GetApps()
-			fmt.Println("newApps", newApps)
 			if d.isNeedAppListUpdate(newApps) {
 				log.Println("Update AppHosts: ", newApps)
 				updatedApps <- newApps
@@ -453,6 +451,7 @@ func (d *discoveryHandler) Register(meta appDiscoveryMeta) (string, error) {
 
 func (d *discoveryHandler) Remove(appID string) error {
 	reqBytes, err := json.Marshal(appID)
+	fmt.Println(string(reqBytes), err)
 	if err != nil {
 		return nil
 	}

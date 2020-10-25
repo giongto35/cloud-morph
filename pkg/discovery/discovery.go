@@ -33,6 +33,7 @@ type kvstorage struct {
 // }
 type appDiscoveryMeta struct {
 	ID        string `yaml:"id"`
+	AppName   string `yaml:"app_name"`
 	Addr      string `yaml:"addr"`
 	AppMode   string `yaml:"app_mode"`
 	HasChat   bool   `yaml:"has_chat"`
@@ -111,12 +112,13 @@ func NewDiscovery(storage kvstorage) *appDiscovery {
 
 func (d *appDiscovery) addApp(h appDiscoveryMeta) (string, error) {
 	ctx, _ := context.WithTimeout(context.Background(), requestTimeout)
+	appID := uuid.Must(uuid.NewV4()).String()
+	h.ID = appID
 	b, err := json.Marshal(h)
 	if err != nil {
 		return "", err
 	}
 
-	appID := uuid.Must(uuid.NewV4()).String()
 	return appID, d.storage.setValue(ctx, appHostPrefix+appID, string(b))
 }
 
@@ -172,11 +174,11 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) remove(w http.ResponseWriter, r *http.Request) {
-	log.Println("Received removes Request")
 	var appID string
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	err := json.NewDecoder(r.Body).Decode(&appID)
+	log.Println("Received Remove Request", appID, err)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -198,7 +200,6 @@ func (s *server) getApps(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Received GetApps Request")
 	encodedResp, err := json.Marshal(resp)
-	log.Println(encodedResp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

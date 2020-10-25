@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>{{.PageTitle}}</title>
+    <title>Cloud Morph Demo</title>
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <link href="/static/css/main.css" rel="stylesheet" />
@@ -16,9 +16,7 @@
         onloadstart="this.volume=0.5" autoplay></video>
       <div id="game-meta">
         <label id="intro">Collaborative play Diablo. Communicate with other and try to defeat Diablo.</label></br>
-        {{if .Collaborative}}
         <label id="numplayers">Number of players:</label></br>
-        {{end}}
         <select class="drop" id="discoverydropdown">
         </select>
         <button id="fullscreen" type="submit">Toggle chat</button>
@@ -27,20 +25,18 @@
         <p>Built by <a href=https://www.linkedin.com/in/huuthanhnguyen />giongto35</a></p>
       </div>
     </div>
-    {{if .Chat}}
-        <div id="chat">
-          <pre id="chatoutput" class="messages"></pre>
-          <div id="chatprofile">
-            <label id="usernamelabel">UserName</label>
-            <input id="chatusername" type="text" placeholder="Enter User Name to join" />
-          </div>
-          <div id="chatinput">
-            <label id="messagelabel">Message</label>
-            <textarea id="chatmessage" placeholder="Start typing the message" rows="3"></textarea>
-          </div>
-          <button id="chatsubmit" type="submit">Send</button>
+      <div id="chat">
+        <pre id="chatoutput" class="messages"></pre>
+        <div id="chatprofile">
+          <label id="usernamelabel">UserName</label>
+          <input id="chatusername" type="text" placeholder="Enter User Name to join" />
         </div>
-    {{end}}
+        <div id="chatinput">
+          <label id="messagelabel">Message</label>
+          <textarea id="chatmessage" placeholder="Start typing the message" rows="3"></textarea>
+        </div>
+        <button id="chatsubmit" type="submit">Send</button>
+      </div>
 
     <script src="/static/js/game.js"></script>
   </div>

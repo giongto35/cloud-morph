@@ -253,7 +253,6 @@ function updateNumPlayers(data) {
 function updateAppList(data) {
   appList = JSON.parse(data.data);
   discoverydropdown.innerHTML = "";
-  console.log("Update", data);
   for (app of appList) {
     appEntry = document.createElement("option");
     appEntry.innerText = app.app_name
