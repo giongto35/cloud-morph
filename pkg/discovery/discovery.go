@@ -32,12 +32,12 @@ type kvstorage struct {
 // 	AppName string `json:"app_name"`
 // }
 type appDiscoveryMeta struct {
-	ID        string `yaml:"id"`
-	AppName   string `yaml:"app_name"`
-	Addr      string `yaml:"addr"`
-	AppMode   string `yaml:"app_mode"`
-	HasChat   bool   `yaml:"has_chat"`
-	PageTitle string `yaml:"page_title"`
+	ID        string `json:"id"`
+	AppName   string `json:"app_name"`
+	Addr      string `json:"addr"`
+	AppMode   string `json:"app_mode"`
+	HasChat   bool   `json:"has_chat"`
+	PageTitle string `json:"page_title"`
 }
 
 type appDiscovery struct {
@@ -124,7 +124,7 @@ func (d *appDiscovery) addApp(h appDiscoveryMeta) (string, error) {
 
 func (d *appDiscovery) removeApp(appID string) error {
 	ctx, _ := context.WithTimeout(context.Background(), requestTimeout)
-	return d.storage.removeValue(ctx, appID)
+	return d.storage.removeValue(ctx, appHostPrefix+appID)
 }
 
 func (d *appDiscovery) getApps() []appDiscoveryMeta {

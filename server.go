@@ -197,12 +197,6 @@ func NewServer() *Server {
 		discoveryHandler: NewDiscovery(cfg.DiscoveryHost),
 	}
 
-	// templateData := TemplateData{
-	// 	Chat:          cfg.HasChat,
-	// 	PageTitle:     cfg.PageTitle,
-	// 	Collaborative: cfg.AppMode == "collaborative",
-	// }
-
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", server.WS)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
