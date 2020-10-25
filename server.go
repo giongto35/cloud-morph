@@ -120,6 +120,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 		chatClient.Close()
 		serviceClient.Close()
 		delete(s.clients, clientID)
+		s.cgame.RemoveClient(clientID)
 	}(client)
 }
 
@@ -128,7 +129,6 @@ func (s *Server) ListenAppListUpdate() {
 		log.Println("Get updated apps: ", updatedApps, s.clients)
 		for _, client := range s.clients {
 			data, _ := json.Marshal(updatedApps)
-			fmt.Println(string(data))
 			client.Send(ws.Packet{
 				PType: "UPDATEAPPLIST",
 				Data:  string(data),
@@ -243,7 +243,7 @@ func NewServer() *Server {
 func (o *Server) Shutdown() {
 	err := o.RemoveApp(o.appID)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 }
 
@@ -445,7 +445,6 @@ func (d *discoveryHandler) Register(meta appDiscoveryMeta) (string, error) {
 
 func (d *discoveryHandler) Remove(appID string) error {
 	reqBytes, err := json.Marshal(appID)
-	fmt.Println(string(reqBytes), err)
 	if err != nil {
 		return nil
 	}

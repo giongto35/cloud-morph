@@ -5,8 +5,6 @@ hardwareKey: false #Direct X Input use different input set
 appName: Notepad
 pageTitle: "Cloud Morph Demo"
 appMode: collaborative #collaborative game mode (multiple user using same game session)
-discoveryHost: http://178.128.125.200:7700
-instanceAddr: 127.0.0.1:8080 #address of a cloud service instance
 hasChat: true
 # path: /games/samurai
 # appFile: SSVS.exe

@@ -96,6 +96,10 @@ func (s *Service) AddClient(clientID string, conn *websocket.Conn) *Client {
 	return client
 }
 
+func (s *Service) RemoveClient(clientID string) {
+	delete(s.clients, clientID)
+}
+
 func NewServiceClient(clientID string, conn *websocket.Conn, ssrc uint32, serverEvents chan ws.Packet, wsEvents chan ws.Packet) *Client {
 	return &Client{
 		clientID:     clientID,
@@ -114,7 +118,7 @@ func (c *Client) StreamListen() {
 			continue
 		}
 		if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
-			log.Println(writeErr)
+			log.Println("Error in StreamListen: ", writeErr)
 			return
 		}
 	}
