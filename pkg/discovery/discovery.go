@@ -27,9 +27,16 @@ type kvstorage struct {
 	kv clientv3.KV
 }
 
-type appHost struct {
-	Addr    string `json:"addr"`
-	AppName string `json:"app_name"`
+// type appHost struct {
+// 	Addr    string `json:"addr"`
+// 	AppName string `json:"app_name"`
+// }
+type appDiscoveryMeta struct {
+	ID        string `yaml:"id"`
+	Addr      string `yaml:"addr"`
+	AppMode   string `yaml:"app_mode"`
+	HasChat   bool   `yaml:"has_chat"`
+	PageTitle string `yaml:"page_title"`
 }
 
 type appDiscovery struct {
@@ -66,7 +73,15 @@ func (s *kvstorage) getByPrefix(ctx context.Context, prefix string) ([][]byte, e
 }
 
 func (s *kvstorage) setValue(ctx context.Context, key string, value string) error {
-	_, err := s.kv.Put(context.TODO(), key, value)
+	_, err := s.kv.Put(ctx, key, value)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *kvstorage) removeValue(ctx context.Context, key string) error {
+	_, err := s.kv.Delete(ctx, key)
 	if err != nil {
 		return err
 	}
@@ -94,43 +109,46 @@ func NewDiscovery(storage kvstorage) *appDiscovery {
 	}
 }
 
-func (d *appDiscovery) addApp(h appHost) error {
+func (d *appDiscovery) addApp(h appDiscoveryMeta) (string, error) {
 	ctx, _ := context.WithTimeout(context.Background(), requestTimeout)
 	b, err := json.Marshal(h)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	appID := uuid.Must(uuid.NewV4()).String()
-	d.storage.setValue(ctx, appHostPrefix+appID, string(b))
-	return nil
+	return appID, d.storage.setValue(ctx, appHostPrefix+appID, string(b))
 }
 
-func (d *appDiscovery) getApps() []appHost {
-	var app appHost
-	var apps []appHost
+func (d *appDiscovery) removeApp(appID string) error {
+	ctx, _ := context.WithTimeout(context.Background(), requestTimeout)
+	return d.storage.removeValue(ctx, appID)
+}
+
+func (d *appDiscovery) getApps() []appDiscoveryMeta {
+	var app appDiscoveryMeta
+	var apps []appDiscoveryMeta
 
 	ctx, _ := context.WithTimeout(context.Background(), requestTimeout)
-	rawHosts, err := d.storage.getByPrefix(ctx, appHostPrefix)
+	rawApps, err := d.storage.getByPrefix(ctx, appHostPrefix)
 	if err != nil {
 		return nil
 	}
 
-	for _, rawHost := range rawHosts {
-		fmt.Println(string(rawHost))
-		err := json.Unmarshal(rawHost, &app)
+	for _, rawApp := range rawApps {
+		fmt.Println(string(rawApp))
+		err := json.Unmarshal(rawApp, &app)
 		if err != nil {
 			continue
 		}
 		apps = append(apps, app)
 	}
-	fmt.Println("all apps:", apps)
 
 	return apps
 }
 
 func (s *server) register(w http.ResponseWriter, r *http.Request) {
-	var h appHost
+	var h appDiscoveryMeta
 
 	log.Println("Received Register Request")
 	// Try to decode the request body into the struct. If there is an error,
@@ -140,7 +158,30 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = s.discovery.addApp(h)
+	appID, err := s.discovery.addApp(h)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	encodedResp, err := json.Marshal(appID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Write(encodedResp)
+}
+
+func (s *server) remove(w http.ResponseWriter, r *http.Request) {
+	log.Println("Received remove Request")
+	var appID string
+	// Try to decode the request body into the struct. If there is an error,
+	// respond to the client with the error message and a 400 status code.
+	err := json.NewDecoder(r.Body).Decode(&appID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = s.discovery.removeApp(appID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -148,10 +189,10 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) getApps(w http.ResponseWriter, r *http.Request) {
-	type GetAppHostsResponse struct {
-		Apps []appHost `json:"apps"`
+	type GetAppsResponse struct {
+		Apps []appDiscoveryMeta `json:"apps"`
 	}
-	resp := GetAppHostsResponse{
+	resp := GetAppsResponse{
 		Apps: s.discovery.getApps(),
 	}
 
@@ -169,6 +210,7 @@ func NewServer() server {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/register", server.register)
+	r.HandleFunc("/remove", server.remove)
 	r.HandleFunc("/get-apps", server.getApps)
 
 	svmux := &http.ServeMux{}
