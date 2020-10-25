@@ -243,7 +243,12 @@ func NewServer() *Server {
 }
 
 func (o *Server) Shutdown() {
-	o.RemoveApp(o.appID)
+	fmt.Println("send remove")
+	err := o.RemoveApp(o.appID)
+	fmt.Println("Removed")
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func readConfig(path string) (config.Config, error) {
@@ -382,12 +387,12 @@ func (d *discoveryHandler) GetApps() []appDiscoveryMeta {
 	var resp GetAppsResponse
 
 	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
+	fmt.Println(rawResp)
 	if err != nil {
 		log.Println(err)
 		return []appDiscoveryMeta{}
 	}
 
-	defer rawResp.Body.Close()
 	json.NewDecoder(rawResp.Body).Decode(&resp)
 
 	return resp.apps
@@ -412,7 +417,9 @@ func (d *discoveryHandler) AppListUpdate() chan []appDiscoveryMeta {
 	go func() {
 		// TODO: Change to subscription based
 		for range time.Tick(5 * time.Second) {
+			fmt.Println("getting apps")
 			newApps := d.GetApps()
+			fmt.Println("newApps", newApps)
 			if d.isNeedAppListUpdate(newApps) {
 				log.Println("Update AppHosts: ", newApps)
 				updatedApps <- newApps

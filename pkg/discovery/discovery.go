@@ -18,7 +18,7 @@ import (
 
 const (
 	dialTimeout    = 2 * time.Second
-	requestTimeout = 10 * time.Second
+	requestTimeout = 2 * time.Second
 )
 const addr string = ":7700"
 const etcdAddr string = ":2379"
@@ -172,7 +172,7 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) remove(w http.ResponseWriter, r *http.Request) {
-	log.Println("Received remove Request")
+	log.Println("Received removes Request")
 	var appID string
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
@@ -198,6 +198,7 @@ func (s *server) getApps(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Received GetApps Request")
 	encodedResp, err := json.Marshal(resp)
+	log.Println(encodedResp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
