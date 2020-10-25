@@ -1,11 +1,9 @@
 package cloudgame
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
@@ -29,12 +27,11 @@ var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []
 var isStarted bool
 
 type Service struct {
-	clients          map[string]*Client
-	appModeHandler   *appModeHandler
-	discoveryHandler *discoveryHandler
-	ccApp            CloudGameClient
-	config           config.Config
-	chat             *textchat.TextChat
+	clients        map[string]*Client
+	appModeHandler *appModeHandler
+	ccApp          CloudGameClient
+	config         config.Config
+	chat           *textchat.TextChat
 	// communicate with client
 	serverEvents chan ws.Packet
 	// communicate with cloud app
@@ -67,12 +64,6 @@ type instance struct {
 type appModeHandler struct {
 	appMode            string
 	availableInstances []instance
-}
-
-type discoveryHandler struct {
-	httpClient    *http.Client
-	discoveryHost string
-	curAppHosts   []AppHost
 }
 
 func NewAppMode(appMode string) *appModeHandler {
@@ -199,112 +190,16 @@ func (c *Client) signal(offerString string) {
 	c.videoTrack = videoTrack
 }
 
-func (d *discoveryHandler) GetAppHosts() []AppHost {
-	type GetAppHostsResponse struct {
-		AppHosts []AppHost `json:"apps"`
-	}
-	var resp GetAppHostsResponse
-
-	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
-	if err != nil {
-		log.Println(err)
-		return []AppHost{}
-	}
-
-	defer rawResp.Body.Close()
-	json.NewDecoder(rawResp.Body).Decode(&resp)
-
-	return resp.AppHosts
-}
-
-func (d *discoveryHandler) isNeedAppListUpdate(appHosts []AppHost) bool {
-	if len(appHosts) != len(d.curAppHosts) {
-		return true
-	}
-
-	for i, app := range appHosts {
-		if app != d.curAppHosts[i] {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (d *discoveryHandler) AppListUpdate() chan []AppHost {
-	updatedApps := make(chan []AppHost, 1)
-	go func() {
-		// TODO: Change to subscription based
-		for range time.Tick(5 * time.Second) {
-			appHosts := d.GetAppHosts()
-			if d.isNeedAppListUpdate(appHosts) {
-				log.Println("Update AppHosts: ", appHosts)
-				updatedApps <- appHosts
-				d.curAppHosts = make([]AppHost, len(appHosts))
-				copy(d.curAppHosts, appHosts)
-			}
-		}
-	}()
-
-	return updatedApps
-}
-
-func (d *discoveryHandler) Register(addr string, appName string) error {
-	type RegisterAppRequest struct {
-		Addr    string `json:"addr"`
-		AppName string `json:"app_name"`
-	}
-	req := RegisterAppRequest{
-		Addr:    addr,
-		AppName: appName,
-	}
-
-	reqBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil
-	}
-
-	_, err = d.httpClient.Post(d.discoveryHost+"/register", "application/json", bytes.NewBuffer(reqBytes))
-	if err != nil {
-		return nil
-	}
-
-	return err
-}
-
-func NewDiscovery(discoveryHost string) *discoveryHandler {
-	return &discoveryHandler{
-		httpClient: &http.Client{
-			Timeout: time.Second * 10,
-		},
-		discoveryHost: discoveryHost,
-	}
-}
-
-func (s *Service) GetAppHosts() []AppHost {
-	return s.discoveryHandler.GetAppHosts()
-}
-
-func (s *Service) Register(addr string) error {
-	return s.discoveryHandler.Register(addr, s.config.AppName)
-}
-
-func (s *Service) AppListUpdate() chan []AppHost {
-	return s.discoveryHandler.AppListUpdate()
-}
-
 func NewCloudService(cfg config.Config) *Service {
 	appEvents := make(chan ws.Packet, 1)
 	s := &Service{
-		clients:          map[string]*Client{},
-		appEvents:        appEvents,
-		serverEvents:     make(chan ws.Packet, 10),
-		appModeHandler:   NewAppMode(cfg.AppMode),
-		discoveryHandler: NewDiscovery(cfg.DiscoveryHost),
-		ccApp:            NewCloudGameClient(cfg, appEvents),
-		config:           cfg,
+		clients:        map[string]*Client{},
+		appEvents:      appEvents,
+		serverEvents:   make(chan ws.Packet, 10),
+		appModeHandler: NewAppMode(cfg.AppMode),
+		ccApp:          NewCloudGameClient(cfg, appEvents),
+		config:         cfg,
 	}
-	s.Register(cfg.InstanceAddr)
 
 	return s
 }

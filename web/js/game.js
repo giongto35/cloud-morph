@@ -15,6 +15,7 @@ const gamed = document.getElementById("game");
 const chatd = document.getElementById("chat");
 const numplayers = document.getElementById("numplayers");
 const discoverydropdown = document.getElementById("discoverydropdown");
+const appTitle = document.getElementById("appTitle");
 
 var offerst;
 // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
@@ -137,6 +138,7 @@ document.addEventListener("keyup", (e) => {
 discoverydropdown.addEventListener("change", () => {
   app = appList[discoverydropdown.selectedIndex];
   connect("http", app.addr)
+  updatePage(app)
 })
 
 // Add the event listeners for mousedown, mousemove, and mouseup
@@ -250,11 +252,18 @@ function updateNumPlayers(data) {
 
 function updateAppList(data) {
   appList = JSON.parse(data.data);
+  discoverydropdown.innerHTML = "";
   for (app of appList) {
     appEntry = document.createElement("option");
     appEntry.innerText = app.app_name
     discoverydropdown.appendChild(appEntry);
   }
+}
+
+function updatePage(app) {
+  chatd.style.visibility = app.hasChat
+  appTitle.innerText = app.pageTitle
+  numplayers.style.visibility = app.collaborative;
 }
 
 function updateAnswer(data) {

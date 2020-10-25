@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/pprof"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
@@ -44,38 +47,28 @@ type Client struct {
 }
 
 type Server struct {
-	httpServer *http.Server
-	clients    map[string]*Client
-	cgame      *cloudgame.Service
-	chat       *textchat.TextChat
+	appID            string
+	httpServer       *http.Server
+	clients          map[string]*Client
+	cgame            *cloudgame.Service
+	chat             *textchat.TextChat
+	discoveryHandler *discoveryHandler
 }
 
-type TemplateData struct {
-	Chat          bool
-	PageTitle     string
-	Collaborative bool
+type discoveryHandler struct {
+	httpClient    *http.Client
+	discoveryHost string
+	apps          []appDiscoveryMeta
 }
 
-// GetWeb returns web frontend
-func (o *Server) GetWebWithData(templateData TemplateData) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles(indexPage)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		tmpl.Execute(w, templateData)
-	}
+type appDiscoveryMeta struct {
+	ID        string `json:"id"`
+	AppName   string `json:"app_name"`
+	Addr      string `json:"addr"`
+	AppMode   string `json:"app_mode"`
+	HasChat   bool   `json:"has_chat"`
+	PageTitle string `json:"page_title"`
 }
-
-//GetWeb(w http.ResponseWriter, r *http.Request) {
-//tmpl, err := template.ParseFiles(indexPage)
-//if err != nil {
-//log.Fatal(err)
-//}
-
-//tmpl.Execute(w, templateData)
-//}
 
 // WSO handles all connections from user/frontend to coordinator
 func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
@@ -131,10 +124,11 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ListenAppListUpdate() {
-	for updatedApps := range s.cgame.AppListUpdate() {
+	for updatedApps := range s.AppListUpdate() {
 		log.Println("Get updated apps: ", updatedApps, s.clients)
 		for _, client := range s.clients {
 			data, _ := json.Marshal(updatedApps)
+			fmt.Println(string(data))
 			client.Send(ws.Packet{
 				PType: "UPDATEAPPLIST",
 				Data:  string(data),
@@ -193,25 +187,29 @@ func NewClient(c *websocket.Conn, clientID string) *Client {
 }
 
 func NewServer() *Server {
-	server := &Server{
-		clients: map[string]*Client{},
-	}
-
 	cfg, err := readConfig(configFilePath)
 	if err != nil {
 		panic(err)
 	}
 
-	templateData := TemplateData{
-		Chat:          cfg.HasChat,
-		PageTitle:     cfg.PageTitle,
-		Collaborative: cfg.AppMode == "collaborative",
+	server := &Server{
+		clients:          map[string]*Client{},
+		discoveryHandler: NewDiscovery(cfg.DiscoveryHost),
 	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", server.WS)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
-	r.PathPrefix("/").HandlerFunc(server.GetWebWithData(templateData))
+	r.PathPrefix("/").HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			tmpl, err := template.ParseFiles(indexPage)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			tmpl.Execute(w, nil)
+		},
+	)
 
 	svmux := &http.ServeMux{}
 	svmux.Handle("/", r)
@@ -229,8 +227,24 @@ func NewServer() *Server {
 	// Launch Game VM
 	server.cgame = cloudgame.NewCloudService(cfg)
 	server.chat = textchat.NewTextChat()
+	appID, err := server.RegisterApp(appDiscoveryMeta{
+		Addr:      cfg.InstanceAddr,
+		AppName:   cfg.AppName,
+		AppMode:   cfg.AppMode,
+		HasChat:   cfg.HasChat,
+		PageTitle: cfg.PageTitle,
+	})
+	server.appID = appID
+	log.Println("Registered with AppID", server.appID)
 
 	return server
+}
+
+func (o *Server) Shutdown() {
+	err := o.RemoveApp(o.appID)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func readConfig(path string) (config.Config, error) {
@@ -295,9 +309,20 @@ func main() {
 	monitor()
 	server := NewServer()
 	server.Handle()
-	err := server.ListenAndServe()
-	if err != nil {
-		log.Fatal(err)
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	select {
+	case <-stop:
+		fmt.Println("Received SIGTERM, Quiting")
+		server.Shutdown()
 	}
 }
 
@@ -324,4 +349,112 @@ func Decode(in string, obj interface{}) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func NewDiscovery(discoveryHost string) *discoveryHandler {
+	return &discoveryHandler{
+		httpClient: &http.Client{
+			Timeout: time.Second * 10,
+		},
+		discoveryHost: discoveryHost,
+	}
+}
+
+func (s *Server) GetApps() []appDiscoveryMeta {
+	return s.discoveryHandler.GetApps()
+}
+
+func (s *Server) RegisterApp(meta appDiscoveryMeta) (string, error) {
+	return s.discoveryHandler.Register(meta)
+}
+
+func (s *Server) RemoveApp(appID string) error {
+	return s.discoveryHandler.Remove(s.appID)
+}
+
+func (s *Server) AppListUpdate() chan []appDiscoveryMeta {
+	return s.discoveryHandler.AppListUpdate()
+}
+
+func (d *discoveryHandler) GetApps() []appDiscoveryMeta {
+	type GetAppsResponse struct {
+		Apps []appDiscoveryMeta `json:"apps"`
+	}
+	var resp GetAppsResponse
+
+	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
+	if err != nil {
+		return []appDiscoveryMeta{}
+	}
+
+	json.NewDecoder(rawResp.Body).Decode(&resp)
+
+	return resp.Apps
+}
+
+func (d *discoveryHandler) isNeedAppListUpdate(newApps []appDiscoveryMeta) bool {
+	if len(newApps) != len(d.apps) {
+		return true
+	}
+
+	for i, app := range newApps {
+		if app != d.apps[i] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (d *discoveryHandler) AppListUpdate() chan []appDiscoveryMeta {
+	updatedApps := make(chan []appDiscoveryMeta, 1)
+	go func() {
+		// TODO: Change to subscription based
+		for range time.Tick(5 * time.Second) {
+			newApps := d.GetApps()
+			if d.isNeedAppListUpdate(newApps) {
+				log.Println("Update AppHosts: ", newApps)
+				updatedApps <- newApps
+				d.apps = make([]appDiscoveryMeta, len(newApps))
+				copy(d.apps, newApps)
+			}
+		}
+	}()
+
+	return updatedApps
+}
+
+func (d *discoveryHandler) Register(meta appDiscoveryMeta) (string, error) {
+	reqBytes, err := json.Marshal(meta)
+	if err != nil {
+		return "", nil
+	}
+
+	resp, err := d.httpClient.Post(d.discoveryHost+"/register", "application/json", bytes.NewBuffer(reqBytes))
+	if err != nil {
+		return "", nil
+	}
+	var appID string
+	err = json.NewDecoder(resp.Body).Decode(&appID)
+	if err != nil {
+		return "", nil
+	}
+
+	return appID, nil
+}
+
+func (d *discoveryHandler) Remove(appID string) error {
+	reqBytes, err := json.Marshal(appID)
+	fmt.Println(string(reqBytes), err)
+	if err != nil {
+		return nil
+	}
+
+	_, err = d.httpClient.Post(d.discoveryHost+"/remove", "application/json", bytes.NewBuffer(reqBytes))
+	if err != nil {
+		return nil
+	}
+
+	return err
+
 }

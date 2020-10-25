@@ -263,7 +263,6 @@ void *healthcheck(void *args)
 void processEvent(HWND hwnd, string ev, bool isDxGame)
 {
     // Mouse payload
-    cout << "Got: " << ev << endl;
     if (ev[0] == 'K')
     {
         Key key = parseKeyPayload(ev.substr(1, ev.length() - 1));
