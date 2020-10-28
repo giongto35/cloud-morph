@@ -17,7 +17,7 @@ import (
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
 	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/ws"
-	"github.com/giongto35/cloud-morph/pkg/core/go/cloudgame"
+	"github.com/giongto35/cloud-morph/pkg/core/go/cloudapp"
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -34,7 +34,7 @@ const indexPage string = "web/index.html"
 const addr string = ":8080"
 
 var chatEventTypes []string = []string{"CHAT"}
-var gameEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
+var appEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
 var dscvEventTypes []string = []string{"SELECTHOST"}
 
 // TODO: multiplex clientID
@@ -50,7 +50,7 @@ type Server struct {
 	appID            string
 	httpServer       *http.Server
 	clients          map[string]*Client
-	cgame            *cloudgame.Service
+	capp             *cloudapp.Service
 	chat             *textchat.TextChat
 	discoveryHandler *discoveryHandler
 }
@@ -110,8 +110,8 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Initialized Chat")
 	// TODO: Update packet
 	// Run browser listener first (to capture ping)
-	serviceClient := s.cgame.AddClient(clientID, client.conn)
-	client.Route(gameEventTypes, serviceClient.WSEvents)
+	serviceClient := s.capp.AddClient(clientID, client.conn)
+	client.Route(appEventTypes, serviceClient.WSEvents)
 	fmt.Println("Initialized ServiceClient")
 	go s.ListenAppListUpdate()
 
@@ -120,7 +120,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 		chatClient.Close()
 		serviceClient.Close()
 		delete(s.clients, clientID)
-		s.cgame.RemoveClient(clientID)
+		s.capp.RemoveClient(clientID)
 	}(client)
 }
 
@@ -224,8 +224,8 @@ func NewServer() *Server {
 	server.httpServer = httpServer
 	log.Println("Spawn server")
 
-	// Launch Game VM
-	server.cgame = cloudgame.NewCloudService(cfg)
+	// Launch App VM
+	server.capp = cloudapp.NewCloudService(cfg)
 	server.chat = textchat.NewTextChat()
 	appID, err := server.RegisterApp(appDiscoveryMeta{
 		Addr:      cfg.InstanceAddr,
@@ -264,7 +264,7 @@ func readConfig(path string) (config.Config, error) {
 
 func (o *Server) Handle() {
 	// Spawn CloudGaming Handle
-	go o.cgame.Handle()
+	go o.capp.Handle()
 	// Spawn Chat Handle
 	go o.chat.Handle()
 }

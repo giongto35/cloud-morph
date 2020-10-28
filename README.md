@@ -25,11 +25,11 @@ After acquiring a Linux server from any cloud provider, you can ssh to it and do
    `https://github.com/giongto35/cloud-morph.git`
 2. Run setup script:  
    `./setup.sh`
-3. Put your exe file (can be a game) in `./winvm/games/`
+3. Put your exe file in app folder(can be a game) in `./winvm/apps/`
 4. Configure setup script:  
    `config.yaml`
    Ex:
-   - `path: /games/Diablo ` (_/winvm/games_ is mounted to _/games_ in docker) - `appFile: DiabloII.exe` (name of the exe file name) - `windowTitle: Diablo` (substring of window title just to help the script to locate application process)
+   - `path: /app/Diablo ` (_/winvm/apps_ is mounted to _/apps_ in docker) - `appFile: DiabloII.exe` (name of the exe file name) - `windowTitle: Diablo` (substring of window title just to help the script to locate application process)
 5. Start the service  
    `./server`
 6. Open the host in browser with 8080. You can later route it with DNS  
@@ -58,7 +58,7 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 - Application screen is captured in a Virtual Display Frame Buffer, which is later piped to FFMPEG.
 - FFMPEG will produced the screen stream to a VPX RTP stream.
 
-- In the end, the core module receives **Input** as websocket event and **Output** as RTP stream. You can check the interface at `core/go/cloudgame`
+- In the end, the core module receives **Input** as websocket event and **Output** as RTP stream. You can check the interface at `core/go/cloudapp`
 - Webserver interacts with Virtual Machine using these Input and Output format.
 
 ## Design choice

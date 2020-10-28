@@ -1,4 +1,4 @@
-#game-body {
+#app-body {
   position: fixed;
   overflow: hidden;
   display: flex;
@@ -7,12 +7,12 @@
   width: 100%;
 }
 
-#game {
+#app {
   /* display: none; */
   flex-grow: 0;
 }
 
-#game-screen {
+#app-screen {
   /* width: 80vw;
   height: 60vw; */
   height: 85vh;
@@ -21,7 +21,7 @@
   background-color: #222222;
 }
 
-#game-meta {
+#app-meta {
   display: block;
 }
 

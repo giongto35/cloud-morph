@@ -31,5 +31,5 @@ RUN chmod +x /root/download_gecko_and_mono.sh \
     && /root/download_gecko_and_mono.sh "$(dpkg -s wine-stable | grep "^Version:\s" | awk '{print $2}' | sed -E 's/~.*$//')"
 
 # Compile synckey.exe
-RUN x86_64-w64-mingw32-g++ ./sendkey.cpp -o /winevm/synckey.exe -lws2_32 -lpthread -static
+RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o /winevm/synckey.exe -lws2_32 -lpthread -static
 ## ENTRYPOINT ["/winevm/supervisord"]

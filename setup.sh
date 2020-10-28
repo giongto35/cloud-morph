@@ -8,7 +8,7 @@ curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
 apt-get install -y golang-go
 go build server.go
-mkdir -p ./winvm/games/
+mkdir -p ./winvm/apps/
 cd ./winvm
 docker build . -t syncwine
 

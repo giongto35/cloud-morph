@@ -1,4 +1,4 @@
-package cloudgame
+package cloudapp
 
 import (
 	"encoding/base64"
@@ -29,7 +29,7 @@ var isStarted bool
 type Service struct {
 	clients        map[string]*Client
 	appModeHandler *appModeHandler
-	ccApp          CloudGameClient
+	ccApp          CloudAppClient
 	config         config.Config
 	chat           *textchat.TextChat
 	// communicate with client
@@ -201,7 +201,7 @@ func NewCloudService(cfg config.Config) *Service {
 		appEvents:      appEvents,
 		serverEvents:   make(chan ws.Packet, 10),
 		appModeHandler: NewAppMode(cfg.AppMode),
-		ccApp:          NewCloudGameClient(cfg, appEvents),
+		ccApp:          NewCloudAppClient(cfg, appEvents),
 		config:         cfg,
 	}
 

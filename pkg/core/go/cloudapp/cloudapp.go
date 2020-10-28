@@ -1,5 +1,5 @@
-// cloudgame package is an individual cloud application
-package cloudgame
+// Package cloudapp is an individual cloud application
+package cloudapp
 
 import (
 	"bytes"
@@ -17,18 +17,12 @@ import (
 	"github.com/pion/webrtc/v2"
 )
 
-// type WSPacket struct {
-// 	PType string `json:"type"`
-// 	// TODO: Make Data generic: map[string]interface{} for more usecases
-// 	Data string `json:"data"`
-// }
-
 type InputEvent struct {
 	inputType    bool
 	inputPayload []byte
 }
 
-type CloudGameClient interface {
+type CloudAppClient interface {
 	VideoStream() chan rtp.Packet
 	SendInput(ws.Packet)
 	Handle()
@@ -40,7 +34,7 @@ type ccImpl struct {
 	isReady     bool
 	listener    *net.UDPConn
 	videoStream chan rtp.Packet
-	gameEvents  chan ws.Packet
+	appEvents   chan ws.Packet
 	wineConn    *net.TCPConn
 	ssrc        uint32
 	payloadType uint8
@@ -55,11 +49,11 @@ const eventMouseUp = "MOUSEUP"
 
 var cuRTPPort = startRTPPort
 
-// NewCloudGameClient returns new cloudgame client
-func NewCloudGameClient(cfg config.Config, gameEvents chan ws.Packet) *ccImpl {
+// NewCloudAppClient returns new cloudapp client
+func NewCloudAppClient(cfg config.Config, appEvents chan ws.Packet) *ccImpl {
 	c := &ccImpl{
 		videoStream: make(chan rtp.Packet, 1),
-		gameEvents:  gameEvents,
+		appEvents:   appEvents,
 	}
 
 	la, err := net.ResolveTCPAddr("tcp4", ":9090")
@@ -72,7 +66,7 @@ func NewCloudGameClient(cfg config.Config, gameEvents chan ws.Packet) *ccImpl {
 		panic(err)
 	}
 
-	c.launchGameVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WindowTitle, cfg.HWKey)
+	c.launchAppVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WindowTitle, cfg.HWKey)
 	log.Println("Launched application VM")
 
 	// Read video stream from encoded video stream produced by FFMPEG
@@ -118,7 +112,7 @@ func (c *ccImpl) GetSSRC() uint32 {
 }
 
 // done to forcefully stop all processes
-func (c *ccImpl) launchGameVM(rtpPort int, appPath string, appFile string, windowTitle string, hwKey bool) chan struct{} {
+func (c *ccImpl) launchAppVM(rtpPort int, appPath string, appFile string, windowTitle string, hwKey bool) chan struct{} {
 	var cmd *exec.Cmd
 	var streamCmd *exec.Cmd
 
@@ -150,7 +144,7 @@ func (c *ccImpl) launchGameVM(rtpPort int, appPath string, appFile string, windo
 		log.Println("Kill streamcmd: ", err)
 
 		err = cmd.Process.Kill()
-		log.Println("Kill game: ", err)
+		log.Println("Kill app: ", err)
 
 		log.Println("killing", streamCmd.Process.Pid)
 		syscall.Kill(streamCmd.Process.Pid, syscall.SIGKILL)
@@ -168,7 +162,7 @@ func (c *ccImpl) healthCheckVM() {
 }
 
 func (c *ccImpl) Handle() {
-	for event := range c.gameEvents {
+	for event := range c.appEvents {
 		c.SendInput(event)
 	}
 }
@@ -207,8 +201,8 @@ func (c *ccImpl) listenVideoStream() {
 	go func() {
 		defer func() {
 			c.listener.Close()
-			log.Println("Closing game VM")
-			// close(gameVMDone)
+			log.Println("Closing app VM")
+			// close(appVMDone)
 		}()
 
 		// Read RTP packets forever and send them to the WebRTC Client

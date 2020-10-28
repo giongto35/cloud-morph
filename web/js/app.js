@@ -11,7 +11,7 @@ const chatsubmit = document.getElementById("chatsubmit");
 const username = document.getElementById("chatusername");
 const message = document.getElementById("chatmessage");
 const fullscreen = document.getElementById("fullscreen");
-const gamed = document.getElementById("game");
+const appd = document.getElementById("app");
 const chatd = document.getElementById("chat");
 const numplayers = document.getElementById("numplayers");
 const discoverydropdown = document.getElementById("discoverydropdown");
@@ -82,7 +82,7 @@ function initWebrtc() {
   };
 
   pc.ontrack = function (event) {
-    var el = document.getElementById("game-screen");
+    var el = document.getElementById("app-screen");
     el.srcObject = event.streams[0];
   };
 
@@ -106,7 +106,7 @@ function initWebrtc() {
 
 // document.addEventListener("contextmenu", (event) => event.preventDefault());
 
-const gamescreen = document.getElementById("game-screen");
+const appscreen = document.getElementById("app-screen");
 
 // log key
 document.addEventListener("keydown", (e) => {
@@ -142,10 +142,10 @@ discoverydropdown.addEventListener("change", () => {
 })
 
 // Add the event listeners for mousedown, mousemove, and mouseup
-gamescreen.addEventListener("mousedown", (e) => {
+appscreen.addEventListener("mousedown", (e) => {
   x = e.offsetX;
   y = e.offsetY;
-  boundRect = gamescreen.getBoundingClientRect();
+  boundRect = appscreen.getBoundingClientRect();
   console.log(e.offsetX, e.offsetY);
   send({
     type: "MOUSEDOWN",
@@ -159,10 +159,10 @@ gamescreen.addEventListener("mousedown", (e) => {
   });
 });
 
-gamescreen.addEventListener("mouseup", (e) => {
+appscreen.addEventListener("mouseup", (e) => {
   x = e.offsetX;
   y = e.offsetY;
-  boundRect = gamescreen.getBoundingClientRect();
+  boundRect = appscreen.getBoundingClientRect();
   console.log(e.offsetX, e.offsetY);
   send({
     type: "MOUSEUP",
@@ -176,11 +176,10 @@ gamescreen.addEventListener("mouseup", (e) => {
   });
 });
 
-gamescreen.addEventListener("mousemove", function (e) {
+appscreen.addEventListener("mousemove", function (e) {
   x = e.offsetX;
   y = e.offsetY;
-  boundRect = gamescreen.getBoundingClientRect();
-  console.log(e.offsetX, e.offsetY);
+  boundRect = appscreen.getBoundingClientRect();
   send({
     type: "MOUSEMOVE",
     data: JSON.stringify({
@@ -193,7 +192,7 @@ gamescreen.addEventListener("mousemove", function (e) {
   });
 });
 
-gamescreen.addEventListener("click", (e) => {
+appscreen.addEventListener("click", (e) => {
   e.preventDefault();
   return false;
 });
@@ -212,15 +211,15 @@ fullscreen.addEventListener("click", (e) => {
   isFullscreen = !isFullscreen
   if (isFullscreen) {
     chatd.style.display = "none";
-    gamed.style.display = "flex";
-    gamed.style.flexDirection = "row";
-    gamescreen.style.height = "100vh";
-    gamescreen.style.width = "133.33vh"; // maintain 800x600
+    appd.style.display = "flex";
+    appd.style.flexDirection = "row";
+    appscreen.style.height = "100vh";
+    appscreen.style.width = "133.33vh"; // maintain 800x600
   } else {
     chatd.style.display = "block";
-    gamed.style.display = "block";
-    gamescreen.style.height = "85vh";
-    gamescreen.style.width = `${85 * 8 / 6}vh`; // maintain 800x600
+    appd.style.display = "block";
+    appscreen.style.height = "85vh";
+    appscreen.style.width = `${85 * 8 / 6}vh`; // maintain 800x600
   }
 });
 
