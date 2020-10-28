@@ -1,0 +1,8 @@
+path: /
+appFile: notepad
+windowTitle: Notepad
+hardwareKey: false #Direct X Input use different input set
+appName: Notepad
+pageTitle: "Cloud Morph Demo"
+appMode: collaborative #app mode: collaborative/single (ex. collaborative: multiple user using same game session)
+hasChat: true

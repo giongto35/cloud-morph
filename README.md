@@ -19,21 +19,9 @@ Users can either spawn up a cloud service by themself or optionally attach your 
 
 ## Deployment
 
-After acquiring a Linux server from any cloud provider, you can ssh to it and do the following steps:
+After acquiring an Ubuntu server from any cloud provider (E.x `create_do.sh` to create a digital ocean instance), you can run the below script on local given the ip to your host:
 
-1. Clone the repo:  
-   `https://github.com/giongto35/cloud-morph.git`
-2. Run setup script:  
-   `./setup.sh`
-3. Put your exe file in app folder(can be a game) in `./winvm/apps/`
-4. Configure setup script:  
-   `config.yaml`
-   Ex:
-   - `path: /app/Diablo ` (_/winvm/apps_ is mounted to _/apps_ in docker) - `appFile: DiabloII.exe` (name of the exe file name) - `windowTitle: Diablo` (substring of window title just to help the script to locate application process)
-5. Start the service  
-   `./server`
-6. Open the host in browser with 8080. You can later route it with DNS  
-   `xxx.xxx.xxx.xxx:8080`
+- `setup_remote.sh $ip`. Ex: `./setup_remote.sh 159.89.146.77`
 
 ## Development
 
