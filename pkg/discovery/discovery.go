@@ -149,6 +149,25 @@ func (d *appDiscovery) getApps() []appDiscoveryMeta {
 	return apps
 }
 
+func (s *server) refineAppsList() {
+	appsMap := map[string]appDiscoveryMeta{}
+
+	// deduplicate
+	apps := s.discovery.getApps()
+	for _, app := range apps {
+		if app, ok := appsMap[app.Addr]; ok {
+			fmt.Println("dedup", app)
+			// if existed => remove the redundant
+			err := s.discovery.removeApp(app.ID)
+			if err != nil {
+				return
+			}
+			continue
+		}
+		appsMap[app.Addr] = app
+	}
+}
+
 func (s *server) register(w http.ResponseWriter, r *http.Request) {
 	var h appDiscoveryMeta
 
@@ -170,6 +189,7 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	go s.refineAppsList()
 	w.Write(encodedResp)
 }
 
