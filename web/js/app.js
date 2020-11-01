@@ -24,9 +24,20 @@ var appList = [];
 
 function init() {
   connect(location.protocol, location.host);
+  const timeoutMs = 1111;
+  const address = `apps`;
+  ajax.fetch(address, {method: "GET", redirect: "follow"}, timeoutMs)
+    .then((data) => {
+      data.json().then((body) => {
+        updateAppList(body);
+      });
+    });
 }
 
 function connect(protocol, host) {
+  // if (!isConnectable(host)) {
+  //   return;
+  // }
   const address = `${protocol !== "https:" ? "ws" : "wss"}://${
     host
   }/ws`;
@@ -110,7 +121,6 @@ const appscreen = document.getElementById("app-screen");
 
 // log key
 document.addEventListener("keydown", (e) => {
-  console.log(e.keyCode);
   if (document.activeElement === username || document.activeElement === chatmessage) {
     return;
   }
@@ -123,7 +133,6 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("keyup", (e) => {
-  console.log(e.keyCode);
   if (document.activeElement === username || document.activeElement === chatmessage) {
     return;
   }
@@ -224,7 +233,7 @@ fullscreen.addEventListener("click", (e) => {
 });
 
 function appendChatMessage(data) {
-  chatrow = JSON.parse(data.data)
+  chatrow = JSON.parse(data.data);
 
   var divNode = document.createElement("div");
   var userSpanNode = document.createElement("span");
@@ -249,19 +258,37 @@ function updateNumPlayers(data) {
   numplayers.innerText = "Number of players: " + sNumPlayers
 }
 
+// function isConnectable(addr) {
+//   const timeoutMs = 1111;
+//   const latency = await ajax.fetch(`${app.addr}/echo`, {method: "GET", redirect: "follow"}, timeoutMs);
+// }
+
 function updateAppList(data) {
+  console.log(data)
   appList = JSON.parse(data.data);
   discoverydropdown.innerHTML = "";
-  for (app of appList) {
-    appEntry = document.createElement("option");
-    appEntry.innerText = app.app_name
-    discoverydropdown.appendChild(appEntry);
-  }
+  const timeoutMs = 1111;
+ 
+  Promise.all(appList.map(app => {
+      const start = Date.now();
+      return ajax.fetch(`echo`, {method: "GET", redirect: "follow"}, timeoutMs)
+          .then(() => ({[app.addr]: Date.now() - start}))
+          .catch(() => ({[app.addr]: 9999}));
+  })).then(servers => {
+    const latencies = Object.assign({}, ...servers);
+    console.log('[ping] <->', latencies);
+
+    for (app of appList) {
+      appEntry = document.createElement("option");
+      appEntry.innerText = app.app_name + "-" + latencies[app.addr] + "ms";
+      discoverydropdown.appendChild(appEntry);
+    }
+  });
 }
 
 function updatePage(app) {
-  chatd.style.visibility = app.hasChat
-  appTitle.innerText = app.pageTitle
+  chatd.style.visibility = app.has_chat
+  appTitle.innerText = app.page_title
   numplayers.style.visibility = app.collaborative;
 }
 

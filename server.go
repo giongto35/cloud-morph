@@ -199,6 +199,11 @@ func NewServer() *Server {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/ws", server.WS)
+	r.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		log.Println(w, "echo")
+	})
+	r.HandleFunc("/apps", server.GetAppsHandler)
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
 	r.PathPrefix("/").HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -360,6 +365,17 @@ func NewDiscovery(discoveryHost string) *discoveryHandler {
 	}
 }
 
+func (s *Server) GetAppsHandler(w http.ResponseWriter, r *http.Request) {
+	apps, _ := json.Marshal(s.GetApps())
+	packet := ws.Packet{
+		PType: "UPDATEAPPLIST",
+		Data:  string(apps),
+	}
+
+	packetBytes, _ := json.Marshal(packet)
+	w.Write(packetBytes)
+}
+
 func (s *Server) GetApps() []appDiscoveryMeta {
 	return s.discoveryHandler.GetApps()
 }
@@ -455,5 +471,4 @@ func (d *discoveryHandler) Remove(appID string) error {
 	}
 
 	return err
-
 }
