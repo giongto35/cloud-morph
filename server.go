@@ -19,7 +19,6 @@ import (
 	"github.com/giongto35/cloud-morph/pkg/common/cws"
 	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudapp"
-	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"gopkg.in/yaml.v2"
@@ -41,17 +40,15 @@ var dscvEventTypes []string = []string{"SELECTHOST"}
 // TODO: multiplex clientID
 var clientID string
 
-type Client struct {
-	clientID string
-	conn     *websocket.Conn
-	wsClient cws.Client
-	routes   map[string]chan cws.Packet
-}
+// type BrowserClient struct {
+// 	clientID string
+// 	ws       *cws.Client
+// }
 
 type Server struct {
 	appID            string
 	httpServer       *http.Server
-	clients          map[string]*Client
+	wsClients        map[string]*cws.Client
 	capp             *cloudapp.Service
 	chat             *textchat.TextChat
 	discoveryHandler *discoveryHandler
@@ -93,37 +90,29 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate clientID for browserClient
-	for {
-		clientID = uuid.Must(uuid.NewV4()).String()
-		// check duplicate
-		if _, ok := s.clients[clientID]; !ok {
-			break
-		}
-	}
-
-	// Create browserClient instance
-	client := cws.NewClient(c, clientID)
-	s.clients[clientID] = client
-	// Add client to chat management
-	chatClient := s.chat.AddClient(clientID, client.conn)
-	client.Route(chatEventTypes, chatClient.WSEvents)
+	// Create websocket Client
+	wsClient := cws.NewClient(c)
+	clientID := wsClient.GetID()
+	s.wsClients[wsClient.GetID()] = wsClient
+	// Add websocket client to chat service
+	chatClient := s.chat.AddClient(clientID, wsClient)
+	chatClient.Route()
 	s.chat.SendChatHistory(clientID)
 	fmt.Println("Initialized Chat")
 	// TODO: Update packet
-	// Run browser listener first (to capture ping)
-	serviceClient := s.capp.AddClient(clientID, client.conn)
-	client.Route(appEventTypes, serviceClient.WSEvents)
+	// Add websocket client to app service
+	serviceClient := s.capp.AddClient(clientID, wsClient)
+	serviceClient.Route()
 	fmt.Println("Initialized ServiceClient")
-	go s.ListenAppListUpdate()
 
-	go func(client *Client) {
-		client.Listen()
+	go s.ListenAppListUpdate()
+	go func(browserClient *cws.Client) {
+		browserClient.Listen()
 		chatClient.Close()
 		serviceClient.Close()
-		delete(s.clients, clientID)
+		delete(s.wsClients, clientID)
 		s.capp.RemoveClient(clientID)
-	}(client)
+	}(wsClient)
 }
 
 func (s *Server) ListenAppListUpdate() {
@@ -139,38 +128,6 @@ func (s *Server) ListenAppListUpdate() {
 	}
 }
 
-func (c *Client) Route(ptypes []string, ch chan ws.Packet) {
-	for _, t := range ptypes {
-		c.routes[t] = ch
-	}
-}
-
-func (c *Client) Listen() {
-	defer func() {
-		if c.conn != nil {
-			c.conn.Close()
-			c.conn = nil
-		}
-	}()
-
-	for {
-		_, rawMsg, err := c.conn.ReadMessage()
-		if err != nil {
-			log.Println("[!] read:", err)
-			// TODO: Check explicit disconnect error to break
-			break
-		}
-		wspacket := ws.Packet{}
-		err = json.Unmarshal(rawMsg, &wspacket)
-		rChan, ok := c.routes[wspacket.PType]
-		if !ok {
-			continue
-		}
-
-		rChan <- wspacket
-	}
-}
-
 func (c *Client) Send(packet ws.Packet) {
 	data, err := json.Marshal(packet)
 	if err != nil {
@@ -178,14 +135,6 @@ func (c *Client) Send(packet ws.Packet) {
 	}
 
 	c.conn.WriteMessage(websocket.TextMessage, data)
-}
-
-func NewClient(c *websocket.Conn, clientID string) *Client {
-	return &Client{
-		clientID: clientID,
-		conn:     c,
-		routes:   make(map[string]chan ws.Packet, 1),
-	}
 }
 
 func NewServer() *Server {

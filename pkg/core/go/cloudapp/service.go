@@ -8,8 +8,8 @@ import (
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
 	"github.com/giongto35/cloud-morph/pkg/common/config"
+	"github.com/giongto35/cloud-morph/pkg/common/cws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudapp/webrtc"
-	"github.com/gorilla/websocket"
 
 	"github.com/pion/rtp"
 )
@@ -33,9 +33,9 @@ type Service struct {
 	config         config.Config
 	chat           *textchat.TextChat
 	// communicate with client
-	serverEvents chan cws.Packet
+	serverEvents chan cws.WSPacket
 	// communicate with cloud app
-	appEvents chan cws.Packet
+	appEvents chan cws.WSPacket
 }
 
 type Client struct {
@@ -44,8 +44,8 @@ type Client struct {
 	rtcConn      *webrtc.PeerConnection
 	videoStream  chan rtp.Packet
 	videoTrack   *webrtc.Track
-	serverEvents chan cws.Packet
-	WSEvents     chan cws.Packet
+	serverEvents chan cws.WSPacket
+	WSEvents     chan cws.WSPacket
 	done         chan struct{}
 	// TODO: Get rid of ssrc
 	ssrc uint32
@@ -88,10 +88,9 @@ func (c *Client) Heartbeat() {
 	}
 }
 
-func (s *Service) AddClient(clientID string, conn *websocket.Conn) *Client {
-	client := NewServiceClient(clientID, conn, s.ccApp.GetSSRC(), s.serverEvents, make(chan cws.Packet, 1))
+func (s *Service) AddClient(clientID string, ws *cws.Client) *Client {
+	client := NewServiceClient(clientID, ws, s.ccApp.GetSSRC(), s.serverEvents, make(chan cws.WSPacket, 1))
 	s.clients[clientID] = client
-	go client.WebsocketListen()
 	go client.StreamListen()
 	return client
 }
@@ -100,10 +99,10 @@ func (s *Service) RemoveClient(clientID string) {
 	delete(s.clients, clientID)
 }
 
-func NewServiceClient(clientID string, conn *websocket.Conn, ssrc uint32, serverEvents chan cws.Packet, wsEvents chan cws.Packet) *Client {
+func NewServiceClient(clientID string, ws *cws.Client, ssrc uint32, serverEvents chan cws.WSPacket, wsEvents chan cws.WSPacket) *Client {
 	return &Client{
 		clientID:     clientID,
-		conn:         conn,
+		ws:           ws,
 		ssrc:         ssrc,
 		WSEvents:     wsEvents,
 		serverEvents: serverEvents,
@@ -167,7 +166,7 @@ func (c *Client) Route() {
 	})
 	for _, event := range appEventTypes {
 		c.ws.Receive(event, func(req cws.WSPacket) (resp cws.WSPacket) {
-			c.serverEvents <- Convert(wspacket)
+			c.serverEvents <- wspacket
 		})
 	}
 }
@@ -181,11 +180,11 @@ func (c *Client) Close() {
 
 // NewCloudService returns a Cloud Service
 func NewCloudService(cfg config.Config) *Service {
-	appEvents := make(chan cws.Packet, 1)
+	appEvents := make(chan cws.WSPacket, 1)
 	s := &Service{
 		clients:        map[string]*Client{},
 		appEvents:      appEvents,
-		serverEvents:   make(chan cws.Packet, 10),
+		serverEvents:   make(chan cws.WSPacket, 10),
 		appModeHandler: NewAppMode(cfg.AppMode),
 		ccApp:          NewCloudAppClient(cfg, appEvents),
 		config:         cfg,
@@ -198,7 +197,7 @@ func (s *Service) VideoStream() chan rtp.Packet {
 	return s.ccApp.VideoStream()
 }
 
-func (s *Service) SendInput(packet cws.Packet) {
+func (s *Service) SendInput(packet cws.WSPacket) {
 	s.ccApp.SendInput(packet)
 }
 

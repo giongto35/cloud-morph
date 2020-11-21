@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/giongto35/cloud-game/v2/pkg/config"
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -85,7 +84,7 @@ func (c *Client) Send(request WSPacket, callback func(response WSPacket)) {
 	}
 
 	c.sendLock.Lock()
-	c.conn.SetWriteDeadline(time.Now().Add(config.WSWait))
+	c.conn.SetWriteDeadline(time.Now().Add(20 * time.Second))
 	c.conn.WriteMessage(websocket.TextMessage, data)
 	c.sendLock.Unlock()
 }
@@ -114,7 +113,7 @@ func (c *Client) Receive(id string, f func(request WSPacket) (response WSPacket)
 			log.Println("[!] json marshal error:", err)
 		}
 		c.sendLock.Lock()
-		c.conn.SetWriteDeadline(time.Now().Add(config.WSWait))
+		c.conn.SetWriteDeadline(time.Now().Add(20 * time.Second))
 		c.conn.WriteMessage(websocket.TextMessage, respText)
 		c.sendLock.Unlock()
 	}
@@ -166,7 +165,7 @@ func (c *Client) Heartbeat() {
 // Listen start a client
 func (c *Client) Listen() {
 	for {
-		c.conn.SetReadDeadline(time.Now().Add(config.WSWait))
+		c.conn.SetReadDeadline(time.Now().Add(20 * time.Second))
 		_, rawMsg, err := c.conn.ReadMessage()
 		if err != nil {
 			log.Println("[!] read:", err)
@@ -200,6 +199,10 @@ func (c *Client) Listen() {
 			go callback(wspacket)
 		}
 	}
+}
+
+func (c *Client) GetID() string {
+	return c.id
 }
 
 func (c *Client) Close() {
