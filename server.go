@@ -16,6 +16,7 @@ import (
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
 	"github.com/giongto35/cloud-morph/pkg/common/config"
+	"github.com/giongto35/cloud-morph/pkg/common/cws"
 	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudapp"
 	"github.com/gofrs/uuid"
@@ -43,7 +44,8 @@ var clientID string
 type Client struct {
 	clientID string
 	conn     *websocket.Conn
-	routes   map[string]chan ws.Packet
+	wsClient cws.Client
+	routes   map[string]chan cws.Packet
 }
 
 type Server struct {
@@ -101,7 +103,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create browserClient instance
-	client := NewClient(c, clientID)
+	client := cws.NewClient(c, clientID)
 	s.clients[clientID] = client
 	// Add client to chat management
 	chatClient := s.chat.AddClient(clientID, client.conn)

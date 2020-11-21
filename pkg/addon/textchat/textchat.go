@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/giongto35/cloud-morph/pkg/common/ws"
-	"github.com/gorilla/websocket"
+	"github.com/giongto35/cloud-morph/pkg/common/cws"
 )
 
 type ChatMessage struct {
@@ -22,9 +21,9 @@ type TextChat struct {
 
 type chatClient struct {
 	clientID    string
-	conn        *websocket.Conn
+	ws          *cws.Client
 	broadcastCh chan ChatMessage
-	WSEvents    chan ws.Packet
+	WSEvents    chan cws.Packet
 }
 
 func NewTextChat() *TextChat {
@@ -35,7 +34,7 @@ func NewTextChat() *TextChat {
 	}
 }
 
-func Convert(packet ws.Packet) ChatMessage {
+func Convert(packet cws.Packet) ChatMessage {
 	chatMsg := ChatMessage{}
 	err := json.Unmarshal([]byte(packet.Data), &chatMsg)
 	if err != nil {
@@ -54,7 +53,7 @@ func (t *TextChat) broadcast(e ChatMessage) error {
 		return err
 	}
 	for _, client := range t.clients {
-		client.Send(ws.Packet{
+		client.Send(cws.Packet{
 			PType: "CHAT",
 			Data:  string(data),
 		})
@@ -70,11 +69,11 @@ func (t *TextChat) Handle() {
 	}
 }
 
-func NewChatClient(clientID string, conn *websocket.Conn, broadcastCh chan ChatMessage, wsEvents chan ws.Packet) *chatClient {
+func NewChatClient(clientID string, ws *cws.Client, broadcastCh chan ChatMessage, wsEvents chan cws.Packet) *chatClient {
 	return &chatClient{
 		broadcastCh: broadcastCh,
 		clientID:    clientID,
-		conn:        conn,
+		ws:          ws,
 		WSEvents:    wsEvents,
 	}
 }
@@ -90,8 +89,8 @@ func (c *chatClient) Listen() {
 	}
 }
 
-func (t *TextChat) AddClient(clientID string, conn *websocket.Conn) *chatClient {
-	client := NewChatClient(clientID, conn, t.broadcastCh, make(chan ws.Packet, 1))
+func (t *TextChat) AddClient(clientID string, ws *cws.Client) *chatClient {
+	client := NewChatClient(clientID, ws, t.broadcastCh, make(chan cws.Packet, 1))
 	go client.Listen()
 	t.clients[clientID] = client
 	return client
@@ -114,22 +113,22 @@ func (t *TextChat) SendChatHistory(clientID string) {
 			continue
 		}
 
-		client.Send(ws.Packet{
+		client.Send(cws.Packet{
 			PType: "CHAT",
 			Data:  string(data),
 		})
 	}
 }
 
-func (c *chatClient) Send(packet ws.Packet) error {
-	data, err := json.Marshal(packet)
-	if err != nil {
-		return err
-	}
+// func (c *chatClient) Send(packet cws.Packet) error {
+// 	data, err := json.Marshal(packet)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	c.conn.WriteMessage(websocket.TextMessage, data)
-	return nil
-}
+// 	c.ws.WriteMessage(websocket.TextMessage, data)
+// 	return nil
+// }
 
 func (c *chatClient) Close() {
 }

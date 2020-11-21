@@ -7,11 +7,9 @@ import (
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
-
 	"github.com/giongto35/cloud-morph/pkg/common/config"
-	"github.com/giongto35/cloud-morph/pkg/common/ws"
+	"github.com/giongto35/cloud-morph/pkg/core/go/cloudapp/webrtc"
 	"github.com/gorilla/websocket"
-	"github.com/pion/webrtc/v2"
 
 	"github.com/pion/rtp"
 )
@@ -23,6 +21,8 @@ const (
 	OnDemandMode = "ondemand"
 )
 
+var appEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
+
 var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
 var isStarted bool
 
@@ -33,19 +33,19 @@ type Service struct {
 	config         config.Config
 	chat           *textchat.TextChat
 	// communicate with client
-	serverEvents chan ws.Packet
+	serverEvents chan cws.Packet
 	// communicate with cloud app
-	appEvents chan ws.Packet
+	appEvents chan cws.Packet
 }
 
 type Client struct {
 	clientID     string
-	conn         *websocket.Conn
+	ws           *cws.Client
 	rtcConn      *webrtc.PeerConnection
 	videoStream  chan rtp.Packet
 	videoTrack   *webrtc.Track
-	serverEvents chan ws.Packet
-	WSEvents     chan ws.Packet
+	serverEvents chan cws.Packet
+	WSEvents     chan cws.Packet
 	done         chan struct{}
 	// TODO: Get rid of ssrc
 	ssrc uint32
@@ -89,7 +89,7 @@ func (c *Client) Heartbeat() {
 }
 
 func (s *Service) AddClient(clientID string, conn *websocket.Conn) *Client {
-	client := NewServiceClient(clientID, conn, s.ccApp.GetSSRC(), s.serverEvents, make(chan ws.Packet, 1))
+	client := NewServiceClient(clientID, conn, s.ccApp.GetSSRC(), s.serverEvents, make(chan cws.Packet, 1))
 	s.clients[clientID] = client
 	go client.WebsocketListen()
 	go client.StreamListen()
@@ -100,7 +100,7 @@ func (s *Service) RemoveClient(clientID string) {
 	delete(s.clients, clientID)
 }
 
-func NewServiceClient(clientID string, conn *websocket.Conn, ssrc uint32, serverEvents chan ws.Packet, wsEvents chan ws.Packet) *Client {
+func NewServiceClient(clientID string, conn *websocket.Conn, ssrc uint32, serverEvents chan cws.Packet, wsEvents chan cws.Packet) *Client {
 	return &Client{
 		clientID:     clientID,
 		conn:         conn,
@@ -124,25 +124,52 @@ func (c *Client) StreamListen() {
 	}
 }
 
-func (c *Client) WebsocketListen() {
+func (c *Client) Route() {
 	// Listen from video stream
-	for wspacket := range c.WSEvents {
-		if wspacket.PType == "OFFER" {
-			c.signal(wspacket.Data)
-			continue
+	// WebRTC
+	c.ws.Receive("initwebrtc", func(req cws.WSPacket) (resp cws.WSPacket) {
+		log.Println("Received a request to createOffer from browser")
+
+		peerconnection := webrtc.NewWebRTC()
+		var initPacket struct {
+			IsMobile bool `json:"is_mobile"`
+		}
+		err := json.Unmarshal([]byte(resp.Data), &initPacket)
+		if err != nil {
+			log.Println("Error: Cannot decode json:", err)
+			return cws.EmptyPacket
 		}
 
-		c.serverEvents <- Convert(wspacket)
-	}
-}
+		localSession, err := peerconnection.StartClient(
+			initPacket.IsMobile,
+			func(candidate string) {
+				// send back candidate string to browser
+				c.ws.Send(cws.WSPacket{
+					Type:      "candidate",
+					Data:      candidate,
+					SessionID: req.SessionID,
+				}, nil)
+			},
+		)
 
-func (c *Client) Send(packet ws.Packet) {
-	data, err := json.Marshal(packet)
-	if err != nil {
-		return
-	}
+		h.sessions[resp.SessionID] = session
+		log.Println("Start peerconnection", resp.SessionID)
 
-	c.conn.WriteMessage(websocket.TextMessage, data)
+		if err != nil {
+			log.Println("Error: Cannot create new webrtc session", err)
+			return cws.EmptyPacket
+		}
+
+		return cws.WSPacket{
+			Type: "offer",
+			Data: localSession,
+		}
+	})
+	for _, event := range appEventTypes {
+		c.ws.Receive(event, func(req cws.WSPacket) (resp cws.WSPacket) {
+			c.serverEvents <- Convert(wspacket)
+		})
+	}
 }
 
 func (c *Client) Close() {
@@ -152,54 +179,13 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) signal(offerString string) {
-	log.Println("Signalling")
-	RTCConn, err := webrtc.NewPeerConnection(webrtcconfig)
-	if err != nil {
-		log.Println("error ", err)
-	}
-	c.rtcConn = RTCConn
-
-	offer := webrtc.SessionDescription{}
-	Decode(offerString, &offer)
-
-	err = RTCConn.SetRemoteDescription(offer)
-	if err != nil {
-		log.Println("Set remote description from peer failed", err)
-		return
-	}
-
-	log.Println("Get SSRC", c.ssrc)
-	videoTrack := streamRTP(RTCConn, offer, c.ssrc)
-
-	var answer webrtc.SessionDescription
-	answer, err = RTCConn.CreateAnswer(nil)
-	if err != nil {
-		log.Println("Create Answer Failed", err)
-		return
-	}
-
-	err = RTCConn.SetLocalDescription(answer)
-	if err != nil {
-		log.Println("Set Local Description Failed", err)
-		return
-	}
-
-	isStarted = true
-	log.Println("Sending answer", answer)
-	c.Send(ws.Packet{
-		PType: "ANSWER",
-		Data:  Encode(answer),
-	})
-	c.videoTrack = videoTrack
-}
-
+// NewCloudService returns a Cloud Service
 func NewCloudService(cfg config.Config) *Service {
-	appEvents := make(chan ws.Packet, 1)
+	appEvents := make(chan cws.Packet, 1)
 	s := &Service{
 		clients:        map[string]*Client{},
 		appEvents:      appEvents,
-		serverEvents:   make(chan ws.Packet, 10),
+		serverEvents:   make(chan cws.Packet, 10),
 		appModeHandler: NewAppMode(cfg.AppMode),
 		ccApp:          NewCloudAppClient(cfg, appEvents),
 		config:         cfg,
@@ -212,7 +198,7 @@ func (s *Service) VideoStream() chan rtp.Packet {
 	return s.ccApp.VideoStream()
 }
 
-func (s *Service) SendInput(packet ws.Packet) {
+func (s *Service) SendInput(packet cws.Packet) {
 	s.ccApp.SendInput(packet)
 }
 
