@@ -205,6 +205,7 @@ func (c *Client) Close() {
 		// c.rtcConn.Close()
 		c.rtcConn = nil
 	}
+	close(c.videoStream)
 }
 
 // NewCloudService returns a Cloud Service

@@ -106,13 +106,15 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	serviceClient.Route(s.capp.GetSSRC())
 	fmt.Println("Initialized ServiceClient")
 
-	go s.ListenAppListUpdate()
 	go func(browserClient *cws.Client) {
 		browserClient.Listen()
+		fmt.Println("Closing connection")
 		chatClient.Close()
 		serviceClient.Close()
+		browserClient.Close()
 		delete(s.wsClients, clientID)
 		s.capp.RemoveClient(clientID)
+		fmt.Println("Closed connection")
 	}(wsClient)
 }
 
@@ -185,6 +187,7 @@ func NewServer() *Server {
 	server.appID = appID
 	log.Println("Registered with AppID", server.appID)
 
+	go server.ListenAppListUpdate()
 	return server
 }
 
