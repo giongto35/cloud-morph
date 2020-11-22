@@ -21,7 +21,7 @@ const (
 	OnDemandMode = "ondemand"
 )
 
-var appEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
+var appEventTypes []string = []string{"MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
 
 // var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
 var isStarted bool
@@ -86,7 +86,7 @@ func (c *Client) Heartbeat() {
 }
 
 func (s *Service) AddClient(clientID string, ws *cws.Client) *Client {
-	client := NewServiceClient(clientID, ws, s.ccApp.GetSSRC(), s.config.StunTurn)
+	client := NewServiceClient(clientID, ws, s.appEvents, s.ccApp.GetSSRC(), s.config.StunTurn)
 	s.clients[clientID] = client
 	return client
 }
@@ -95,13 +95,14 @@ func (s *Service) RemoveClient(clientID string) {
 	delete(s.clients, clientID)
 }
 
-func NewServiceClient(clientID string, ws *cws.Client, ssrc uint32, stunturn string) *Client {
+func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ssrc uint32, stunturn string) *Client {
 	ws.Send(cws.WSPacket{
 		Type: "init",
 		Data: stunturn,
 	}, nil)
 
 	return &Client{
+		appEvents:   appEvents,
 		clientID:    clientID,
 		ws:          ws,
 		ssrc:        ssrc,
