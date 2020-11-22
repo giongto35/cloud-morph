@@ -23,7 +23,7 @@ const (
 
 var appEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
 
-var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
+// var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
 var isStarted bool
 
 type Service struct {
@@ -32,21 +32,18 @@ type Service struct {
 	ccApp          CloudAppClient
 	config         config.Config
 	chat           *textchat.TextChat
-	// communicate with client
-	serverEvents chan cws.WSPacket
 	// communicate with cloud app
-	appEvents chan cws.WSPacket
+	appEvents chan Packet
 }
 
 type Client struct {
-	clientID     string
-	ws           *cws.Client
-	rtcConn      *webrtc.PeerConnection
-	videoStream  chan rtp.Packet
-	videoTrack   *webrtc.Track
-	serverEvents chan cws.WSPacket
-	WSEvents     chan cws.WSPacket
-	done         chan struct{}
+	clientID    string
+	ws          *cws.Client
+	rtcConn     *webrtc.WebRTC
+	videoStream chan rtp.Packet
+	appEvents   chan Packet
+	// videoTrack   *webrtc.Track
+	done chan struct{}
 	// TODO: Get rid of ssrc
 	ssrc uint32
 }
@@ -89,9 +86,8 @@ func (c *Client) Heartbeat() {
 }
 
 func (s *Service) AddClient(clientID string, ws *cws.Client) *Client {
-	client := NewServiceClient(clientID, ws, s.ccApp.GetSSRC(), s.serverEvents, make(chan cws.WSPacket, 1))
+	client := NewServiceClient(clientID, ws, s.ccApp.GetSSRC(), s.config.StunTurn)
 	s.clients[clientID] = client
-	go client.StreamListen()
 	return client
 }
 
@@ -99,47 +95,51 @@ func (s *Service) RemoveClient(clientID string) {
 	delete(s.clients, clientID)
 }
 
-func NewServiceClient(clientID string, ws *cws.Client, ssrc uint32, serverEvents chan cws.WSPacket, wsEvents chan cws.WSPacket) *Client {
+func NewServiceClient(clientID string, ws *cws.Client, ssrc uint32, stunturn string) *Client {
+	ws.Send(cws.WSPacket{
+		Type: "init",
+		Data: stunturn,
+	}, nil)
+
 	return &Client{
-		clientID:     clientID,
-		ws:           ws,
-		ssrc:         ssrc,
-		WSEvents:     wsEvents,
-		serverEvents: serverEvents,
-		videoStream:  make(chan rtp.Packet, 1),
-		done:         make(chan struct{}),
+		clientID:    clientID,
+		ws:          ws,
+		ssrc:        ssrc,
+		videoStream: make(chan rtp.Packet, 1),
+		done:        make(chan struct{}),
 	}
 }
 
 func (c *Client) StreamListen() {
 	for packet := range c.videoStream {
-		if c.videoTrack == nil {
-			continue
-		}
-		if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
-			log.Println("Error in StreamListen: ", writeErr)
-			return
-		}
+		// if c.rtcConn.videoTrack == nil {
+		// 	continue
+		// }
+		// if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
+		// 	log.Println("Error in StreamListen: ", writeErr)
+		// 	return
+		// }
+		c.rtcConn.ImageChannel <- packet
 	}
 }
 
-func (c *Client) Route() {
+func (c *Client) Route(ssrc uint32) {
 	// Listen from video stream
 	// WebRTC
 	c.ws.Receive("initwebrtc", func(req cws.WSPacket) (resp cws.WSPacket) {
-		log.Println("Received a request to createOffer from browser")
+		log.Println("Received a request to createOffer from browser", req)
 
-		peerconnection := webrtc.NewWebRTC()
+		c.rtcConn = webrtc.NewWebRTC()
 		var initPacket struct {
 			IsMobile bool `json:"is_mobile"`
 		}
-		err := json.Unmarshal([]byte(resp.Data), &initPacket)
+		err := json.Unmarshal([]byte(req.Data), &initPacket)
 		if err != nil {
 			log.Println("Error: Cannot decode json:", err)
 			return cws.EmptyPacket
 		}
 
-		localSession, err := peerconnection.StartClient(
+		localSession, err := c.rtcConn.StartClient(
 			initPacket.IsMobile,
 			func(candidate string) {
 				// send back candidate string to browser
@@ -149,10 +149,8 @@ func (c *Client) Route() {
 					SessionID: req.SessionID,
 				}, nil)
 			},
+			ssrc,
 		)
-
-		h.sessions[resp.SessionID] = session
-		log.Println("Start peerconnection", resp.SessionID)
 
 		if err != nil {
 			log.Println("Error: Cannot create new webrtc session", err)
@@ -164,27 +162,56 @@ func (c *Client) Route() {
 			Data: localSession,
 		}
 	})
+
+	c.ws.Receive(
+		"answer",
+		func(resp cws.WSPacket) (req cws.WSPacket) {
+			log.Println("Received answer SDP from browser", resp)
+			err := c.rtcConn.SetRemoteSDP(resp.Data)
+			if err != nil {
+				log.Println("Error: Cannot set RemoteSDP of client: " + resp.SessionID)
+			}
+
+			go c.StreamListen()
+			return cws.EmptyPacket
+		},
+	)
+
+	c.ws.Receive(
+		"candidate",
+		func(resp cws.WSPacket) (req cws.WSPacket) {
+			log.Println("Received remote Ice Candidate from browser")
+
+			err := c.rtcConn.AddCandidate(resp.Data)
+			if err != nil {
+				log.Println("Error: Cannot add IceCandidate of client: " + resp.SessionID)
+			}
+
+			return cws.EmptyPacket
+		},
+	)
+
 	for _, event := range appEventTypes {
 		c.ws.Receive(event, func(req cws.WSPacket) (resp cws.WSPacket) {
-			c.serverEvents <- wspacket
+			c.appEvents <- convertWSPacket(req)
+			return cws.EmptyPacket
 		})
 	}
 }
 
 func (c *Client) Close() {
 	if c.rtcConn != nil {
-		c.rtcConn.Close()
+		// c.rtcConn.Close()
 		c.rtcConn = nil
 	}
 }
 
 // NewCloudService returns a Cloud Service
 func NewCloudService(cfg config.Config) *Service {
-	appEvents := make(chan cws.WSPacket, 1)
+	appEvents := make(chan Packet, 1)
 	s := &Service{
 		clients:        map[string]*Client{},
 		appEvents:      appEvents,
-		serverEvents:   make(chan cws.WSPacket, 10),
 		appModeHandler: NewAppMode(cfg.AppMode),
 		ccApp:          NewCloudAppClient(cfg, appEvents),
 		config:         cfg,
@@ -197,7 +224,7 @@ func (s *Service) VideoStream() chan rtp.Packet {
 	return s.ccApp.VideoStream()
 }
 
-func (s *Service) SendInput(packet cws.WSPacket) {
+func (s *Service) SendInput(packet Packet) {
 	s.ccApp.SendInput(packet)
 }
 
@@ -211,12 +238,6 @@ func (s *Service) Handle() {
 			for _, client := range s.clients {
 				client.videoStream <- p
 			}
-		}
-	}()
-
-	go func() {
-		for e := range s.serverEvents {
-			s.appEvents <- e
 		}
 	}()
 
@@ -246,40 +267,4 @@ func Decode(in string, obj interface{}) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-// streapRTP is based on to https://github.com/pion/webrtc/tree/master/examples/rtp-to-webrtc
-// It fetches from a RTP stream produced by FFMPEG and broadcast to all webRTC sessions
-func streamRTP(conn *webrtc.PeerConnection, offer webrtc.SessionDescription, ssrc uint32) *webrtc.Track {
-	// We make our own mediaEngine so we can place the sender's codecs in it.  This because we must use the
-	// dynamic media type from the sender in our answer. This is not required if we are the offerer
-	mediaEngine := webrtc.MediaEngine{}
-	err := mediaEngine.PopulateFromSDP(offer)
-	if err != nil {
-		panic(err)
-	}
-
-	// Create a video track, using the same SSRC as the incoming RTP Pack)
-	videoTrack, err := conn.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "pion")
-	if err != nil {
-		panic(err)
-	}
-	if _, err = conn.AddTrack(videoTrack); err != nil {
-		panic(err)
-	}
-	log.Println("video track", videoTrack)
-
-	// Set the handler for ICE connection state
-	// This will notify you when the peer has connected/disconnected
-	conn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		log.Printf("Connection State has changed %s \n", connectionState.String())
-	})
-
-	// Set the remote SessionDescription
-	if err = conn.SetRemoteDescription(offer); err != nil {
-		panic(err)
-	}
-	log.Println("Done creating videotrack")
-
-	return videoTrack
 }

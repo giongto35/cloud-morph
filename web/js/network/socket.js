@@ -29,9 +29,14 @@ const socket = (() => {
     let conn;
     let curPacketId = '';
 
+    const init = () => {
+        connect(location.protocol, location.host)
+    }
+
     const connect = (protocol, host) => {
         // const params = new URLSearchParams({room_id: roomId, zone: zone}).toString()
-        const address = `${location.protocol !== 'https:' ? 'ws' : 'wss'}://${location.host}/ws`;
+        // const address = `${location.protocol !== 'https:' ? 'ws' : 'wss'}://${location.host}/ws`;
+        const address = `${protocol !== 'https:' ? 'ws' : 'wss'}://${host}/ws`;
         console.info(`[ws] connecting to ${address}`);
         conn = new WebSocket(address);
 
@@ -53,11 +58,7 @@ const socket = (() => {
 
             switch (message) {
                 case 'init':
-                    // TODO: Read from struct
-                    // init package has 2 part [stunturn, game1, game2, game3 ...]
-                    // const [stunturn, ...games] = data;
-                    let serverData = JSON.parse(data.data);
-                    event.pub(MEDIA_STREAM_INITIALIZED, {stunturn: serverData.shift(), games: serverData});
+                    event.pub(MEDIA_STREAM_INITIALIZED, {stunturn: data.data});
                     break;
                 case 'offer':
                     // this is offer from worker
@@ -102,9 +103,8 @@ const socket = (() => {
         init: init,
         send: send,
         latency: latency,
-        saveGame: saveGame,
-        loadGame: loadGame,
         start: start,
-        quit: quit,
+        connect: connect,
+        // quit: quit,
     }
 })($, event, log);

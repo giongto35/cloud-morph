@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/common/config"
-	"github.com/giongto35/cloud-morph/pkg/common/ws"
+	"github.com/giongto35/cloud-morph/pkg/common/cws"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 )
@@ -24,7 +24,7 @@ type InputEvent struct {
 
 type CloudAppClient interface {
 	VideoStream() chan rtp.Packet
-	SendInput(ws.Packet)
+	SendInput(Packet)
 	Handle()
 	// TODO: Remove it
 	GetSSRC() uint32
@@ -34,10 +34,16 @@ type ccImpl struct {
 	isReady     bool
 	listener    *net.UDPConn
 	videoStream chan rtp.Packet
-	appEvents   chan ws.Packet
+	appEvents   chan Packet
 	wineConn    *net.TCPConn
 	ssrc        uint32
 	payloadType uint8
+}
+
+// Packet represents a packet in cloudapp
+type Packet struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
 }
 
 const startRTPPort = 5004
@@ -50,7 +56,7 @@ const eventMouseUp = "MOUSEUP"
 var cuRTPPort = startRTPPort
 
 // NewCloudAppClient returns new cloudapp client
-func NewCloudAppClient(cfg config.Config, appEvents chan ws.Packet) *ccImpl {
+func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	c := &ccImpl{
 		videoStream: make(chan rtp.Packet, 1),
 		appEvents:   appEvents,
@@ -100,10 +106,11 @@ func NewCloudAppClient(cfg config.Config, appEvents chan ws.Packet) *ccImpl {
 	return c
 }
 
-func Convert(packet ws.Packet) ws.Packet {
-	return ws.Packet{
-		PType: packet.PType,
-		Data:  packet.Data,
+// convertWSPacket returns cloudapp packet from ws packet
+func convertWSPacket(packet cws.WSPacket) Packet {
+	return Packet{
+		Type: packet.Type,
+		Data: packet.Data,
 	}
 }
 
@@ -227,8 +234,8 @@ func (c *ccImpl) listenVideoStream() {
 
 }
 
-func (c *ccImpl) SendInput(packet ws.Packet) {
-	switch packet.PType {
+func (c *ccImpl) SendInput(packet Packet) {
+	switch packet.Type {
 	case eventKeyUp:
 		c.simulateKey(packet.Data, 0)
 	case eventKeyDown:

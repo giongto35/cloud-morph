@@ -17,6 +17,7 @@ import (
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
 	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/cws"
+	"github.com/giongto35/cloud-morph/pkg/common/servercfg"
 	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudapp"
 	"github.com/gorilla/mux"
@@ -102,7 +103,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	// TODO: Update packet
 	// Add websocket client to app service
 	serviceClient := s.capp.AddClient(clientID, wsClient)
-	serviceClient.Route()
+	serviceClient.Route(s.capp.GetSSRC())
 	fmt.Println("Initialized ServiceClient")
 
 	go s.ListenAppListUpdate()
@@ -117,24 +118,15 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) ListenAppListUpdate() {
 	for updatedApps := range s.AppListUpdate() {
-		log.Println("Get updated apps: ", updatedApps, s.clients)
-		for _, client := range s.clients {
+		log.Println("Get updated apps: ", updatedApps, s.wsClients)
+		for _, client := range s.wsClients {
 			data, _ := json.Marshal(updatedApps)
-			client.Send(ws.Packet{
-				PType: "UPDATEAPPLIST",
-				Data:  string(data),
-			})
+			client.Send(cws.WSPacket{
+				Type: "UPDATEAPPLIST",
+				Data: string(data),
+			}, nil)
 		}
 	}
-}
-
-func (c *Client) Send(packet ws.Packet) {
-	data, err := json.Marshal(packet)
-	if err != nil {
-		return
-	}
-
-	c.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 func NewServer() *Server {
@@ -144,7 +136,7 @@ func NewServer() *Server {
 	}
 
 	server := &Server{
-		clients:          map[string]*Client{},
+		wsClients:        map[string]*cws.Client{},
 		discoveryHandler: NewDiscovery(cfg.DiscoveryHost),
 	}
 
@@ -214,6 +206,9 @@ func readConfig(path string) (config.Config, error) {
 
 	if cfg.AppName == "" {
 		cfg.AppName = cfg.WindowTitle
+	}
+	if cfg.StunTurn == "" {
+		cfg.StunTurn = servercfg.DefaultSTUNTURN
 	}
 	return cfg, err
 }

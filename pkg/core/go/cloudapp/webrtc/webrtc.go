@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"runtime/debug"
 	"time"
 
 	"github.com/giongto35/cloud-game/v2/pkg/config"
 	"github.com/giongto35/cloud-game/v2/pkg/util"
 	"github.com/gofrs/uuid"
+	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 	"github.com/pion/webrtc/v2/pkg/media"
 )
@@ -19,15 +19,11 @@ import (
 // TODO: double check if no need TURN server here
 var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
 
-type InputDataPair struct {
-	data int
-	time time.Time
-}
-
-type WebFrame struct {
-	Data      []byte
-	Timestamp uint32
-}
+// InputDataPair represents input in input data channel
+// type InputDataPair struct {
+// 	data int
+// 	time time.Time
+// }
 
 // WebRTC connection
 type WebRTC struct {
@@ -37,7 +33,7 @@ type WebRTC struct {
 	isConnected bool
 	isClosed    bool
 	// for yuvI420 image
-	ImageChannel chan WebFrame
+	ImageChannel chan rtp.Packet
 	AudioChannel chan []byte
 	InputChannel chan []byte
 
@@ -46,6 +42,7 @@ type WebRTC struct {
 	curFPS   int
 }
 
+// OnIceCallback trigger ICE callback with candidate
 type OnIceCallback func(candidate string)
 
 // Encode encodes the input in base64
@@ -78,7 +75,7 @@ func NewWebRTC() *WebRTC {
 	w := &WebRTC{
 		ID: uuid.Must(uuid.NewV4()).String(),
 
-		ImageChannel: make(chan WebFrame, 30),
+		ImageChannel: make(chan rtp.Packet, 30),
 		AudioChannel: make(chan []byte, 1),
 		InputChannel: make(chan []byte, 100),
 	}
@@ -86,7 +83,7 @@ func NewWebRTC() *WebRTC {
 }
 
 // StartClient start webrtc
-func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback) (string, error) {
+func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)
@@ -110,9 +107,9 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback) (string, error)
 
 	// add video track
 	if util.GetVideoEncoder(isMobile) == config.CODEC_H264 {
-		videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeH264, rand.Uint32(), "video", "game-video")
+		videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeH264, ssrc, "video", "game-video")
 	} else {
-		videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, rand.Uint32(), "video", "game-video")
+		videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "game-video")
 	}
 	if err != nil {
 		return "", err
@@ -138,22 +135,22 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback) (string, error)
 
 	// create data channel for input, and register callbacks
 	// order: true, negotiated: false, id: random
-	inputTrack, err := w.connection.CreateDataChannel("game-input", nil)
+	// inputTrack, err := w.connection.CreateDataChannel("app-input", nil)
 
-	inputTrack.OnOpen(func() {
-		log.Printf("Data channel '%s'-'%d' open.\n", inputTrack.Label(), inputTrack.ID())
-	})
+	// inputTrack.OnOpen(func() {
+	// 	log.Printf("Data channel '%s'-'%d' open.\n", inputTrack.Label(), inputTrack.ID())
+	// })
 
 	// Register text message handling
-	inputTrack.OnMessage(func(msg webrtc.DataChannelMessage) {
-		// TODO: Can add recover here
-		w.InputChannel <- msg.Data
-	})
+	// inputTrack.OnMessage(func(msg webrtc.DataChannelMessage) {
+	// 	// TODO: Can add recover here
+	// 	w.InputChannel <- msg.Data
+	// })
 
-	inputTrack.OnClose(func() {
-		log.Println("Data channel closed")
-		log.Println("Closed webrtc")
-	})
+	// inputTrack.OnClose(func() {
+	// 	log.Println("Data channel closed")
+	// 	log.Println("Closed webrtc")
+	// })
 
 	// WebRTC state callback
 	w.connection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
@@ -215,6 +212,9 @@ func (w *WebRTC) SetRemoteSDP(remoteSDP string) error {
 		return err
 	}
 
+	fmt.Println(answer)
+	fmt.Println("w", w)
+	fmt.Println("Wconnection", w.connection)
 	err = w.connection.SetRemoteDescription(answer)
 	if err != nil {
 		log.Println("Set remote description from peer failed")
@@ -273,34 +273,34 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.Track, opusTrack *webrtc.Track)
 	log.Println("Start streaming")
 	// receive frame buffer
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Println("Recovered from err", r)
-				log.Println(debug.Stack())
-			}
-		}()
+		// defer func() {
+		// 	if r := recover(); r != nil {
+		// 		fmt.Println("Recovered from err", r)
+		// 		log.Println(debug.Stack())
+		// 	}
+		// }()
 
-		for data := range w.ImageChannel {
-			packets := vp8Track.Packetizer().Packetize(data.Data, 1)
-			for _, p := range packets {
-				p.Header.Timestamp = data.Timestamp
-				err := vp8Track.WriteRTP(p)
-				if err != nil {
-					log.Println("Warn: Err write sample: ", err)
-					break
-				}
+		for packet := range w.ImageChannel {
+			// packets := vp8Track.Packetizer().Packetize(data.Data, 1)
+			// for _, p := range packets {
+			// 	p.Header.Timestamp = data.Timestamp
+			err := vp8Track.WriteRTP(&packet)
+			if err != nil {
+				log.Println("Warn: Err write sample: ", err)
+				break
 			}
+			// }
 		}
 	}()
 
 	// send audio
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Println("Recovered from err", r)
-				log.Println(debug.Stack())
-			}
-		}()
+		// defer func() {
+		// 	if r := recover(); r != nil {
+		// 		fmt.Println("Recovered from err", r)
+		// 		log.Println(debug.Stack())
+		// 	}
+		// }()
 
 		for data := range w.AudioChannel {
 			if !w.isConnected {
@@ -323,4 +323,40 @@ func (w *WebRTC) calculateFPS() int {
 	curFPS := time.Second / elapsedTime
 	w.curFPS = int(float32(w.curFPS)*0.9 + float32(curFPS)*0.1)
 	return w.curFPS
+}
+
+// streamRTP is based on to https://github.com/pion/webrtc/tree/master/examples/rtp-to-webrtc
+// It fetches from a RTP stream produced by FFMPEG and broadcast to all webRTC sessions
+func (w *WebRTC) StreamRTP(offer webrtc.SessionDescription, ssrc uint32) *webrtc.Track {
+	// We make our own mediaEngine so we can place the sender's codecs in it.  This because we must use the
+	// dynamic media type from the sender in our answer. This is not required if we are the offerer
+	mediaEngine := webrtc.MediaEngine{}
+	err := mediaEngine.PopulateFromSDP(offer)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create a video track, using the same SSRC as the incoming RTP Pack)
+	videoTrack, err := w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "pion")
+	if err != nil {
+		panic(err)
+	}
+	if _, err = w.connection.AddTrack(videoTrack); err != nil {
+		panic(err)
+	}
+	log.Println("video track", videoTrack)
+
+	// Set the handler for ICE connection state
+	// This will notify you when the peer has connected/disconnected
+	// w.connection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+	// 	log.Printf("Connection State has changed %s \n", connectionState.String())
+	// })
+
+	// Set the remote SessionDescription
+	// if err = conn.SetRemoteDescription(offer); err != nil {
+	// 	panic(err)
+	// }
+	// log.Println("Done creating videotrack")
+
+	return videoTrack
 }

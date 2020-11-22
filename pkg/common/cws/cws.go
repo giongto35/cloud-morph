@@ -3,7 +3,6 @@ package cws
 import (
 	"encoding/json"
 	"log"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -92,12 +91,12 @@ func (c *Client) Send(request WSPacket, callback func(response WSPacket)) {
 // Receive receive and response
 func (c *Client) Receive(id string, f func(request WSPacket) (response WSPacket)) {
 	c.recvCallback[id] = func(request WSPacket) {
-		defer func() {
-			if err := recover(); err != nil {
-				log.Println("Recovered from err ", err)
-				log.Println(debug.Stack())
-			}
-		}()
+		// defer func() {
+		// 	if err := recover(); err != nil {
+		// 		log.Println("Recovered from err ", err)
+		// 		log.Println(debug.Stack())
+		// 	}
+		// }()
 
 		resp := f(request)
 		// Add Meta data
@@ -158,7 +157,7 @@ func (c *Client) Heartbeat() {
 			return
 		default:
 		}
-		c.Send(WSPacket{ID: "heartbeat"}, nil)
+		c.Send(WSPacket{Type: "heartbeat"}, nil)
 	}
 }
 

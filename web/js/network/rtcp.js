@@ -25,16 +25,16 @@ const rtcp = (() => {
         // input channel, ordered + reliable, id 0
         // inputChannel = connection.createDataChannel('a', {ordered: true, negotiated: true, id: 0,});
         // recv dataChannel from worker
-        connection.ondatachannel = e => {
-            log.debug(`[rtcp] ondatachannel: ${e.channel.label}`)
-            inputChannel = e.channel;
-            inputChannel.onopen = () => {
-                log.debug('[rtcp] the input channel has opened');
-                inputReady = true;
-                event.pub(CONNECTION_READY)
-            };
-            inputChannel.onclose = () => log.debug('[rtcp] the input channel has closed');
-        }
+        // connection.ondatachannel = e => {
+        //     log.debug(`[rtcp] ondatachannel: ${e.channel.label}`)
+        //     inputChannel = e.channel;
+        //     inputChannel.onopen = () => {
+        //         log.debug('[rtcp] the input channel has opened');
+        //         inputReady = true;
+        //         event.pub(CONNECTION_READY)
+        //     };
+        //     inputChannel.onclose = () => log.debug('[rtcp] the input channel has closed');
+        // }
 
         connection.oniceconnectionstatechange = ice.onIceConnectionStateChange;
         connection.onicegatheringstatechange = ice.onIceStateChange;
@@ -43,11 +43,10 @@ const rtcp = (() => {
             mediaStream.addTrack(event.track);
         }
 
-    };
-
-    const popup = (msg) => {
-        popupBox.html(msg);
-        popupBox.fadeIn().delay(0).fadeOut();
+        socket.send({
+            'type': 'initwebrtc',
+            'data': JSON.stringify({'is_mobile': env.isMobileDevice()}),
+        });
     };
 
     const ice = (() => {
@@ -64,7 +63,7 @@ const rtcp = (() => {
                     candidate = JSON.stringify(event.candidate);
                     log.info(`[rtcp] got ice candidate: ${candidate}`);
                     socket.send({
-                        'id': 'candidate',
+                        'type': 'candidate',
                         'data': btoa(candidate),
                     })
                 }
@@ -127,7 +126,7 @@ const rtcp = (() => {
             isAnswered = true;
             event.pub(MEDIA_STREAM_CANDIDATE_FLUSH);
 
-            socket.send({'id': 'answer', 'data': btoa(JSON.stringify(answer))});
+            socket.send({'type': 'answer', 'data': btoa(JSON.stringify(answer))});
 
             media.srcObject = mediaStream;
         },
