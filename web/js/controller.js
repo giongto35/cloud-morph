@@ -195,8 +195,8 @@
     }
   });
 
-  const appendChatMessage = (data) => {
-    chatrow = JSON.parse(data.chatrow);
+  const appendChatMessage = (chatrowData) => {
+    chatrow = JSON.parse(chatrowData);
 
     var divNode = document.createElement("div");
     var userSpanNode = document.createElement("span");
@@ -216,8 +216,8 @@
     chatoutput.scrollTop = chatoutput.scrollHeight;
   };
 
-  const updateNumPlayers = (data) => {
-    sNumPlayers = JSON.parse(data.numplayers);
+  const updateNumPlayers = (numplayersData) => {
+    sNumPlayers = JSON.parse(numplayersData);
     numplayers.innerText = "Number of players: " + sNumPlayers;
   };
 
@@ -226,9 +226,8 @@
   //   const latency = await ajax.fetch(`${app.addr}/echo`, {method: "GET", redirect: "follow"}, timeoutMs);
   // }
 
-  const updateAppList = (data) => {
-    console.log(data);
-    appList = JSON.parse(data.data);
+  const updateAppList = (appData) => {
+    appList = JSON.parse(appData);
     discoverydropdown.innerHTML = "";
     const timeoutMs = 1111;
 
@@ -272,5 +271,6 @@
   event.sub(CONNECTION_READY, onConnectionReady);
   event.sub(CHAT, (data) => appendChatMessage(data.chatrow));
   event.sub(NUM_PLAYER, (data) => updateNumPlayers(data.numplayers));
+  event.sub(UPDATE_APP_LIST, (data) => updateAppList(data.appData));
   // event.sub(CONNECTION_CLOSED, () => input.poll().disable());
 })($, document, event, env, socket);

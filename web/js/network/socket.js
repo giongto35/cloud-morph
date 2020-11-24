@@ -84,6 +84,9 @@ const socket = (() => {
         case "NUMPLAYER":
           event.pub(NUM_PLAYER, { numplayers: data.data });
           break;
+        case "UPDATEAPPLIST":
+          event.pub(UPDATE_APP_LIST, { appData: data.data });
+          break;
       }
     };
   };

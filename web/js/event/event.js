@@ -97,3 +97,5 @@ const HELP_OVERLAY_TOGGLED = "helpOverlayToggled";
 
 const SETTINGS_CHANGED = "settingsChanged";
 const SETTINGS_CLOSED = "settingsClosed";
+
+const UPDATE_APP_LIST = "updateapplist";

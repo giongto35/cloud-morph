@@ -98,13 +98,15 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	// Add websocket client to chat service
 	chatClient := s.chat.AddClient(clientID, wsClient)
 	chatClient.Route()
-	s.chat.SendChatHistory(clientID)
 	fmt.Println("Initialized Chat")
 	// TODO: Update packet
 	// Add websocket client to app service
 	serviceClient := s.capp.AddClient(clientID, wsClient)
 	serviceClient.Route(s.capp.GetSSRC())
 	fmt.Println("Initialized ServiceClient")
+
+	s.chat.SendChatHistory(clientID)
+	s.updateClientApps(wsClient, s.GetApps())
 
 	go func(browserClient *cws.Client) {
 		browserClient.Listen()
@@ -118,15 +120,19 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	}(wsClient)
 }
 
+func (s *Server) updateClientApps(client *cws.Client, updatedApps []appDiscoveryMeta) {
+	data, _ := json.Marshal(updatedApps)
+	client.Send(cws.WSPacket{
+		Type: "UPDATEAPPLIST",
+		Data: string(data),
+	}, nil)
+}
+
 func (s *Server) ListenAppListUpdate() {
 	for updatedApps := range s.AppListUpdate() {
 		log.Println("Get updated apps: ", updatedApps, s.wsClients)
 		for _, client := range s.wsClients {
-			data, _ := json.Marshal(updatedApps)
-			client.Send(cws.WSPacket{
-				Type: "UPDATEAPPLIST",
-				Data: string(data),
-			}, nil)
+			s.updateClientApps(client, updatedApps)
 		}
 	}
 }
