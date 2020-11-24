@@ -8,16 +8,19 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/giongto35/cloud-game/v2/pkg/config"
-	"github.com/giongto35/cloud-game/v2/pkg/util"
+	"github.com/gion/rtp"
 	"github.com/gofrs/uuid"
-	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 	"github.com/pion/webrtc/v2/pkg/media"
 )
 
 // TODO: double check if no need TURN server here
 var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
+
+const audioRate = 48000
+const audioChannels = 2
+const audioMS = 20
+const audioFrame = audioRate * audioMS / 1000 * audioChannels
 
 // InputDataPair represents input in input data channel
 // type InputDataPair struct {
@@ -106,11 +109,8 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	}
 
 	// add video track
-	if util.GetVideoEncoder(isMobile) == config.CODEC_H264 {
-		videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeH264, ssrc, "video", "game-video")
-	} else {
-		videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "game-video")
-	}
+	videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, rand.Uint32(), "video", "video")
+
 	if err != nil {
 		return "", err
 	}
@@ -122,7 +122,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	log.Println("Add video track")
 
 	// add audio track
-	opusTrack, err := w.connection.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "audio", "game-audio")
+	opusTrack, err := w.connection.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "audio", "app-audio")
 	if err != nil {
 		return "", err
 	}
@@ -308,7 +308,7 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.Track, opusTrack *webrtc.Track)
 			}
 			err := opusTrack.WriteSample(media.Sample{
 				Data:    data,
-				Samples: uint32(config.AUDIO_FRAME / config.AUDIO_CHANNELS),
+				Samples: uint32(audioFrame / audioChannels),
 			})
 			if err != nil {
 				log.Println("Warn: Err write sample: ", err)
