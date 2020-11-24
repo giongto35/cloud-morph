@@ -14,4 +14,6 @@ type Config struct {
 	// Frontend plugin
 	HasChat   bool   `yaml:"hasChat"`
 	PageTitle string `yaml:"pageTitle"`
+	// WebRTC config
+	StunTurn string `yaml:"stunturn"` // Optional, Default: Google STUN
 }

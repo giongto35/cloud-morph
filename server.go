@@ -16,9 +16,10 @@ import (
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
 	"github.com/giongto35/cloud-morph/pkg/common/config"
+	"github.com/giongto35/cloud-morph/pkg/common/cws"
+	"github.com/giongto35/cloud-morph/pkg/common/servercfg"
 	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudapp"
-	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"gopkg.in/yaml.v2"
@@ -40,16 +41,15 @@ var dscvEventTypes []string = []string{"SELECTHOST"}
 // TODO: multiplex clientID
 var clientID string
 
-type Client struct {
-	clientID string
-	conn     *websocket.Conn
-	routes   map[string]chan ws.Packet
-}
+// type BrowserClient struct {
+// 	clientID string
+// 	ws       *cws.Client
+// }
 
 type Server struct {
 	appID            string
 	httpServer       *http.Server
-	clients          map[string]*Client
+	wsClients        map[string]*cws.Client
 	capp             *cloudapp.Service
 	chat             *textchat.TextChat
 	discoveryHandler *discoveryHandler
@@ -91,98 +91,49 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate clientID for browserClient
-	for {
-		clientID = uuid.Must(uuid.NewV4()).String()
-		// check duplicate
-		if _, ok := s.clients[clientID]; !ok {
-			break
-		}
-	}
-
-	// Create browserClient instance
-	client := NewClient(c, clientID)
-	s.clients[clientID] = client
-	// Add client to chat management
-	chatClient := s.chat.AddClient(clientID, client.conn)
-	client.Route(chatEventTypes, chatClient.WSEvents)
-	s.chat.SendChatHistory(clientID)
+	// Create websocket Client
+	wsClient := cws.NewClient(c)
+	clientID := wsClient.GetID()
+	s.wsClients[wsClient.GetID()] = wsClient
+	// Add websocket client to chat service
+	chatClient := s.chat.AddClient(clientID, wsClient)
+	chatClient.Route()
 	fmt.Println("Initialized Chat")
 	// TODO: Update packet
-	// Run browser listener first (to capture ping)
-	serviceClient := s.capp.AddClient(clientID, client.conn)
-	client.Route(appEventTypes, serviceClient.WSEvents)
+	// Add websocket client to app service
+	serviceClient := s.capp.AddClient(clientID, wsClient)
+	serviceClient.Route(s.capp.GetSSRC())
 	fmt.Println("Initialized ServiceClient")
-	go s.ListenAppListUpdate()
 
-	go func(client *Client) {
-		client.Listen()
+	s.chat.SendChatHistory(clientID)
+	s.updateClientApps(wsClient, s.GetApps())
+
+	go func(browserClient *cws.Client) {
+		browserClient.Listen()
+		fmt.Println("Closing connection")
 		chatClient.Close()
 		serviceClient.Close()
-		delete(s.clients, clientID)
+		browserClient.Close()
+		delete(s.wsClients, clientID)
 		s.capp.RemoveClient(clientID)
-	}(client)
+		fmt.Println("Closed connection")
+	}(wsClient)
+}
+
+func (s *Server) updateClientApps(client *cws.Client, updatedApps []appDiscoveryMeta) {
+	data, _ := json.Marshal(updatedApps)
+	client.Send(cws.WSPacket{
+		Type: "UPDATEAPPLIST",
+		Data: string(data),
+	}, nil)
 }
 
 func (s *Server) ListenAppListUpdate() {
 	for updatedApps := range s.AppListUpdate() {
-		log.Println("Get updated apps: ", updatedApps, s.clients)
-		for _, client := range s.clients {
-			data, _ := json.Marshal(updatedApps)
-			client.Send(ws.Packet{
-				PType: "UPDATEAPPLIST",
-				Data:  string(data),
-			})
+		log.Println("Get updated apps: ", updatedApps, s.wsClients)
+		for _, client := range s.wsClients {
+			s.updateClientApps(client, updatedApps)
 		}
-	}
-}
-
-func (c *Client) Route(ptypes []string, ch chan ws.Packet) {
-	for _, t := range ptypes {
-		c.routes[t] = ch
-	}
-}
-
-func (c *Client) Listen() {
-	defer func() {
-		if c.conn != nil {
-			c.conn.Close()
-			c.conn = nil
-		}
-	}()
-
-	for {
-		_, rawMsg, err := c.conn.ReadMessage()
-		if err != nil {
-			log.Println("[!] read:", err)
-			// TODO: Check explicit disconnect error to break
-			break
-		}
-		wspacket := ws.Packet{}
-		err = json.Unmarshal(rawMsg, &wspacket)
-		rChan, ok := c.routes[wspacket.PType]
-		if !ok {
-			continue
-		}
-
-		rChan <- wspacket
-	}
-}
-
-func (c *Client) Send(packet ws.Packet) {
-	data, err := json.Marshal(packet)
-	if err != nil {
-		return
-	}
-
-	c.conn.WriteMessage(websocket.TextMessage, data)
-}
-
-func NewClient(c *websocket.Conn, clientID string) *Client {
-	return &Client{
-		clientID: clientID,
-		conn:     c,
-		routes:   make(map[string]chan ws.Packet, 1),
 	}
 }
 
@@ -193,7 +144,7 @@ func NewServer() *Server {
 	}
 
 	server := &Server{
-		clients:          map[string]*Client{},
+		wsClients:        map[string]*cws.Client{},
 		discoveryHandler: NewDiscovery(cfg.DiscoveryHost),
 	}
 
@@ -242,6 +193,7 @@ func NewServer() *Server {
 	server.appID = appID
 	log.Println("Registered with AppID", server.appID)
 
+	go server.ListenAppListUpdate()
 	return server
 }
 
@@ -263,6 +215,9 @@ func readConfig(path string) (config.Config, error) {
 
 	if cfg.AppName == "" {
 		cfg.AppName = cfg.WindowTitle
+	}
+	if cfg.StunTurn == "" {
+		cfg.StunTurn = servercfg.DefaultSTUNTURN
 	}
 	return cfg, err
 }

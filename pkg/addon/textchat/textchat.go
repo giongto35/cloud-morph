@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/giongto35/cloud-morph/pkg/common/ws"
-	"github.com/gorilla/websocket"
+	"github.com/giongto35/cloud-morph/pkg/common/cws"
 )
 
 type ChatMessage struct {
@@ -14,6 +13,7 @@ type ChatMessage struct {
 	Message string `json:"message"`
 }
 
+// TextChat is the service to handle all chat over websocket
 type TextChat struct {
 	chatMsgs    []ChatMessage
 	broadcastCh chan ChatMessage
@@ -22,11 +22,12 @@ type TextChat struct {
 
 type chatClient struct {
 	clientID    string
-	conn        *websocket.Conn
+	ws          *cws.Client
 	broadcastCh chan ChatMessage
-	WSEvents    chan ws.Packet
+	WSEvents    chan cws.WSPacket
 }
 
+// NewTextChat spawns a new text chat
 func NewTextChat() *TextChat {
 	return &TextChat{
 		chatMsgs:    []ChatMessage{},
@@ -35,16 +36,7 @@ func NewTextChat() *TextChat {
 	}
 }
 
-func Convert(packet ws.Packet) ChatMessage {
-	chatMsg := ChatMessage{}
-	err := json.Unmarshal([]byte(packet.Data), &chatMsg)
-	if err != nil {
-		panic(err)
-	}
-
-	return chatMsg
-}
-
+// broadcast broadcasts a message to all clients
 func (t *TextChat) broadcast(e ChatMessage) error {
 	data, err := json.Marshal(ChatMessage{
 		User:    e.User,
@@ -54,49 +46,41 @@ func (t *TextChat) broadcast(e ChatMessage) error {
 		return err
 	}
 	for _, client := range t.clients {
-		client.Send(ws.Packet{
-			PType: "CHAT",
-			Data:  string(data),
-		})
+		client.ws.Send(cws.WSPacket{
+			Type: "CHAT",
+			Data: string(data),
+		}, nil)
 	}
 	t.chatMsgs = append(t.chatMsgs, e)
 
 	return nil
 }
 
+// Handle is main handler for TextChat
 func (t *TextChat) Handle() {
 	for e := range t.broadcastCh {
 		t.broadcast(e)
 	}
 }
 
-func NewChatClient(clientID string, conn *websocket.Conn, broadcastCh chan ChatMessage, wsEvents chan ws.Packet) *chatClient {
+// NewChatClient returns a new chat client
+func NewChatClient(clientID string, ws *cws.Client, broadcastCh chan ChatMessage, wsEvents chan cws.WSPacket) *chatClient {
 	return &chatClient{
 		broadcastCh: broadcastCh,
 		clientID:    clientID,
-		conn:        conn,
+		ws:          ws,
 		WSEvents:    wsEvents,
 	}
 }
 
-func (c *chatClient) Listen() {
-	// defer func() {
-	// 	close(c.done)
-	// }()
-
-	log.Println("Client listening")
-	for wspacket := range c.WSEvents {
-		c.broadcastCh <- Convert(wspacket)
-	}
-}
-
-func (t *TextChat) AddClient(clientID string, conn *websocket.Conn) *chatClient {
-	client := NewChatClient(clientID, conn, t.broadcastCh, make(chan ws.Packet, 1))
-	go client.Listen()
+// AddClient add a new chat client to TextChat
+func (t *TextChat) AddClient(clientID string, ws *cws.Client) *chatClient {
+	client := NewChatClient(clientID, ws, t.broadcastCh, make(chan cws.WSPacket, 1))
 	t.clients[clientID] = client
 	return client
 }
 
+// SendChatHistory sends chat history to all clients
 func (t *TextChat) SendChatHistory(clientID string) {
 	client, ok := t.clients[clientID]
 	if !ok {
@@ -114,21 +98,28 @@ func (t *TextChat) SendChatHistory(clientID string) {
 			continue
 		}
 
-		client.Send(ws.Packet{
-			PType: "CHAT",
-			Data:  string(data),
-		})
+		client.ws.Send(cws.WSPacket{
+			Type: "CHAT",
+			Data: string(data),
+		}, nil)
 	}
 }
 
-func (c *chatClient) Send(packet ws.Packet) error {
-	data, err := json.Marshal(packet)
+func convert(packet cws.WSPacket) ChatMessage {
+	chatMsg := ChatMessage{}
+	err := json.Unmarshal([]byte(packet.Data), &chatMsg)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	c.conn.WriteMessage(websocket.TextMessage, data)
-	return nil
+	return chatMsg
+}
+
+func (c *chatClient) Route() {
+	c.ws.Receive("CHAT", func(request cws.WSPacket) (response cws.WSPacket) {
+		c.broadcastCh <- convert(request)
+		return cws.EmptyPacket
+	})
 }
 
 func (c *chatClient) Close() {
