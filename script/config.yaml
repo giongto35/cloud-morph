@@ -1,9 +1,9 @@
 path: /
 appFile: notepad
 windowTitle: Notepad
-hardwareKey: false #If it's Direct X game, turn this on as DX Input use different input set
+hardwareKey: false #Turn this flag on if it's Direct X game as DX Input use hardware input set
 appName: Notepad
 pageTitle: "Cloud Morph Demo"
 appMode: collaborative #app mode: collaborative/single (ex. collaborative: multiple user using same game session)
-discoveryHost: http://178.128.125.200:7700
+#discoveryHost: http://discovery.cloudmorph.io:7700
 hasChat: true

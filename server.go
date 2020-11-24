@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -98,25 +99,25 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	// Add websocket client to chat service
 	chatClient := s.chat.AddClient(clientID, wsClient)
 	chatClient.Route()
-	fmt.Println("Initialized Chat")
+	log.Println("Initialized Chat")
 	// TODO: Update packet
 	// Add websocket client to app service
 	serviceClient := s.capp.AddClient(clientID, wsClient)
 	serviceClient.Route(s.capp.GetSSRC())
-	fmt.Println("Initialized ServiceClient")
+	log.Println("Initialized ServiceClient")
 
 	s.chat.SendChatHistory(clientID)
 	s.updateClientApps(wsClient, s.GetApps())
 
 	go func(browserClient *cws.Client) {
 		browserClient.Listen()
-		fmt.Println("Closing connection")
+		log.Println("Closing connection")
 		chatClient.Close()
 		serviceClient.Close()
 		browserClient.Close()
 		delete(s.wsClients, clientID)
 		s.capp.RemoveClient(clientID)
-		fmt.Println("Closed connection")
+		log.Println("Closed connection")
 	}(wsClient)
 }
 
@@ -190,6 +191,9 @@ func NewServer() *Server {
 		HasChat:   cfg.HasChat,
 		PageTitle: cfg.PageTitle,
 	})
+	if err != nil {
+		log.Println(err)
+	}
 	server.appID = appID
 	log.Println("Registered with AppID", server.appID)
 
@@ -281,7 +285,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt)
 	select {
 	case <-stop:
-		fmt.Println("Received SIGTERM, Quiting")
+		log.Println("Received SIGTERM, Quiting")
 		server.Shutdown()
 	}
 }
@@ -355,6 +359,7 @@ func (d *discoveryHandler) GetApps() []appDiscoveryMeta {
 
 	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
 	if err != nil {
+		log.Println("Failed to register app")
 		return []appDiscoveryMeta{}
 	}
 
@@ -403,7 +408,7 @@ func (d *discoveryHandler) Register(meta appDiscoveryMeta) (string, error) {
 
 	resp, err := d.httpClient.Post(d.discoveryHost+"/register", "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
-		return "", nil
+		return "", errors.New("Failed to register app")
 	}
 	var appID string
 	err = json.NewDecoder(resp.Body).Decode(&appID)

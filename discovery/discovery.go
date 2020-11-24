@@ -156,7 +156,7 @@ func (s *server) refineAppsList() {
 	apps := s.discovery.getApps()
 	for _, app := range apps {
 		if app, ok := appsMap[app.Addr]; ok {
-			fmt.Println("dedup", app)
+			log.Println("dedup", app)
 			// if existed => remove the redundant
 			err := s.discovery.removeApp(app.ID)
 			if err != nil {
