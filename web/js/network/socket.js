@@ -54,8 +54,8 @@ const socket = (() => {
       const data = JSON.parse(response.data);
       const message = data.type;
 
-      // if (message !== "heartbeat")
-      //   log.debug(`[ws] <- message '${message}' `, data);
+      if (message !== "heartbeat")
+        log.debug(`[ws] <- message '${message}' `, data);
 
       switch (message) {
         case "init":
