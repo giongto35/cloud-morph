@@ -26,7 +26,8 @@ function init() {
   connect(location.protocol, location.host);
   const timeoutMs = 1111;
   const address = `apps`;
-  ajax.fetch(address, {method: "GET", redirect: "follow"}, timeoutMs)
+  ajax
+    .fetch(address, { method: "GET", redirect: "follow" }, timeoutMs)
     .then((data) => {
       data.json().then((body) => {
         updateAppList(body);
@@ -38,9 +39,7 @@ function connect(protocol, host) {
   // if (!isConnectable(host)) {
   //   return;
   // }
-  const address = `${protocol !== "https:" ? "ws" : "wss"}://${
-    host
-  }/ws`;
+  const address = `${protocol !== "https:" ? "ws" : "wss"}://${host}/ws`;
   console.info(`[ws] connecting to ${address}`);
   conn = new WebSocket(address);
   // Clear old roomID
@@ -83,9 +82,11 @@ function send(data) {
 init();
 function initWebrtc() {
   pc = new RTCPeerConnection({
-    iceServers: [{
-      urls: "stun:stun.l.google.com:19302",
-    }, ],
+    iceServers: [
+      {
+        urls: "stun:stun.l.google.com:19302",
+      },
+    ],
   });
   pc.oniceconnectionstatechange = (e) => console.log(pc.iceConnectionState);
   pc.onicecandidate = (event) => {
@@ -100,17 +101,17 @@ function initWebrtc() {
   // start session
   // window.startSession = () => {
   pc.addTransceiver("video", {
-    direction: "recvonly"
+    direction: "recvonly",
   });
   pc.createOffer().then(async (offer) => {
     while (conn.readyState === WebSocket.CONNECTING) {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1000));
     }
 
     send({
       type: "OFFER",
       data: btoa(JSON.stringify(offer)),
-    })
+    });
     pc.setLocalDescription(offer);
   });
 }
@@ -121,34 +122,40 @@ const appscreen = document.getElementById("app-screen");
 
 // log key
 document.addEventListener("keydown", (e) => {
-  if (document.activeElement === username || document.activeElement === chatmessage) {
+  if (
+    document.activeElement === username ||
+    document.activeElement === chatmessage
+  ) {
     return;
   }
   send({
     type: "KEYDOWN",
     data: JSON.stringify({
-      keyCode: e.keyCode
-    })
+      keyCode: e.keyCode,
+    }),
   });
 });
 
 document.addEventListener("keyup", (e) => {
-  if (document.activeElement === username || document.activeElement === chatmessage) {
+  if (
+    document.activeElement === username ||
+    document.activeElement === chatmessage
+  ) {
     return;
   }
   send({
     type: "KEYUP",
     data: JSON.stringify({
-      keyCode: e.keyCode
-    })
+      keyCode: e.keyCode,
+    }),
   });
 });
 
 discoverydropdown.addEventListener("change", () => {
   app = appList[discoverydropdown.selectedIndex];
-  connect("http", app.addr)
-  updatePage(app)
-})
+  connect("http", app.addr);
+  updatePage(app);
+});
 
 // Add the event listeners for mousedown, mousemove, and mouseup
 appscreen.addEventListener("mousedown", (e) => {
@@ -217,7 +224,7 @@ chatsubmit.addEventListener("click", (e) => {
 });
 
 fullscreen.addEventListener("click", (e) => {
-  isFullscreen = !isFullscreen
+  isFullscreen = !isFullscreen;
   if (isFullscreen) {
     chatd.style.display = "none";
     appd.style.display = "flex";
@@ -228,7 +235,7 @@ fullscreen.addEventListener("click", (e) => {
     chatd.style.display = "block";
     appd.style.display = "block";
     appscreen.style.height = "85vh";
-    appscreen.style.width = `${85 * 8 / 6}vh`; // maintain 800x600
+    appscreen.style.width = `${(85 * 8) / 6}vh`; // maintain 800x600
   }
 });
 
@@ -250,12 +257,12 @@ function appendChatMessage(data) {
   divNode.appendChild(userSpanNode);
   divNode.appendChild(messageSpanNode);
   chatoutput.appendChild(divNode);
-  chatoutput.scrollTop = chatoutput.scrollHeight
+  chatoutput.scrollTop = chatoutput.scrollHeight;
 }
 
 function updateNumPlayers(data) {
   sNumPlayers = JSON.parse(data.data);
-  numplayers.innerText = "Number of players: " + sNumPlayers
+  numplayers.innerText = "Number of players: " + sNumPlayers;
 }
 
 // function isConnectable(addr) {
@@ -264,19 +271,22 @@ function updateNumPlayers(data) {
 // }
 
 function updateAppList(data) {
-  console.log(data)
+  console.log(data);
   appList = JSON.parse(data.data);
   discoverydropdown.innerHTML = "";
   const timeoutMs = 1111;
- 
-  Promise.all(appList.map(app => {
+
+  Promise.all(
+    appList.map((app) => {
       const start = Date.now();
-      return ajax.fetch(`echo`, {method: "GET", redirect: "follow"}, timeoutMs)
-          .then(() => ({[app.addr]: Date.now() - start}))
-          .catch(() => ({[app.addr]: 9999}));
-  })).then(servers => {
+      return ajax
+        .fetch(`echo`, { method: "GET", redirect: "follow" }, timeoutMs)
+        .then(() => ({ [app.addr]: Date.now() - start }))
+        .catch(() => ({ [app.addr]: 9999 }));
+    })
+  ).then((servers) => {
     const latencies = Object.assign({}, ...servers);
-    console.log('[ping] <->', latencies);
+    console.log("[ping] <->", latencies);
 
     for (app of appList) {
       appEntry = document.createElement("option");
@@ -287,8 +297,8 @@ function updateAppList(data) {
 }
 
 function updatePage(app) {
-  chatd.style.visibility = app.has_chat
-  appTitle.innerText = app.page_title
+  chatd.style.visibility = app.has_chat;
+  appTitle.innerText = app.page_title;
   numplayers.style.visibility = app.collaborative;
 }
 

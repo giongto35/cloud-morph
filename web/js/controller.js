@@ -20,26 +20,27 @@
   const chatd = document.getElementById("chat");
   const numplayers = document.getElementById("numplayers");
   const discoverydropdown = document.getElementById("discoverydropdown");
-  const appTitle = document.getElementById("appTitle");
+  // const appTitle = document.getElementById("appTitle");
   const appscreen = document.getElementById("app-screen");
+  let curAppID = 0;
 
   var offerst;
   // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
   // await pc.setRemoteDescription(offer);
   var appList = [];
 
-  const init = () => {
-    connect(location.protocol, location.host);
-    const timeoutMs = 1111;
-    const address = `apps`;
-    ajax
-      .fetch(address, { method: "GET", redirect: "follow" }, timeoutMs)
-      .then((data) => {
-        data.json().then((body) => {
-          updateAppList(body);
-        });
-      });
-  };
+  // const init = () => {
+  //   connect(location.protocol, location.host);
+  //   const timeoutMs = 1111;
+  //   const address = `apps`;
+  //   ajax
+  //     .fetch(address, { method: "GET", redirect: "follow" }, timeoutMs)
+  //     .then((data) => {
+  //       data.json().then((body) => {
+  //         updateAppList(body);
+  //       });
+  //     });
+  // };
 
   const onConnectionReady = () => {
     // start
@@ -113,6 +114,19 @@
       }),
     });
   });
+
+  discoverydropdown.addEventListener("change", () => {
+    app = appList[discoverydropdown.selectedIndex];
+    curAppID = app.id;
+    socket.connect("http", app.addr);
+    updatePage(app);
+  });
+
+  // discoverydropdown.addEventListener("change", () => {
+  //   app = appList[discoverydropdown.selectedIndex];
+  //   socket.connect("http", app.addr);
+  //   updatePage(app);
+  // });
 
   appscreen.addEventListener("mousedown", (e) => {
     x = e.offsetX;
@@ -243,17 +257,21 @@
       const latencies = Object.assign({}, ...servers);
       console.log("[ping] <->", latencies);
 
-      for (app of appList) {
+      for (const idx of appList.keys()) {
+        const app = appList[idx];
         appEntry = document.createElement("option");
         appEntry.innerText = app.app_name + "-" + latencies[app.addr] + "ms";
         discoverydropdown.appendChild(appEntry);
+        if (app.id == curAppID) {
+          discoverydropdown.selectedIndex = idx;
+        }
       }
     });
   };
 
   const updatePage = (app) => {
     chatd.style.visibility = app.has_chat;
-    appTitle.innerText = app.page_title;
+    // appTitle.innerText = app.page_title;
     numplayers.style.visibility = app.collaborative;
   };
 
