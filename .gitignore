@@ -1,3 +1,4 @@
 winvm/apps/*
 .idea
+*.example
 

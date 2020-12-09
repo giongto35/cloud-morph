@@ -79,6 +79,7 @@
     // currently it's a game with the index 1
     // on the server this game is ignored and the actual game will be extracted from the share link
     // so there's no point in doing this and this' really confusing
+    // TODO: Remove
     socket.start(gameList.getCurrentGame(), env.isMobileDevice(), room.getId());
 
     // // end clear
