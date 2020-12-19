@@ -128,18 +128,23 @@ func (c *ccImpl) launchAppVM(rtpPort int, cfg config.Config) chan struct{} {
 	var stderr bytes.Buffer
 	var params []string
 
-	log.Println("execing run-client.sh")
+	log.Println("execing run-wine.sh")
 	// TODO: refactor to key value
 	// cmd = exec.Command("./run-wine-nodocker.sh", appPath, appFile, windowTitle, hwKey)
 	params = []string{cfg.Path, cfg.AppFile, cfg.WindowTitle}
 	if cfg.HWKey {
 		params = append(params, "game")
+	} else {
+		params = append(params, "")
 	}
 	params = append(params, []string{cfg.ScreenWidth, cfg.ScreenHeight}...)
 	if cfg.IsWindowMode {
 		params = append(params, "-w")
+	} else {
+		params = append(params, "")
 	}
 
+	fmt.Println("params: ", params)
 	cmd = exec.Command("./run-wine.sh", params...)
 
 	cmd.Stdout = &out
