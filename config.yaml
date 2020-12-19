@@ -1,29 +1,14 @@
 # path: /
 # appFile: notepad
 # windowTitle: Notepad
-hardwareKey: true # Some game using DirectX needs hardward key. Turn this flag on to receive the input
-appName: Notepad
+hardwareKey: false # Some game using DirectX needs hardward key. Turn this flag on to receive the input
+appName: RoadRash
 pageTitle: "Cloud Morph Demo"
 appMode: collaborative #app mode: collaborative/single (ex. collaborative: multiple user using same game session)
-#discoveryHost: http://178.128.125.200:7700
-# discoveryHost: http://discovery.cloudmorph.io:7700
-# instanceAddr: 127.0.0.1:8080 #address of a cloud service instance. TODO: Implicitly Find the address
 hasChat: true
-# path: /apps/samurai
-# appFile: SSVS.exe
-# windowTitle: SAMURAI
-# hardwareKey: true #Direct X Input use different input set
-# appMode: collaborative #collaborative app mode (multiple user using same app session)
-
-# path: /apps
-# appFile: virtuacop2.exe
-# windowTitle: Virtua
-# path: /apps
-# appFile: StarCraft-Setup.exe
-# windowTitle: StarCraft
-path: /apps/DirectRoadRash
+path: /root/.wine/drive_c/Program\ Files\ \(x86\)/CGN/Road\ Rash
 appFile: ROADRASH.exe
 windowTitle: Road
-# path: /apps/Photoshop
-# appFile: PhotoshopCS6Portable.exe
-# windowTitle: Photoshop
+screenWidth: 640
+screenHeight: 460
+isWindowMode: false #app starts in window mode need to be rescaled to fullscreen, while app like game doesn't

@@ -72,7 +72,8 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		panic(err)
 	}
 
-	c.launchAppVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WindowTitle, cfg.HWKey)
+	// c.launchAppVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WindowTitle, cfg.HWKey)
+	c.launchAppVM(cuRTPPort, cfg)
 	log.Println("Launched application VM")
 
 	// Read video stream from encoded video stream produced by FFMPEG
@@ -119,7 +120,7 @@ func (c *ccImpl) GetSSRC() uint32 {
 }
 
 // done to forcefully stop all processes
-func (c *ccImpl) launchAppVM(rtpPort int, appPath string, appFile string, windowTitle string, hwKey bool) chan struct{} {
+func (c *ccImpl) launchAppVM(rtpPort int, cfg config.Config) chan struct{} {
 	var cmd *exec.Cmd
 	var streamCmd *exec.Cmd
 
@@ -128,11 +129,17 @@ func (c *ccImpl) launchAppVM(rtpPort int, appPath string, appFile string, window
 	var params []string
 
 	log.Println("execing run-client.sh")
+	// TODO: refactor to key value
 	// cmd = exec.Command("./run-wine-nodocker.sh", appPath, appFile, windowTitle, hwKey)
-	params = []string{appPath, appFile, windowTitle}
-	if hwKey {
+	params = []string{cfg.Path, cfg.AppFile, cfg.WindowTitle}
+	if cfg.HWKey {
 		params = append(params, "game")
 	}
+	params = append(params, []string{cfg.ScreenWidth, cfg.ScreenHeight}...)
+	if cfg.IsWindowMode {
+		params = append(params, "-w")
+	}
+
 	cmd = exec.Command("./run-wine.sh", params...)
 
 	cmd.Stdout = &out

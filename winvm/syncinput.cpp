@@ -277,8 +277,6 @@ void processEvent(HWND hwnd, string ev, bool isDxGame)
         Mouse mouse = parseMousePayload(ev.substr(1, ev.length() - 1));
         float x = mouse.x * screenWidth / mouse.relwidth;
         float y = mouse.y * screenHeight / mouse.relheight;
-        cout << "Mouse: " << ' ' << mouse.state << ' ' << x << ' ' << y << ' ' << screenWidth << ' '
-             << screenHeight << ' ' << mouse.relwidth << ' ' << mouse.relheight << endl;
         sendMouseDown(hwnd, mouse.isLeft, mouse.state, x, y);
     }
 }

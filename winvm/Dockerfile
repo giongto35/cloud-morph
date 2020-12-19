@@ -14,7 +14,7 @@ RUN add-apt-repository ppa:cybermax-dexter/sdl2-backport
 RUN apt-get update -y
 
 RUN apt install -y aptitude
-RUN aptitude install -y winehq-stable
+RUN aptitude install -y winehq-stable vim
 RUN mkdir -p /winevm
 WORKDIR /winevm
 COPY ./ ./

@@ -4,10 +4,13 @@ type Config struct {
 	Path    string `yaml:"path"`
 	AppFile string `yaml:"appFile"`
 	// To help WinAPI search the app
-	WindowTitle string `yaml:"windowTitle"`
-	HWKey       bool   `yaml:"hardwareKey"`
-	AppMode     string `yaml:"appMode"`
-	AppName     string `yaml:"appName"`
+	WindowTitle  string `yaml:"windowTitle"`
+	HWKey        bool   `yaml:"hardwareKey"`
+	AppMode      string `yaml:"appMode"`
+	AppName      string `yaml:"appName"`
+	ScreenWidth  string `yaml:"screenWidth"`
+	ScreenHeight string `yaml:"screenHeight"`
+	IsWindowMode bool   `yaml:"isWindowMode"`
 	// Discovery service
 	DiscoveryHost string `yaml:"discoveryHost"`
 	InstanceAddr  string `yaml:"instanceAddr"`
