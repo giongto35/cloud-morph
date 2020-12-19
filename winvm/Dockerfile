@@ -2,17 +2,15 @@
 FROM ubuntu:18.04
 #FROM debian:10-slim
 
+RUN apt update
 RUN apt-get update -y
-RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb vim
-RUN apt-get install --no-install-recommends --assume-yes wine64 mingw-w64 ffmpeg cabextract
+RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb wine64 mingw-w64 ffmpeg cabextract aptitude
 
 RUN dpkg --add-architecture i386
 RUN wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add -
 RUN add-apt-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ bionic main'
 RUN add-apt-repository ppa:cybermax-dexter/sdl2-backport
 
-RUN apt-get update -y
-RUN apt install -y aptitude
 RUN aptitude install -y winehq-stable
 
 RUN wget -nv -O /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks \
