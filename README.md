@@ -6,6 +6,8 @@ Bring offline app to cloud, run directly on browser.
 
 ## Introduction
 
+CloudMorph is a decentralized cloud gaming/ cloud application service. It
+
 CloudMorph is a concise technical stack to run your own cloud gaming/ cloud application service. It follows the idea of Cloud Gaming: application is run on remote server, screen and user input are streamed back and forth between clients and server.
 
 Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, which is a Cloud Gaming service on Retro Game hosted by myself, CloudMorph generalizes the system to bring any offline Window application to Cloud. The deployment of system is aimed to be simple with concise techstack and codebase.
@@ -35,6 +37,7 @@ Access to your local at
 - `localhost:8080`
 
 Note: the wine application is run in Docker. You can run it without docker by changing `run-wine.sh` to `run-wine-nodocker.sh` in `server.go` for easier debuging.
+
 
 ## Design
 
@@ -75,6 +78,14 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 - C++ is chosen because it has good support for WindowAPI.
 - Golang is not really a crucial part in this design. It helps spawn Webserver conveniently. With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
 
+## Challenge
+- Sync:
+1) Problem: 
+- Goal: Setup the environment on local, push that environment to 
+- 1. Docker image, but it requires pushing to a repo, which is a bit troublesome
+- 2. Sync Docker volume
+- 3. 
+ 
 ## Roadmap
 
 - I need help to get review on Architecture + performance optimization.

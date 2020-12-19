@@ -5,5 +5,5 @@ hardwareKey: false #Turn this flag on if it's Direct X game as DX Input use hard
 appName: Notepad
 pageTitle: "Cloud Morph Demo"
 appMode: collaborative #app mode: collaborative/single (ex. collaborative: multiple user using same game session)
-#discoveryHost: http://discovery.cloudmorph.io:7700
+discoveryHost: http://discovery.cloudmorph.io:7700
 hasChat: true
