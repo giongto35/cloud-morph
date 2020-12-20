@@ -60,7 +60,7 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 
 - When Webserver is started, Wine Application is spawned inside a container at the same time. However, in the future, Wine Application needs to support multiplex to run multiple application in the same VM.
 - Input captured from Client is sent to Virtual Machine over Websocket.
-- A C++ script (synckey.exe) will listen to the event and simulates Window event to Wine Application by WinAPI.
+- A C++ script (syncinput.exe) will listen to the event and simulates Window event to Wine Application by WinAPI.
 - Application screen is captured in a Virtual Display Frame Buffer, which is later piped to FFMPEG.
 - FFMPEG will produced the screen stream to a VPX RTP stream.
 

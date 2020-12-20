@@ -249,14 +249,14 @@ void *healthcheck(void *args)
         auto cur = chrono::system_clock::now();
         chrono::duration<double> elapsed_seconds = cur - last_ping;
         cout << elapsed_seconds.count() << endl;
-        if (elapsed_seconds.count() > 5)
+        if (elapsed_seconds.count() > 6)
         {
             // socket is died
             cout << "Broken pipe" << endl;
             done = true;
             return NULL;
         }
-        Sleep(3000);
+        Sleep(2000);
     }
 }
 
@@ -301,11 +301,11 @@ int main(int argc, char *argv[])
     cout << "Finding title " << winTitle << endl;
     HWND hwnd = 0;
     hwnd = getWindowByTitle(winTitle);
-    while (hwnd == 0)
-    {
-        hwnd = getWindowByTitle(winTitle);
-        Sleep(3000);
-    }
+    // while (hwnd == 0)
+    // {
+    //     hwnd = getWindowByTitle(winTitle);
+    //     Sleep(3000);
+    // }
 
     cout << "HWND: " << hwnd << endl;
     cout << "Connected " << server << endl;

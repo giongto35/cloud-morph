@@ -25,8 +25,8 @@ RUN chmod +x /root/download_gecko_and_mono.sh \
 RUN mkdir -p /winevm
 WORKDIR /winevm
 COPY ./ ./
-# Compile synckey.exe
-RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o /winevm/synckey.exe -lws2_32 -lpthread -static
+# Compile syncinput.exe
+RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o /winevm/syncinput.exe -lws2_32 -lpthread -static
 
 COPY ./supervisord.conf /etc/supervisor/conf.d/
 ## ENTRYPOINT ["/winevm/supervisord"]
