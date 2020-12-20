@@ -10,7 +10,7 @@ type Config struct {
 	AppName      string `yaml:"appName"`
 	ScreenWidth  int    `yaml:"screenWidth"`
 	ScreenHeight int    `yaml:"screenHeight"`
-	IsWindowMode bool   `yaml:"isWindowMode"`
+	IsWindowMode *bool  `yaml:"isWindowMode"`
 	// Discovery service
 	DiscoveryHost string `yaml:"discoveryHost"`
 	InstanceAddr  string `yaml:"instanceAddr"`

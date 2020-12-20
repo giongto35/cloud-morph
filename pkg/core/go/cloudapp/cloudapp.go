@@ -139,7 +139,7 @@ func (c *ccImpl) launchAppVM(rtpPort int, cfg config.Config) chan struct{} {
 		params = append(params, "")
 	}
 	params = append(params, []string{strconv.Itoa(cfg.ScreenWidth), strconv.Itoa(cfg.ScreenHeight)}...)
-	if cfg.IsWindowMode {
+	if *cfg.IsWindowMode {
 		params = append(params, "-w")
 	} else {
 		params = append(params, "")

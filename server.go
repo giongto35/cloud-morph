@@ -229,8 +229,9 @@ func readConfig(path string) (config.Config, error) {
 	if cfg.ScreenHeight == 0 {
 		cfg.ScreenHeight = 600
 	}
-	if cfg.IsWindowMode {
-		cfg.IsWindowMode = true
+	if cfg.IsWindowMode == nil {
+		boolTrue := true
+		cfg.IsWindowMode = &boolTrue
 	}
 	return cfg, err
 }
