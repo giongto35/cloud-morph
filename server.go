@@ -223,6 +223,15 @@ func readConfig(path string) (config.Config, error) {
 	if cfg.StunTurn == "" {
 		cfg.StunTurn = servercfg.DefaultSTUNTURN
 	}
+	if cfg.ScreenWidth == 0 {
+		cfg.ScreenWidth = 800
+	}
+	if cfg.ScreenHeight == 0 {
+		cfg.ScreenHeight = 600
+	}
+	if cfg.IsWindowMode {
+		cfg.IsWindowMode = true
+	}
 	return cfg, err
 }
 

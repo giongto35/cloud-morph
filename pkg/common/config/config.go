@@ -8,8 +8,8 @@ type Config struct {
 	HWKey        bool   `yaml:"hardwareKey"`
 	AppMode      string `yaml:"appMode"`
 	AppName      string `yaml:"appName"`
-	ScreenWidth  string `yaml:"screenWidth"`
-	ScreenHeight string `yaml:"screenHeight"`
+	ScreenWidth  int    `yaml:"screenWidth"`
+	ScreenHeight int    `yaml:"screenHeight"`
 	IsWindowMode bool   `yaml:"isWindowMode"`
 	// Discovery service
 	DiscoveryHost string `yaml:"discoveryHost"`

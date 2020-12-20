@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os/exec"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -137,7 +138,7 @@ func (c *ccImpl) launchAppVM(rtpPort int, cfg config.Config) chan struct{} {
 	} else {
 		params = append(params, "")
 	}
-	params = append(params, []string{cfg.ScreenWidth, cfg.ScreenHeight}...)
+	params = append(params, []string{strconv.Itoa(cfg.ScreenWidth), strconv.Itoa(cfg.ScreenHeight)}...)
 	if cfg.IsWindowMode {
 		params = append(params, "-w")
 	} else {
