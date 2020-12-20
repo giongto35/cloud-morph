@@ -6,7 +6,7 @@ appName: RoadRash
 pageTitle: "Cloud Morph Demo"
 appMode: collaborative #app mode: collaborative/single (ex. collaborative: multiple user using same game session)
 hasChat: true
-path: /root/.wine/drive_c/Program\ Files\ \(x86\)/CGN/Road\ Rash
+path: /root/.wine/drive_c/Program Files (x86)/CGN/Road Rash/
 appFile: ROADRASH.exe
 windowTitle: Road
 screenWidth: 640
