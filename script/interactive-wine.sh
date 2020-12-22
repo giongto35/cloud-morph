@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Script to pre-setup environment in local wine before deploying to server
+
 # docker build -t syncwine .
 echo $1
 echo $2

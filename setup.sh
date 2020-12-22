@@ -1,3 +1,5 @@
+# Run setup when in the directory. `setup_remote.sh` to initialize a remote server
+
 # Why I don't dockerize this script?
 # - It's good to have. Currently, the server spawns a docker container and putting this server in a container 
 # install go and docker
