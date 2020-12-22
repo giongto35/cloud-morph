@@ -36,9 +36,22 @@ Users can either spawn up a cloud service by themself or optionally attach your 
 
 ## Deployment
 
-After acquiring an Ubuntu server from any cloud provider (E.x `create_do.sh` to create a digital ocean instance), you can run the below script on local given the ip to your host:
+After acquiring an Ubuntu server from any cloud provider (E.x `create_do.sh` to create a digital ocean instance), you can need to:
+1. Move the app to the same directory with `setup_remote.sh`
+2. Setup the `config.yaml` as described in the file.
+3. Run `setup_remote.sh $ip` on local given the ip to your host to directly deploy your application to the server with.
 
 - `setup_remote.sh $ip`. Ex: `./setup_remote.sh 159.89.146.77`
+
+### Deployment with setup file
+- Some offline game/application requires installation. The best way I can think of is
+1. Start `interactive-wine.sh bash` will run bash with wine image we built.
+2. Copy 
+3. Check `example/roadrash/run.sh`
+
+
+### Example
+There are Examples of setup for some applications. You only need to sp Due to copyright, I cannot attach some applications. What you need to do is 
 
 ## Development
 
