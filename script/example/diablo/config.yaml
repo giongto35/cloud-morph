@@ -1,0 +1,10 @@
+path: /apps/DiabloII
+appFile: Game.exe
+windowTitle: Diablo
+hardwareKey: false
+appName: Diablo
+pageTitle: "Diablo - Cloud Morph Demo"
+appMode: collaborative
+discoveryHost: http://178.128.125.200:7700
+instanceAddr: 127.0.0.1:8080
+hasChat: true

@@ -1,2 +1,4 @@
 winvm/apps/*
+apps/*
+*/apps/*
 .idea
