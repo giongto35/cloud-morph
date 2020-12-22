@@ -73,7 +73,6 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		panic(err)
 	}
 
-	// c.launchAppVM(cuRTPPort, cfg.Path, cfg.AppFile, cfg.WindowTitle, cfg.HWKey)
 	c.launchAppVM(cuRTPPort, cfg)
 	log.Println("Launched application VM")
 
