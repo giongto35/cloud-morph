@@ -10,10 +10,10 @@ CloudMorph is a decentralized cloud gaming/cloud application service. It still f
 
 ## Usecases
 
-- Experience hosting Cloud gaming service on their own.
-- Playable Teaser: Web is the most accessible. Providers can put their apps into the discovery, so anyone can give first try directly.
-- Collaborative Gaming: Ex. Twitch play pokemon, or http://clouddiablo.com/
-- Open Source: Those ant to play with technology, try to setup a cloud gaming service on your own.
+- Experience playing/hosting Cloud Gaming. Play app
+- Playable Teaser:Providers can put their apps into the discovery, so anyone can give first try directly.  Web is the most accessible. 
+- Collaborative Gaming: Ex. Twitch play pokemon, or http://clouddiablo.com/ . For people with less time but still want to finish the game.
+- Open Source: Try to setup a cloud gaming service on your own.
 - Plugable Cloud gaming module: it doesn't need to be a standalone website, which a 
 
 ## User Experience Goal:
@@ -44,11 +44,14 @@ Users can either spawn up a cloud service by themself or optionally attach your 
 
 ## Deployment
 
-After acquiring an Ubuntu server from any cloud provider (E.x `create_do.sh` to create a digital ocean instance), you can need to:
-1. Move the app to the same directory with `setup_remote.sh`
-2. Setup the `config.yaml` as described in the file.
-3. Run `setup_remote.sh $ip` on local given the ip to your host to directly deploy your application to the server with.
+Foremost, you need an Ubuntu instance from provider. For example, you can use `script/create_do.sh` to create a digital ocean instance
+After that:
+We need 3  in the same folder:
+1. `app` : a folder contains the app you want to deploy. For example, `DiabloII`
+2. `config.yaml` : app config, the app configuration on cloud-morph
+3. `setup_remote.sh`: a script to deploy your application to server
 
+Example:
 - `setup_remote.sh $ip`. Ex: `./setup_remote.sh 159.89.146.77`
 
 ### Deployment with setup file
