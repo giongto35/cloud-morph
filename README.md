@@ -6,18 +6,26 @@ Bring offline app to cloud, run directly on browser.
 
 ## Introduction
 
-CloudMorph is a decentralized cloud gaming/ cloud application service. It offers
-1. a concise technical stack to **develop**/**deploy** your own cloud gaming/ cloud application service. It enables all 
-2. It follows the idea of Cloud Gaming: application is run on remote server, screen and user input are streamed back and forth between clients and server in optimal way.
-3. A Mesh network: There are cloudapp providers and 
+CloudMorph is a decentralized cloud gaming/cloud application service. It still follows the idea of Cloud Gaming: application is run on remote server, screen and user input are streamed back and forth between clients and server in optimal way. In addition, it builds a decentralized network of cloudapp providers and cloudapp consumers, where providers can host their own cloudapp with given toolset and consumers can use any app in the network. 
 
 ## Usecases
 
-- Open Source: Want to play with technology, try to setup a cloud gaming service on your own.
-- Hosting Cloud gaming: The 
-- Hosting Collaborative Gaming: Ex. Twitch play pokemon, or http://clouddiablo.com/
+- Experience hosting Cloud gaming service on their own.
 - Playable Teaser: Web is the most accessible. Providers can put their apps into the discovery, so anyone can give first try directly.
+- Collaborative Gaming: Ex. Twitch play pokemon, or http://clouddiablo.com/
+- Open Source: Those ant to play with technology, try to setup a cloud gaming service on your own.
 - Plugable Cloud gaming module: it doesn't need to be a standalone website, which a 
+
+## User Experience Goal:
+My top goal is to enhance the "User Experience" For both Provider/Consumer:
+1. A concise technical stack to **develop**/**deploy** your own cloud gaming/ cloud application service.
+2. Generic: 
+- Run on WebBrowser, which are compatible for mobile web on Android/IOS.
+- Not rely on emulator/platform ([CloudRetro](https://github.com/giongto35/cloud-game) is ). In Cloud Morph, any window application can be
+3. A Mesh network: There are cloudapp providers and 
+4. Modularizable: 
+- CloudApp Core is packed to a Docker Image, with minimal interface for Video Streaming + Input Streaming. So it can be plugged with any Programming language like Python, not only Go as used in the repo. 
+- Web Frontend Plugin:
 
 ## User Experience Goal:
 - One line deployment for provider
