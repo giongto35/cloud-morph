@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/pprof"
@@ -18,12 +17,10 @@ import (
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
 	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/cws"
-	"github.com/giongto35/cloud-morph/pkg/common/servercfg"
 	"github.com/giongto35/cloud-morph/pkg/common/ws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudapp"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"gopkg.in/yaml.v2"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -107,7 +104,10 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	log.Println("Initialized ServiceClient")
 
 	s.chat.SendChatHistory(clientID)
-	s.updateClientApps(wsClient, s.GetApps())
+	apps, err := s.GetApps()
+	if err == nil {
+		s.updateClientApps(wsClient, apps)
+	}
 
 	go func(browserClient *cws.Client) {
 		browserClient.Listen()
@@ -139,10 +139,11 @@ func (s *Server) ListenAppListUpdate() {
 }
 
 func NewServer() *Server {
-	cfg, err := readConfig(configFilePath)
+	cfg, err := config.ReadConfig(configFilePath)
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("Config: %+v", cfg)
 
 	server := &Server{
 		wsClients:        map[string]*cws.Client{},
@@ -155,7 +156,9 @@ func NewServer() *Server {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		log.Println(w, "echo")
 	})
-	r.HandleFunc("/apps", server.GetAppsHandler)
+	if cfg.DiscoveryHost != "" {
+		r.HandleFunc("/apps", server.GetAppsHandler)
+	}
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
 	r.PathPrefix("/").HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -197,7 +200,9 @@ func NewServer() *Server {
 	server.appID = appID
 	log.Println("Registered with AppID", server.appID)
 
-	go server.ListenAppListUpdate()
+	if cfg.DiscoveryHost != "" {
+		go server.ListenAppListUpdate()
+	}
 	return server
 }
 
@@ -206,34 +211,6 @@ func (o *Server) Shutdown() {
 	if err != nil {
 		log.Println(err)
 	}
-}
-
-func readConfig(path string) (config.Config, error) {
-	cfgyml, err := ioutil.ReadFile(path)
-	if err != nil {
-		return config.Config{}, err
-	}
-
-	cfg := config.Config{}
-	err = yaml.Unmarshal(cfgyml, &cfg)
-
-	if cfg.AppName == "" {
-		cfg.AppName = cfg.WindowTitle
-	}
-	if cfg.StunTurn == "" {
-		cfg.StunTurn = servercfg.DefaultSTUNTURN
-	}
-	if cfg.ScreenWidth == 0 {
-		cfg.ScreenWidth = 800
-	}
-	if cfg.ScreenHeight == 0 {
-		cfg.ScreenHeight = 600
-	}
-	if cfg.IsWindowMode == nil {
-		boolTrue := true
-		cfg.IsWindowMode = &boolTrue
-	}
-	return cfg, err
 }
 
 func (o *Server) Handle() {
@@ -335,17 +312,22 @@ func NewDiscovery(discoveryHost string) *discoveryHandler {
 }
 
 func (s *Server) GetAppsHandler(w http.ResponseWriter, r *http.Request) {
-	apps, _ := json.Marshal(s.GetApps())
+	apps, err := s.GetApps()
+	if err != nil {
+		log.Println(err)
+	}
+
+	appsJSON, _ := json.Marshal(apps)
 	packet := ws.Packet{
 		PType: "UPDATEAPPLIST",
-		Data:  string(apps),
+		Data:  string(appsJSON),
 	}
 
 	packetBytes, _ := json.Marshal(packet)
 	w.Write(packetBytes)
 }
 
-func (s *Server) GetApps() []appDiscoveryMeta {
+func (s *Server) GetApps() ([]appDiscoveryMeta, error) {
 	return s.discoveryHandler.GetApps()
 }
 
@@ -361,7 +343,7 @@ func (s *Server) AppListUpdate() chan []appDiscoveryMeta {
 	return s.discoveryHandler.AppListUpdate()
 }
 
-func (d *discoveryHandler) GetApps() []appDiscoveryMeta {
+func (d *discoveryHandler) GetApps() ([]appDiscoveryMeta, error) {
 	type GetAppsResponse struct {
 		Apps []appDiscoveryMeta `json:"apps"`
 	}
@@ -369,13 +351,12 @@ func (d *discoveryHandler) GetApps() []appDiscoveryMeta {
 
 	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
 	if err != nil {
-		log.Println("Failed to register app")
-		return []appDiscoveryMeta{}
+		return []appDiscoveryMeta{}, errors.New("Failed to get app list")
 	}
 
 	json.NewDecoder(rawResp.Body).Decode(&resp)
 
-	return resp.Apps
+	return resp.Apps, nil
 }
 
 func (d *discoveryHandler) isNeedAppListUpdate(newApps []appDiscoveryMeta) bool {
@@ -397,7 +378,11 @@ func (d *discoveryHandler) AppListUpdate() chan []appDiscoveryMeta {
 	go func() {
 		// TODO: Change to subscription based
 		for range time.Tick(5 * time.Second) {
-			newApps := d.GetApps()
+			newApps, err := d.GetApps()
+			if err != nil {
+				log.Println(err)
+				continue
+			}
 			if d.isNeedAppListUpdate(newApps) {
 				log.Println("Update AppHosts: ", newApps)
 				updatedApps <- newApps

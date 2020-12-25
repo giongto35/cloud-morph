@@ -3,8 +3,8 @@ appFile: Game.exe
 windowTitle: Diablo
 hardwareKey: false
 appName: Diablo
-pageTitle: "Diablo - Cloud Morph Demo"
+pageTitle: "Diablo - A Cloud Morph Demo"
 appMode: collaborative
-discoveryHost: http://178.128.125.200:7700
+discoveryHost: http://discovery.cloudmorph.io:7700
 instanceAddr: 128.199.185.32:8080
 hasChat: true
