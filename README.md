@@ -1,8 +1,6 @@
 # CloudMorph
 
-**(IN DEVELOPMENT, if you find any issues + requests + technical design question/contribution, please help raise it)**
-
-Decentralized cloud gaming/cloud application service.
+**Decentralized cloud gaming/cloud application service.**
 
 ## Introduction
 
