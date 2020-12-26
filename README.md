@@ -6,39 +6,30 @@
 
 CloudMorph is a decentralized cloud gaming/cloud application service. It still follows the idea of Cloud Gaming: application is run on remote server, screen and user input are streamed back and forth between clients and server in optimal way. On top of that, it builds a decentralized network of cloudapp providers and cloudapp consumers, where providers can host their own cloudapp with given toolset and consumers can use any app in the network. 
 
+## Goal
+Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, which is a Cloud Gaming service on Retro Game hosted by myself, CloudMorph generalizes the system to bring any offline Window application to Cloud. The deployment of system is aimed to be simple with concise techstack and codebase. The goal is to create a distributed cloud application system when someone can contribute their offline application on the platform and other people can consume it.
+
 ## Usecases
 
-### For Developers
+##### For Developers
 - Experience playing/hosting Cloud Gaming on their own.
-- Open Source: Try to setup a cloud gaming service on your own.
-- Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized, so it can be put in different tech stack/ or run as a component.
+- Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized, so it can be extended in different tech stack.
 
-### For Consumers.
-- Collaborative Gaming: Ex. Twitch play pokemon, or http://clouddiablo.com/ . For people with less time but still want to finish the game.
+##### For Consumers.
 - Multi-platform: be able to run web-browser, mobile web.
+- Collaborative Gaming: Multiple people plays the same game. Ex. Twitch play pokemon, or http://clouddiablo.com/ - A cloudmorph demo.
 
-### For Providers
+##### For Providers
 - Playable Teaser:Providers can put their apps into the discovery, so anyone can give first try directly.
 
-## User Experience Goal:
-My top goal is to enhance the "User Experience" For both Provider/Consumer:
-1. A concise technical stack to **develop**/**deploy** your own cloud gaming/ cloud application service.
-2. Generic: 
-- Run on WebBrowser, which are compatible for mobile web on Android/IOS.
-- Not rely on emulator/platform ([CloudRetro](https://github.com/giongto35/cloud-game) is ). In Cloud Morph, any window application can be
-3. A Mesh network: There are cloudapp providers and 
-4. Modularizable: 
-- CloudApp Core is packed to a Docker Image, with minimal interface for Video Streaming + Input Streaming. So it can be plugged with any Programming language like Python, not only Go as used in the repo. 
-- Web Frontend Plugin:
+## Design Goal:
+1. **Mesh network**: Providers-Consumers over Peer To Peer communication.
+2. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
+3. **Generic/Cross-platform**: Run on WebBrowser, WebMobile. Target Window App instead of relying on gaming framework/emulator (like [CloudRetro](https://github.com/giongto35/cloud-game)).
+4. **Scalable**: Be able to horizontally scale by efficiently improvision service on headless machine.
+5. One line script deployment.
 
-## User Experience Goal:
-- One line deployment for provider
-- Cloud app modularization on headless machine: the architecture is designed in a way that 
-
-
-## History
-Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, which is a Cloud Gaming service on Retro Game hosted by myself, CloudMorph generalizes the system to bring any offline Window application to Cloud. The deployment of system is aimed to be simple with concise techstack and codebase.
-Users can either spawn up a cloud service by themself or optionally attach your hosting to our infrastructure. My goal is to create a distributed cloud application system when someone can contribute their offline application on the platform and other people can consume it.
+## Demo
 
 |                       Screenshot                       |                        Screenshot                         |
 | :----------------------------------------------------: | :-------------------------------------------------------: |
@@ -51,7 +42,7 @@ Users can either spawn up a cloud service by themself or optionally attach your 
 Foremost, you need an Ubuntu instance from provider. For example, you can use `script/create_do.sh` to create a digital ocean instance
 After that:
 We need 3  in the same folder:
-1. `app` : a folder contains the app you want to deploy. For example, `DiabloII`
+1. `apps` : a folder contains the app you want to deploy. For example, `DiabloII`
 2. `config.yaml` : app config, the app configuration on cloud-morph
 3. `setup_remote.sh`: a script to deploy your application to server
 
@@ -59,14 +50,13 @@ Example:
 - `setup_remote.sh $ip`. Ex: `./setup_remote.sh 159.89.146.77`
 
 ### Deployment with setup file
-- Some offline game/application requires installation. The best way I can think of is
-1. Start `interactive-wine.sh bash` will run bash with wine image we built.
-2. Copy 
+- Some offline game/application requires installation. The best flow I can think of is
+1. Run `interactive-wine.sh bash` and initialize the wine envinroment
 3. Check `example/roadrash/run.sh`
 
 
 ### Example
-There are Examples of setup for some applications. You only need to sp Due to copyright, I cannot attach some applications. What you need to do is 
+There are configuration examples without applications. You can search the app and put it in the same configuration folder.
 
 ## Development
 
@@ -122,26 +112,10 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 - C++ is chosen because it has good support for WindowAPI.
 - Golang is not really a crucial part in this design. It helps spawn Webserver conveniently. With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
 
-## Challenge
-- Sync:
-1) Problem: 
-- Goal: Setup the environment on local, push that environment to 
-- 1. Docker image, but it requires pushing to a repo, which is a bit troublesome
-- 2. Sync Docker volume
-- 3. 
- 
 ## Roadmap
 
-- I need help to get review on Architecture + performance optimization.
 - Fully Dockerize webserver, so it's easier to setup.
-- Build Pipeline, lower down number of steps to deployment.
 - Multiplex application sessions. Currently, one server can spawn only one application and all users access the same session. (Collaborative gameplay)
-- Decentralized service with discovery + load balancing + latency awareness layer.
-- Standardize component interaction. Currently packets are in comma-separated form.
+- Improve flow to deploy app needs intialization.
+- Performance improvement.
 - Packaging frontend as a component.
-
-## Challenge
-### Design
-### Technical
-- How to design user experience with setup file
-- How to design proper mesh network
