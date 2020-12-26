@@ -6,15 +6,18 @@ Bring offline app to cloud, run directly on browser.
 
 ## Introduction
 
-CloudMorph is a decentralized cloud gaming/cloud application service. It still follows the idea of Cloud Gaming: application is run on remote server, screen and user input are streamed back and forth between clients and server in optimal way. In addition, it builds a decentralized network of cloudapp providers and cloudapp consumers, where providers can host their own cloudapp with given toolset and consumers can use any app in the network. 
+CloudMorph is a decentralized cloud gaming/cloud application service. It still follows the idea of Cloud Gaming: application is run on remote server, screen and user input are streamed back and forth between clients and server in optimal way. On top of that, it builds a decentralized network of cloudapp providers and cloudapp consumers, where providers can host their own cloudapp with given toolset and consumers can use any app in the network. 
 
 ## Usecases
 
-- Experience playing/hosting Cloud Gaming. Play app
-- Playable Teaser:Providers can put their apps into the discovery, so anyone can give first try directly.  Web is the most accessible. 
+### For Developers
+### For Consumers
+- Experience playing/hosting Cloud Gaming on their own.
+- Plugable Cloud gaming module: it doesn't need to be a standalone website. 
 - Collaborative Gaming: Ex. Twitch play pokemon, or http://clouddiablo.com/ . For people with less time but still want to finish the game.
+### For Providers
 - Open Source: Try to setup a cloud gaming service on your own.
-- Plugable Cloud gaming module: it doesn't need to be a standalone website, which a 
+- Playable Teaser:Providers can put their apps into the discovery, so anyone can give first try directly.  Web is the most accessible. 
 
 ## User Experience Goal:
 My top goal is to enhance the "User Experience" For both Provider/Consumer:
@@ -30,7 +33,6 @@ My top goal is to enhance the "User Experience" For both Provider/Consumer:
 ## User Experience Goal:
 - One line deployment for provider
 - Cloud app modularization on headless machine: the architecture is designed in a way that 
-
 
 
 Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, which is a Cloud Gaming service on Retro Game hosted by myself, CloudMorph generalizes the system to bring any offline Window application to Cloud. The deployment of system is aimed to be simple with concise techstack and codebase.
