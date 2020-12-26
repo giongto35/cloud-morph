@@ -112,14 +112,13 @@ func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ss
 }
 
 func (c *Client) StreamListen() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Recovered when sent to close Image Channel")
+		}
+	}()
+
 	for packet := range c.videoStream {
-		// if c.rtcConn.videoTrack == nil {
-		// 	continue
-		// }
-		// if writeErr := c.videoTrack.WriteRTP(&packet); writeErr != nil {
-		// 	log.Println("Error in StreamListen: ", writeErr)
-		// 	return
-		// }
 		c.rtcConn.ImageChannel <- packet
 	}
 }

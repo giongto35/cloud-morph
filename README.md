@@ -1,15 +1,35 @@
 # CloudMorph
 
-**(IN DEVELOPMENT, if you find any issues + requests + technical design question/contribution, please help raise it)**
-
-Bring offline app to cloud, run directly on browser.
+**Decentralized cloud gaming/cloud application service.**
 
 ## Introduction
 
-CloudMorph is a concise technical stack to run your own cloud gaming/ cloud application service. It follows the idea of Cloud Gaming: application is run on remote server, screen and user input are streamed back and forth between clients and server.
+CloudMorph is a decentralized cloud gaming/cloud application service. It still follows the idea of Cloud Gaming: application is run on remote server, screen and user input are streamed back and forth between clients and server in optimal way. On top of that, it builds a decentralized network of cloudapp providers and cloudapp consumers, where providers can host their own cloudapp with given toolset and consumers can use any app in the network. 
 
-Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, which is a Cloud Gaming service on Retro Game hosted by myself, CloudMorph generalizes the system to bring any offline Window application to Cloud. The deployment of system is aimed to be simple with concise techstack and codebase.
-Users can either spawn up a cloud service by themself or optionally attach your hosting to our infrastructure. My goal is to create a distributed cloud application system when someone can contribute their offline application on the platform and other people can consume it.
+## Goal
+Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, which is a Cloud Gaming service on Retro Game hosted by myself, CloudMorph generalizes the system to bring any offline Window application to Cloud. The deployment of system is aimed to be simple with concise techstack and codebase. The goal is to create a distributed cloud application system when someone can contribute their offline application on the platform and other people can consume it.
+
+## Usecases
+
+##### For Developers
+- Experience playing/hosting Cloud Gaming on their own.
+- Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized, so it can be extended in different tech stack.
+
+##### For Consumers.
+- Multi-platform: be able to run web-browser, mobile web.
+- Collaborative Gaming: Multiple people plays the same game. Ex. Twitch play pokemon, or http://clouddiablo.com/ - A cloudmorph demo.
+
+##### For Providers
+- Playable Teaser:Providers can put their apps into the discovery, so anyone can give first try directly.
+
+## Design Goal:
+1. **Mesh network**: Providers-Consumers over Peer To Peer communication.
+2. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
+3. **Generic/Cross-platform**: Run on WebBrowser, WebMobile. Target Window App instead of relying on gaming framework/emulator (like [CloudRetro](https://github.com/giongto35/cloud-game)).
+4. **Scalable**: Be able to horizontally scale by efficiently improvision service on headless machine.
+5. One line script deployment.
+
+## Demo
 
 |                       Screenshot                       |                        Screenshot                         |
 | :----------------------------------------------------: | :-------------------------------------------------------: |
@@ -19,9 +39,24 @@ Users can either spawn up a cloud service by themself or optionally attach your 
 
 ## Deployment
 
-After acquiring an Ubuntu server from any cloud provider (E.x `create_do.sh` to create a digital ocean instance), you can run the below script on local given the ip to your host:
+Foremost, you need an Ubuntu instance from provider. For example, you can use `script/create_do.sh` to create a digital ocean instance
+After that:
+We need 3  in the same folder:
+1. `apps` : a folder contains the app you want to deploy. For example, `DiabloII`
+2. `config.yaml` : app config, the app configuration on cloud-morph
+3. `setup_remote.sh`: a script to deploy your application to server
 
+Example:
 - `setup_remote.sh $ip`. Ex: `./setup_remote.sh 159.89.146.77`
+
+### Deployment with setup file
+- Some offline game/application requires installation. The best flow I can think of is
+1. Run `interactive-wine.sh bash` and initialize the wine envinroment
+3. Check `example/roadrash/run.sh`
+
+
+### Example
+There are configuration examples without applications. You can search the app and put it in the same configuration folder.
 
 ## Development
 
@@ -36,13 +71,14 @@ Access to your local at
 
 Note: the wine application is run in Docker. You can run it without docker by changing `run-wine.sh` to `run-wine-nodocker.sh` in `server.go` for easier debuging.
 
+
 ## Design
 
 ![screenshot](docs/img/CloudUniverse.png)
 
 - When Webserver is started, Wine Application is spawned inside a container at the same time. However, in the future, Wine Application needs to support multiplex to run multiple application in the same VM.
 - Input captured from Client is sent to Virtual Machine over Websocket.
-- A C++ script (synckey.exe) will listen to the event and simulates Window event to Wine Application by WinAPI.
+- A C++ script (syncinput.exe) will listen to the event and simulates Window event to Wine Application by WinAPI.
 - Application screen is captured in a Virtual Display Frame Buffer, which is later piped to FFMPEG.
 - FFMPEG will produced the screen stream to a VPX RTP stream.
 
@@ -55,6 +91,7 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 
 - First, I consider writing the whole system in Window. However, Window lacks programming utilities and Linux is more comfortable to me.
 - Wine is a Window Virtual Machine. Its performance is proven in Steam PlayOnLinux.
+- I may revise on this decision: 
 
 #### Headless server
 
@@ -77,10 +114,8 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 
 ## Roadmap
 
-- I need help to get review on Architecture + performance optimization.
 - Fully Dockerize webserver, so it's easier to setup.
-- Build Pipeline, lower down number of steps to deployment.
 - Multiplex application sessions. Currently, one server can spawn only one application and all users access the same session. (Collaborative gameplay)
-- Decentralized service with discovery + load balancing + latency awareness layer.
-- Standardize component interaction. Currently packets are in comma-separated form.
+- Improve flow to deploy app needs intialization.
+- Performance improvement.
 - Packaging frontend as a component.

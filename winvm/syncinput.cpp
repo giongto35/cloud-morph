@@ -12,6 +12,8 @@ int screenWidth, screenHeight;
 int server; // TODO: Move to local variable
 chrono::_V2::system_clock::time_point last_ping;
 bool done;
+HWND hwnd;
+char *winTitle;
 
 const byte MOUSE_MOVE = 0;
 const byte MOUSE_DOWN = 1;
@@ -81,7 +83,7 @@ HWND getWindowByTitle(char *pattern)
 }
 
 // isDxGame use hardware keys, it's special case
-HWND sendIt(HWND hwnd, int key, bool state, bool isDxGame)
+HWND sendIt(int key, bool state, bool isDxGame)
 {
     cout << "Sending key " << ' ' << key << endl;
     HWND temp = SetActiveWindow(hwnd);
@@ -95,7 +97,6 @@ HWND sendIt(HWND hwnd, int key, bool state, bool isDxGame)
     ip.type = INPUT_KEYBOARD;
     ip.ki.time = 0;
     ip.ki.dwExtraInfo = 0;
-    cout << "pre" << key << ' ';
     if (isDxGame)
     {
         if (key == VK_UP || key == VK_DOWN || key == VK_LEFT || key == VK_RIGHT)
@@ -146,7 +147,7 @@ void MouseMove(int x, int y)
     SendInput(1, &Input, sizeof(INPUT));
 }
 
-void sendMouseDown(HWND hwnd, bool isLeft, byte state, float x, float y)
+void sendMouseDown(bool isLeft, byte state, float x, float y)
 {
     cout << x << ' ' << y << endl;
     INPUT Input = {0};
@@ -156,6 +157,7 @@ void sendMouseDown(HWND hwnd, bool isLeft, byte state, float x, float y)
 
     if (isLeft && state == MOUSE_DOWN)
     {
+
         Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_ABSOLUTE;
     }
     else if (isLeft && state == MOUSE_UP)
@@ -241,7 +243,7 @@ void formatWindow(HWND hwnd)
     cout << "Window formated" << endl;
 }
 
-void *healthcheck(void *args)
+void *thealthcheck(void *args)
 {
     while (true)
     {
@@ -249,18 +251,35 @@ void *healthcheck(void *args)
         auto cur = chrono::system_clock::now();
         chrono::duration<double> elapsed_seconds = cur - last_ping;
         cout << elapsed_seconds.count() << endl;
-        if (elapsed_seconds.count() > 5)
+        if (elapsed_seconds.count() > 6)
         {
             // socket is died
             cout << "Broken pipe" << endl;
             done = true;
             return NULL;
         }
-        Sleep(3000);
+        Sleep(2000);
     }
 }
 
-void processEvent(HWND hwnd, string ev, bool isDxGame)
+void *thwndupdate(void *args)
+{
+    HWND oldhwnd;
+    while (true)
+    {
+        cout << "Finding title " << winTitle << endl;
+        hwnd = getWindowByTitle(winTitle);
+        if (hwnd != oldhwnd)
+        {
+            formatWindow(hwnd);
+            cout << "Updated HWND: " << hwnd << endl;
+            oldhwnd = hwnd;
+        }
+        Sleep(2000);
+    }
+}
+
+void processEvent(string ev, bool isDxGame)
 {
     // Mouse payload
     if (ev[0] == 'K')
@@ -268,7 +287,7 @@ void processEvent(HWND hwnd, string ev, bool isDxGame)
         Key key = parseKeyPayload(ev.substr(1, ev.length() - 1));
         cout << "Key: " << key.key << " " << key.state << endl;
         // use key
-        sendIt(hwnd, key.key, key.state, isDxGame); //notepad ID
+        sendIt(key.key, key.state, isDxGame); //notepad ID
         cout << '\n'
              << "Press a key to continue...";
     }
@@ -277,9 +296,7 @@ void processEvent(HWND hwnd, string ev, bool isDxGame)
         Mouse mouse = parseMousePayload(ev.substr(1, ev.length() - 1));
         float x = mouse.x * screenWidth / mouse.relwidth;
         float y = mouse.y * screenHeight / mouse.relheight;
-        cout << "Mouse: " << ' ' << mouse.state << ' ' << x << ' ' << y << ' ' << screenWidth << ' '
-             << screenHeight << ' ' << mouse.relwidth << ' ' << mouse.relheight << endl;
-        sendMouseDown(hwnd, mouse.isLeft, mouse.state, x, y);
+        sendMouseDown(mouse.isLeft, mouse.state, x, y);
     }
 }
 
@@ -287,7 +304,7 @@ int main(int argc, char *argv[])
 {
     server = clientConnect();
 
-    char *winTitle = (char *)"Notepad";
+    winTitle = (char *)"Notepad";
     bool isDxGame = false;
     if (argc > 1)
     {
@@ -300,16 +317,8 @@ int main(int argc, char *argv[])
             isDxGame = true;
         }
     }
-    cout << "Finding title " << winTitle << endl;
-    HWND hwnd = 0;
-    hwnd = getWindowByTitle(winTitle);
-    while (hwnd == 0)
-    {
-        hwnd = getWindowByTitle(winTitle);
-        Sleep(3000);
-    }
 
-    cout << "HWND: " << hwnd << endl;
+    hwnd = 0;
     cout << "Connected " << server << endl;
     getDesktopResolution(screenWidth, screenHeight);
     cout << "width " << screenWidth << " "
@@ -320,8 +329,11 @@ int main(int argc, char *argv[])
     // setup socket watcher. TODO: How to check if a socket pipe is broken?
     done = false;
     last_ping = chrono::system_clock::now();
-    pthread_t th;
-    int t = pthread_create(&th, NULL, healthcheck, NULL);
+    pthread_t th1;
+    pthread_t th2;
+
+    int t1 = pthread_create(&th1, NULL, thealthcheck, NULL);
+    int t2 = pthread_create(&th2, NULL, thwndupdate, NULL);
 
     int recv_size;
     char buf[2000];
@@ -354,9 +366,10 @@ int main(int argc, char *argv[])
         try
         {
             stringstream ss(buffer);
+
             while (getline(ss, ev, '|'))
             {
-                processEvent(hwnd, ev, isDxGame);
+                processEvent(ev, isDxGame);
             }
         }
         catch (const std::exception &e)
@@ -372,19 +385,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
-// module github.com/giongto35/cloud-morph
-
-// go 1.14
-
-// require (
-// 	github.com/gofrs/uuid v3.3.0+incompatible
-// 	github.com/gorilla/mux v1.8.0
-// 	github.com/gorilla/websocket v1.4.2
-// 	github.com/pion/rtp v1.6.0
-// 	github.com/pion/webrtc/v2 v2.2.24
-// 	go.etcd.io/etcd v0.0.0-00010101000000-000000000000
-// 	gopkg.in/yaml.v2 v2.3.0
-// )
-
-// replace go.etcd.io/etcd => go.etcd.io/etcd v0.0.0-20200520232829-54ba9589114f

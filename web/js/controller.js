@@ -20,26 +20,12 @@
   const chatd = document.getElementById("chat");
   const numplayers = document.getElementById("numplayers");
   const discoverydropdown = document.getElementById("discoverydropdown");
-  const appTitle = document.getElementById("appTitle");
+  // const appTitle = document.getElementById("appTitle");
   const appscreen = document.getElementById("app-screen");
+  let curAppID = 0;
 
   var offerst;
-  // const offer = new RTCSessionDescription(JSON.parse(atob(data)));
-  // await pc.setRemoteDescription(offer);
   var appList = [];
-
-  const init = () => {
-    connect(location.protocol, location.host);
-    const timeoutMs = 1111;
-    const address = `apps`;
-    ajax
-      .fetch(address, { method: "GET", redirect: "follow" }, timeoutMs)
-      .then((data) => {
-        data.json().then((body) => {
-          updateAppList(body);
-        });
-      });
-  };
 
   const onConnectionReady = () => {
     // start
@@ -59,25 +45,7 @@
 
     log.info("[control] app start");
 
-    // setState(app.state.game);
-
-    // const promise = gameScreen[0].play();
-    // if (promise !== undefined) {
-    //     promise.then(() => log.info('Media can autoplay'))
-    //         .catch(error => {
-    //             // Usually error happens when we autoplay unmuted video, browser requires manual play.
-    //             // We already muted video and use separate audio encoding so it's fine now
-    //             log.error('Media Failed to autoplay');
-    //             log.error(error)
-    //             // TODO: Consider workaround
-    //         });
-    // }
-
-    // TODO get current game from the URL and not from the list?
-    // if we are opening a share link it will send the default game name to the server
-    // currently it's a game with the index 1
-    // on the server this game is ignored and the actual game will be extracted from the share link
-    // so there's no point in doing this and this' really confusing
+    // TODO: Remove
     socket.start(gameList.getCurrentGame(), env.isMobileDevice(), room.getId());
 
     // // end clear
@@ -112,6 +80,13 @@
         keyCode: e.keyCode,
       }),
     });
+  });
+
+  discoverydropdown.addEventListener("change", () => {
+    app = appList[discoverydropdown.selectedIndex];
+    curAppID = app.id;
+    socket.connect("http", app.addr);
+    updatePage(app);
   });
 
   appscreen.addEventListener("mousedown", (e) => {
@@ -221,6 +196,7 @@
     numplayers.innerText = "Number of players: " + sNumPlayers;
   };
 
+  // TODO: Update this check before joining a room
   // function isConnectable(addr) {
   //   const timeoutMs = 1111;
   //   const latency = await ajax.fetch(`${app.addr}/echo`, {method: "GET", redirect: "follow"}, timeoutMs);
@@ -243,17 +219,21 @@
       const latencies = Object.assign({}, ...servers);
       console.log("[ping] <->", latencies);
 
-      for (app of appList) {
+      for (const idx of appList.keys()) {
+        const app = appList[idx];
         appEntry = document.createElement("option");
         appEntry.innerText = app.app_name + "-" + latencies[app.addr] + "ms";
         discoverydropdown.appendChild(appEntry);
+        if (app.id == curAppID) {
+          discoverydropdown.selectedIndex = idx;
+        }
       }
     });
   };
 
   const updatePage = (app) => {
     chatd.style.visibility = app.has_chat;
-    appTitle.innerText = app.page_title;
+    // appTitle.innerText = app.page_title;
     numplayers.style.visibility = app.collaborative;
   };
 

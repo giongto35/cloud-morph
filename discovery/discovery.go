@@ -155,12 +155,13 @@ func (s *server) refineAppsList() {
 	// deduplicate
 	apps := s.discovery.getApps()
 	for _, app := range apps {
-		if app, ok := appsMap[app.Addr]; ok {
-			fmt.Println("dedup", app)
+		if _, ok := appsMap[app.Addr]; ok {
+			log.Println("Deduplication ", app)
 			// if existed => remove the redundant
 			err := s.discovery.removeApp(app.ID)
 			if err != nil {
-				return
+				log.Println(err)
+				continue
 			}
 			continue
 		}
@@ -249,6 +250,7 @@ func NewServer() server {
 	discovery := NewDiscovery(NewStorage(etcdAddr))
 	server.httpServer = httpServer
 	server.discovery = discovery
+	go server.refineAppsList()
 
 	return server
 }

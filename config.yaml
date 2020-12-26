@@ -1,23 +1,13 @@
-path: /
-appFile: notepad
-windowTitle: Notepad
-hardwareKey: false #Direct X Input use different input set
-appName: Notepad
-pageTitle: "Cloud Morph Demo"
-appMode: collaborative #app mode: collaborative/single (ex. collaborative: multiple user using same game session)
-# discoveryHost: http://178.128.125.200:7700
-discoveryHost: http://127.0.0.1:7700
-instanceAddr: 127.0.0.1:8080 #address of a cloud service instance
-hasChat: true
-# path: /apps/samurai
-# appFile: SSVS.exe
-# windowTitle: SAMURAI
-# hardwareKey: true #Direct X Input use different input set
-# appMode: collaborative #collaborative app mode (multiple user using same app session)
-
-#path: /apps
-#appFile: virtuacop2.exe
-#windowTitle: VIRT
-#path: /apps/Photoshop
-#appFile: PhotoshopCS6Portable.exe
-#windowTitle: Photoshop
+path: /apps/ # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
+appFile: Notepad.exe # File Name of the app in the directory
+windowTitle: Notepad # Window Title: not to show, it's the substring of title to help specify the running program in OS
+pageTitle: "Notepad - A Cloud Morph Demo" # Page Title: To display on webpage
+appName: Notepad # App name: to show in discovery
+appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
+hasChat: true # Turn on chat
+isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
+#hardwareKey: false # Some game using DirectX needs hardward key. Turn this flag on to receive the input
+#screenWidth: 800 # Optional: Default to be: 800
+#screenHeight: 600 # Optional: Default to be: 600
+#discoveryHost: http://discovery.cloudmorph.io:7700 # Optional: to be discoverable if you plug-in to the discovery server
+#instanceAddr: clouddiablo.com # Address of a cloud service instance, discovery can find
