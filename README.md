@@ -2,7 +2,7 @@
 
 **(IN DEVELOPMENT, if you find any issues + requests + technical design question/contribution, please help raise it)**
 
-Bring offline app to cloud, run directly on browser.
+Decentralized cloud gaming/cloud application service.
 
 ## Introduction
 
@@ -13,7 +13,7 @@ CloudMorph is a decentralized cloud gaming/cloud application service. It still f
 ### For Developers
 - Experience playing/hosting Cloud Gaming on their own.
 - Open Source: Try to setup a cloud gaming service on your own.
-- Plugable Cloud gaming module: The core cloud gaming mechanism is packaged: can put in different tech stack/ Programming language; or run as a component on a website.
+- Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized, so it can be put in different tech stack/ or run as a component.
 
 ### For Consumers.
 - Collaborative Gaming: Ex. Twitch play pokemon, or http://clouddiablo.com/ . For people with less time but still want to finish the game.

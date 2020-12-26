@@ -1,4 +1,4 @@
-# Deploy to Remote server. Ex: setup_remote.sh 128.199.185.32 apps/DiabloII
+# Deploy to Remote server.
 
 RPATH=/root
 ssh root@$1 "cd $RPATH;git clone -b Fix-chore https://github.com/giongto35/cloud-morph.git"

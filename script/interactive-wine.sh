@@ -5,7 +5,7 @@
 echo $1
 echo $2
 
-apppath="$(pwd)"/winvm/apps
+apppath="$(pwd)"/../winvm/apps
 if [ "$2" != "" ]; then
     apppath=$2
 fi
