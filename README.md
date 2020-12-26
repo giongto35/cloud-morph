@@ -11,13 +11,16 @@ CloudMorph is a decentralized cloud gaming/cloud application service. It still f
 ## Usecases
 
 ### For Developers
-### For Consumers
 - Experience playing/hosting Cloud Gaming on their own.
-- Plugable Cloud gaming module: it doesn't need to be a standalone website. 
-- Collaborative Gaming: Ex. Twitch play pokemon, or http://clouddiablo.com/ . For people with less time but still want to finish the game.
-### For Providers
 - Open Source: Try to setup a cloud gaming service on your own.
-- Playable Teaser:Providers can put their apps into the discovery, so anyone can give first try directly.  Web is the most accessible. 
+- Plugable Cloud gaming module: The core cloud gaming mechanism is packaged: can put in different tech stack/ Programming language; or run as a component on a website.
+
+### For Consumers.
+- Collaborative Gaming: Ex. Twitch play pokemon, or http://clouddiablo.com/ . For people with less time but still want to finish the game.
+- Multi-platform: be able to run web-browser, mobile web.
+
+### For Providers
+- Playable Teaser:Providers can put their apps into the discovery, so anyone can give first try directly.
 
 ## User Experience Goal:
 My top goal is to enhance the "User Experience" For both Provider/Consumer:
@@ -35,6 +38,7 @@ My top goal is to enhance the "User Experience" For both Provider/Consumer:
 - Cloud app modularization on headless machine: the architecture is designed in a way that 
 
 
+## History
 Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, which is a Cloud Gaming service on Retro Game hosted by myself, CloudMorph generalizes the system to bring any offline Window application to Cloud. The deployment of system is aimed to be simple with concise techstack and codebase.
 Users can either spawn up a cloud service by themself or optionally attach your hosting to our infrastructure. My goal is to create a distributed cloud application system when someone can contribute their offline application on the platform and other people can consume it.
 
