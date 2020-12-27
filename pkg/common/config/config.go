@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 
@@ -57,7 +58,7 @@ func ReadConfig(path string) (Config, error) {
 	}
 	if cfg.InstanceAddr == "" {
 		ip, _ := getLocalIP()
-		cfg.InstanceAddr = ip.String()
+		cfg.InstanceAddr = fmt.Sprintf("http://%s:%s", ip.String(), "8080")
 	}
 	return cfg, err
 }
