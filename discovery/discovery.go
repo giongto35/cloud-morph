@@ -138,7 +138,6 @@ func (d *appDiscovery) getApps() []appDiscoveryMeta {
 	}
 
 	for _, rawApp := range rawApps {
-		fmt.Println(string(rawApp))
 		err := json.Unmarshal(rawApp, &app)
 		if err != nil {
 			continue
@@ -149,23 +148,55 @@ func (d *appDiscovery) getApps() []appDiscoveryMeta {
 	return apps
 }
 
-func (s *server) refineAppsList() {
-	appsMap := map[string]appDiscoveryMeta{}
-
-	// deduplicate
-	apps := s.discovery.getApps()
-	for _, app := range apps {
-		if _, ok := appsMap[app.Addr]; ok {
-			log.Println("Deduplication ", app)
-			// if existed => remove the redundant
-			err := s.discovery.removeApp(app.ID)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
+func (s *server) isAlive(addr string) bool {
+	for i := 1; i < 5; i++ {
+		response, err := http.Get(fmt.Sprintf("%s/%s", addr, "echo"))
+		if err != nil {
 			continue
 		}
-		appsMap[app.Addr] = app
+		response.Body.Close()
+
+		if response.StatusCode == http.StatusOK {
+			return true
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	return false
+}
+
+func (s *server) refineAppsList() {
+	for range time.Tick(5 * time.Second) {
+		appsMap := map[string]appDiscoveryMeta{}
+
+		// Deduplicate
+		apps := s.discovery.getApps()
+		for _, app := range apps {
+			if _, ok := appsMap[app.Addr]; ok {
+				log.Println("Removed duplicated ", app)
+				// if existed => remove the redundant
+				err := s.discovery.removeApp(app.ID)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				continue
+			}
+			appsMap[app.Addr] = app
+		}
+
+		// Remove dead services
+		for _, app := range apps {
+			if !s.isAlive(app.Addr) {
+				log.Println("Removed Dead service ", app)
+				err := s.discovery.removeApp(app.ID)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				continue
+			}
+		}
 	}
 }
 

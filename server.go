@@ -350,8 +350,9 @@ func (d *discoveryHandler) GetApps() ([]appDiscoveryMeta, error) {
 	var resp GetAppsResponse
 
 	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
+	fmt.Println(d.discoveryHost + "/get-apps")
 	if err != nil {
-		return []appDiscoveryMeta{}, errors.New("Failed to get app list")
+		return []appDiscoveryMeta{}, err
 	}
 
 	json.NewDecoder(rawResp.Body).Decode(&resp)
