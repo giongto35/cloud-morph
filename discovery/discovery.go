@@ -27,10 +27,6 @@ type kvstorage struct {
 	kv clientv3.KV
 }
 
-// type appHost struct {
-// 	Addr    string `json:"addr"`
-// 	AppName string `json:"app_name"`
-// }
 type appDiscoveryMeta struct {
 	ID        string `json:"id"`
 	AppName   string `json:"app_name"`
