@@ -5,6 +5,5 @@ hardwareKey: false
 appName: Diablo
 pageTitle: "Diablo - A Cloud Morph Demo"
 appMode: collaborative
-discoveryHost: http://discovery.cloudmorph.io:7700
-instanceAddr: 128.199.185.32:8080
+discoveryHost: http://discovery.cloudmorph.io
 hasChat: true

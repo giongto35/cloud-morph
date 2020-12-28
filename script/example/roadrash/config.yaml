@@ -1,0 +1,11 @@
+path: /root/.wine/drive_c/Program Files (x86)/CGN/Road Rash/
+appFile: ROADRASH.exe
+windowTitle: "Road Rash"
+hardwareKey: false
+appName: RoadRash
+pageTitle: "Cloud Morph Demo"
+appMode: collaborative
+hasChat: true
+screenWidth: 640
+screenHeight: 460
+isWindowMode: false
