@@ -348,7 +348,7 @@ func (d *discoveryHandler) GetApps() ([]appDiscoveryMeta, error) {
 	}
 	var resp GetAppsResponse
 
-	rawResp, err := d.httpClient.Get("http://" + d.discoveryHost + "/get-apps")
+	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
 	if err != nil {
 		return []appDiscoveryMeta{}, err
 	}
@@ -400,7 +400,7 @@ func (d *discoveryHandler) Register(meta appDiscoveryMeta) (string, error) {
 		return "", nil
 	}
 
-	resp, err := d.httpClient.Post("http://"+d.discoveryHost+"/register", "application/json", bytes.NewBuffer(reqBytes))
+	resp, err := d.httpClient.Post(d.discoveryHost+"/register", "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
 		return "", fmt.Errorf("Failed to register app. Err: %s", err.Error())
 	}
