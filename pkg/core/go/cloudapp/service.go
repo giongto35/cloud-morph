@@ -235,6 +235,12 @@ func (s *Service) GetSSRC() uint32 {
 
 func (s *Service) Handle() {
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Println("Recovered when sent to closed Video Stream channel")
+			}
+		}()
+
 		for p := range s.ccApp.VideoStream() {
 			for _, client := range s.clients {
 				client.videoStream <- p
