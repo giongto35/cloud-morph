@@ -5,9 +5,9 @@ pageTitle: "Notepad - A Cloud Morph Demo" # Page Title: To display on webpage
 appName: Notepad # App name: to show in discovery
 appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
 hasChat: true # Turn on chat
-isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
 #hardwareKey: false # Some game using DirectX needs hardward key. Turn this flag on to receive the input
 #screenWidth: 800 # Optional: Default to be: 800
 #screenHeight: 600 # Optional: Default to be: 600
-#discoveryHost: http://discovery.cloudmorph.io:7700 # Optional: to be discoverable if you plug-in to the discovery server
+#isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
+#discoveryHost: http://discovery.cloudmorph.io # Optional: to be discoverable if you plug-in to the discovery server
 #instanceAddr: clouddiablo.com # Address of a cloud service instance, discovery can find
