@@ -1,2 +1,4 @@
-# example
-./setup_remote.sh 128.199.000.000 apps/DiabloII
+# Example
+Run this line in command line  
+
+./setup_remote.sh x.x.x.x apps/DiabloII
