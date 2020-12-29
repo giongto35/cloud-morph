@@ -1,7 +1,7 @@
 # Deploy to Remote server.
 
 RPATH=zsq
-ssh zsq@$1 "cd $RPATH;git clone --branch example-script https://github.com/ShanHuaSHa/cloud-morph.git"
+ssh zsq@$1 "cd $RPATH;git clone --branch example-script https://github.com/ShanHuaSHa/cloud-morph.git test"
 rsync ./config.yaml zsq@$1:cloud-morph/
 ssh zsq@$1 "cd $RPATH/cloud-morph; ./setup.sh"
 rsync -r $2 zsq@$1:$RPATH/cloud-morph/winvm/apps

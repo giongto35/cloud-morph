@@ -6,11 +6,12 @@ apt-get update
 #!/usr/bin/env bash
 
 # install docker
-curl -fsSL https://get.docker.com -o get-docker.sh
+sudo curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
-apt-get install -y golang-go
+sudo apt-get install -y golang-go
 go build server.go
 mkdir -p ./winvm/apps/
+# shellcheck disable=SC2164
 cd ./winvm
 docker build . -t syncwine
 
