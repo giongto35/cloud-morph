@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"log"
@@ -350,7 +349,6 @@ func (d *discoveryHandler) GetApps() ([]appDiscoveryMeta, error) {
 	var resp GetAppsResponse
 
 	rawResp, err := d.httpClient.Get(d.discoveryHost + "/get-apps")
-	fmt.Println(d.discoveryHost + "/get-apps")
 	if err != nil {
 		return []appDiscoveryMeta{}, err
 	}
@@ -404,7 +402,7 @@ func (d *discoveryHandler) Register(meta appDiscoveryMeta) (string, error) {
 
 	resp, err := d.httpClient.Post(d.discoveryHost+"/register", "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
-		return "", errors.New("Failed to register app")
+		return "", fmt.Errorf("Failed to register app. Err: %s", err.Error())
 	}
 	var appID string
 	err = json.NewDecoder(resp.Body).Decode(&appID)

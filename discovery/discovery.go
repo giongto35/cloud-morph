@@ -27,10 +27,6 @@ type kvstorage struct {
 	kv clientv3.KV
 }
 
-// type appHost struct {
-// 	Addr    string `json:"addr"`
-// 	AppName string `json:"app_name"`
-// }
 type appDiscoveryMeta struct {
 	ID        string `json:"id"`
 	AppName   string `json:"app_name"`
@@ -150,8 +146,9 @@ func (d *appDiscovery) getApps() []appDiscoveryMeta {
 
 func (s *server) isAlive(addr string) bool {
 	for i := 1; i < 5; i++ {
-		response, err := http.Get(fmt.Sprintf("%s/%s", addr, "echo"))
+		response, err := http.Get(fmt.Sprintf("http://%s/%s", addr, "echo"))
 		if err != nil {
+			log.Println(err)
 			continue
 		}
 		response.Body.Close()

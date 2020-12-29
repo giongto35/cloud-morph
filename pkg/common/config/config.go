@@ -58,7 +58,7 @@ func ReadConfig(path string) (Config, error) {
 	}
 	if cfg.InstanceAddr == "" {
 		ip, _ := getLocalIP()
-		cfg.InstanceAddr = fmt.Sprintf("http://%s:%s", ip.String(), "8080")
+		cfg.InstanceAddr = fmt.Sprintf("%s:%s", ip.String(), "8080")
 	}
 	return cfg, err
 }
