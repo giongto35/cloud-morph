@@ -168,6 +168,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 		}
 	})
 
+	// 发送ice候选
 	w.connection.OnICECandidate(func(iceCandidate *webrtc.ICECandidate) {
 		if iceCandidate != nil {
 			log.Println("OnIceCandidate:", iceCandidate.ToJSON().Candidate)
@@ -225,6 +226,7 @@ func (w *WebRTC) SetRemoteSDP(remoteSDP string) error {
 	return nil
 }
 
+// 添加一个ice候补
 func (w *WebRTC) AddCandidate(candidate string) error {
 	var iceCandidate webrtc.ICECandidateInit
 	err := Decode(candidate, &iceCandidate)
@@ -269,6 +271,7 @@ func (w *WebRTC) IsConnected() bool {
 	return w.isConnected
 }
 
+// 开启流，包括视频流和音频流
 func (w *WebRTC) startStreaming(vp8Track *webrtc.Track, opusTrack *webrtc.Track) {
 	log.Println("Start streaming")
 	// receive frame buffer
@@ -317,6 +320,7 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.Track, opusTrack *webrtc.Track)
 	}()
 }
 
+// 计算FPS
 func (w *WebRTC) calculateFPS() int {
 	elapsedTime := time.Now().Sub(w.lastTime)
 	w.lastTime = time.Now()

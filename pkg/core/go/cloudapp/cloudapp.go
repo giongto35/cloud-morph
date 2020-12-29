@@ -128,7 +128,7 @@ func (c *ccImpl) launchAppVM(rtpPort int, cfg config.Config) chan struct{} {
 	var stderr bytes.Buffer
 	var params []string
 
-	log.Println("execing run-wine.sh")
+	log.Println("execing run-wine-nodocker.sh")
 	// TODO: refactor to key value
 	params = []string{cfg.Path, cfg.AppFile, cfg.WindowTitle}
 	if cfg.HWKey {
@@ -144,7 +144,7 @@ func (c *ccImpl) launchAppVM(rtpPort int, cfg config.Config) chan struct{} {
 	}
 
 	fmt.Println("params: ", params)
-	cmd = exec.Command("./run-wine.sh", params...)
+	cmd = exec.Command("./run-wine-nodocker.sh", params...)
 
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr

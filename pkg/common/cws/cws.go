@@ -28,7 +28,7 @@ type Client struct {
 // WSPacket represents a websocket packet
 type WSPacket struct {
 	Type string `json:"type"`
-	// TODO: Make Data generic: map[string]interface{} for more usecases
+	// TODO: Make Data generic: map[string]interface{} for more use cases
 	Data string `json:"data"`
 
 	PacketID string `json:"packet_id"`
@@ -121,10 +121,13 @@ func (c *Client) Receive(id string, f func(request WSPacket) (response WSPacket)
 // SyncSend sends a packet and wait for callback till the packet comes back
 func (c *Client) SyncSend(request WSPacket) (response WSPacket) {
 	res := make(chan WSPacket)
+	// 把resp写入res中
 	f := func(resp WSPacket) {
 		res <- resp
 	}
 	c.Send(request, f)
+
+	// 把res写出
 	return <-res
 }
 
