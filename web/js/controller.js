@@ -93,7 +93,6 @@
     x = e.offsetX;
     y = e.offsetY;
     boundRect = appscreen.getBoundingClientRect();
-    console.log(e.offsetX, e.offsetY);
     socket.send({
       type: "MOUSEDOWN",
       data: JSON.stringify({
@@ -110,7 +109,6 @@
     x = e.offsetX;
     y = e.offsetY;
     boundRect = appscreen.getBoundingClientRect();
-    console.log(e.offsetX, e.offsetY);
     socket.send({
       type: "MOUSEUP",
       data: JSON.stringify({

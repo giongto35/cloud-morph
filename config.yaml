@@ -9,5 +9,5 @@ hasChat: true # Turn on chat
 #screenWidth: 800 # Optional: Default to be: 800
 #screenHeight: 600 # Optional: Default to be: 600
 #isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
-#discoveryHost: http://discovery.cloudmorph.io # Optional: to be discoverable if you plug-in to the discovery server
+discoveryHost: http://discovery.cloudmorph.io # Optional: to be discoverable if you plug-in to the discovery server
 #instanceAddr: clouddiablo.com # Address of a cloud service instance, discovery can find
