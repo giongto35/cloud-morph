@@ -1,3 +1,3 @@
-log.setLevel('log.level', 'debug');
+log.setLevel("log.level", "debug");
 
-socket.init();
+socket.connect(location.protocol, location.host);

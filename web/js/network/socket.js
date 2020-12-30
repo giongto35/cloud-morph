@@ -29,10 +29,6 @@ const socket = (() => {
   let conn;
   let curPacketId = "";
 
-  const init = () => {
-    connect(location.protocol, location.host);
-  };
-
   const connect = (protocol, host) => {
     // const params = new URLSearchParams({room_id: roomId, zone: zone}).toString()
     // const address = `${location.protocol !== 'https:' ? 'ws' : 'wss'}://${location.host}/ws`;
@@ -54,8 +50,9 @@ const socket = (() => {
       const data = JSON.parse(response.data);
       const message = data.type;
 
+      log.info(message);
       switch (message) {
-        case "init":
+        case "init_media_stream":
           event.pub(MEDIA_STREAM_INITIALIZED, { stunturn: data.data });
           break;
         case "offer":
@@ -81,8 +78,11 @@ const socket = (() => {
         case "NUMPLAYER":
           event.pub(NUM_PLAYER, { numplayers: data.data });
           break;
+        case "INIT":
+          event.pub(CLIENT_INIT, { data: data.data });
+          break;
         case "UPDATEAPPLIST":
-          event.pub(UPDATE_APP_LIST, { appData: data.data });
+          event.pub(UPDATE_APP_LIST, { data: data.data });
           break;
       }
     };
@@ -112,7 +112,6 @@ const socket = (() => {
   // const quit = (roomId) => send({"id": "quit", "data": "", "room_id": roomId});
 
   return {
-    init: init,
     send: send,
     latency: latency,
     start: start,

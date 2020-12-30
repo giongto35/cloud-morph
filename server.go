@@ -67,6 +67,11 @@ type appDiscoveryMeta struct {
 	PageTitle string `json:"page_title"`
 }
 
+type initData struct {
+	CurAppID string             `json:"cur_app_id"`
+	Apps     []appDiscoveryMeta `json:"apps"`
+}
+
 // WSO handles all connections from user/frontend to coordinator
 func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	log.Println("A user is connecting...")
@@ -102,12 +107,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	serviceClient.Route(s.capp.GetSSRC())
 	log.Println("Initialized ServiceClient")
 
-	s.chat.SendChatHistory(clientID)
-	apps, err := s.GetApps()
-	if err == nil {
-		s.updateClientApps(wsClient, apps)
-	}
-
+	s.initClientData(wsClient)
 	go func(browserClient *cws.Client) {
 		browserClient.Listen()
 		log.Println("Closing connection")
@@ -120,8 +120,29 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	}(wsClient)
 }
 
+func (s *Server) initClientData(client *cws.Client) {
+	s.chat.SendChatHistory(clientID)
+	apps, err := s.GetApps()
+	if err != nil {
+		return
+	}
+	data := initData{
+		CurAppID: s.appID,
+		Apps:     apps,
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return
+	}
+	client.Send(cws.WSPacket{
+		Type: "INIT",
+		Data: string(jsonData),
+	}, nil)
+}
+
 func (s *Server) updateClientApps(client *cws.Client, updatedApps []appDiscoveryMeta) {
 	data, _ := json.Marshal(updatedApps)
+
 	client.Send(cws.WSPacket{
 		Type: "UPDATEAPPLIST",
 		Data: string(data),

@@ -54,6 +54,16 @@ type AppHost struct {
 	AppName string `json:"app_name"`
 }
 
+type WSPacket struct {
+	Type string `json:"type"`
+	// TODO: Make Data generic: map[string]interface{} for more usecases
+	Data string `json:"data"`
+
+	PacketID string `json:"packet_id"`
+	// Globally ID of a browser session
+	SessionID string `json:"session_id"`
+}
+
 type instance struct {
 	addr string
 }
@@ -96,8 +106,9 @@ func (s *Service) RemoveClient(clientID string) {
 }
 
 func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ssrc uint32, stunturn string) *Client {
+	// The 1st packet
 	ws.Send(cws.WSPacket{
-		Type: "init",
+		Type: "init_media_stream",
 		Data: stunturn,
 	}, nil)
 
