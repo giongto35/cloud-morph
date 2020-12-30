@@ -14,5 +14,9 @@ if [ "$3" == "syncvolume" ]; then
     ssh root@$1 "docker run -v $RPATH:/backup --volume winecfg:$RPATH/.wine syncwine bash -c \"tar xvf /backup/backup.tar -C $RPATH --strip 1\""
 fi
 
-# Run server. Can modify to wrap in supervisor to make server more reliable
-ssh root@$1 "cd $RPATH/cloud-morph; pkill server; nohup ./server > /dev/null &> /dev/null &"
+# Run server. 
+#ssh root@$1 "cd $RPATH/cloud-morph; pkill server; nohup ./server > /dev/null &> /dev/null &"
+# Run Server in supervisord
+ssh root@$1 "apt install supervisor"
+rsync ../../supervisord.conf root@$1:/etc/supervisor/conf.d
+ssh root@$1 "cd $RPATH/cloud-morph; go build server.go; pkill supervisord; supervisord"
