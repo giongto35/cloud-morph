@@ -17,6 +17,6 @@ fi
 # Run server. 
 #ssh root@$1 "cd $RPATH/cloud-morph; pkill server; nohup ./server > /dev/null &> /dev/null &"
 # Run Server in supervisord
-ssh root@$1 "apt install supervisor"
+ssh root@$1 "apt-get install -y supervisor | true"
 rsync ../../supervisord.conf root@$1:/etc/supervisor/conf.d
-ssh root@$1 "cd $RPATH/cloud-morph; go build server.go; pkill supervisord; supervisord"
+ssh root@$1 "cd $RPATH/cloud-morph; go build server.go; pkill supervisord | true; supervisord"
