@@ -142,7 +142,6 @@ func (s *Server) initClientData(client *cws.Client) {
 
 func (s *Server) updateClientApps(client *cws.Client, updatedApps []appDiscoveryMeta) {
 	data, _ := json.Marshal(updatedApps)
-
 	client.Send(cws.WSPacket{
 		Type: "UPDATEAPPLIST",
 		Data: string(data),

@@ -50,7 +50,9 @@ const socket = (() => {
       const data = JSON.parse(response.data);
       const message = data.type;
 
-      log.info(message);
+      if (message !== "heartbeat")
+        log.debug(`[ws] <- message '${message}' `, data);
+
       switch (message) {
         case "init":
           event.pub(MEDIA_STREAM_INITIALIZED, { stunturn: data.data });
