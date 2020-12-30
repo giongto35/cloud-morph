@@ -1,0 +1,8 @@
+path: /apps/Photoshop
+appFile: PhotoshopCS6Portable.exe
+windowTitle: Photoshop
+appName: Photoshop
+pageTitle: "Photoshop - A Cloud Morph Demo"
+appMode: collaborative
+discoveryHost: http://discovery.cloudmorph.io
+hasChat: true

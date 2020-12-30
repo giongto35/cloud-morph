@@ -1,0 +1,10 @@
+path: /apps
+appFile: virtuacop2.exe
+windowTitle: VirtuaCop
+appName: VirtuaCop
+pageTitle: "VirtualCop - A Cloud Morph Demo"
+appMode: collaborative
+screenWidth: 640
+screenHeight: 460
+discoveryHost: http://discovery.cloudmorph.io
+hasChat: true

@@ -1,0 +1,9 @@
+path: /apps/samurai
+appFile: SSVS.exe
+windowTitle: Samurai
+appName: Samurai
+pageTitle: "Samurai - A Cloud Morph Demo"
+appMode: collaborative
+discoveryHost: http://discovery.cloudmorph.io:7700
+hardwareKey: true 
+hasChat: true
