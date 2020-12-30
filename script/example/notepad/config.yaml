@@ -1,0 +1,9 @@
+path: /
+appFile: notepad
+windowTitle: Notepad
+hardwareKey: false
+appName: Notepad
+pageTitle: "Notepad - A Cloud Morph Demo"
+appMode: collaborative
+discoveryHost: http://discovery.cloudmorph.io
+hasChat: true
