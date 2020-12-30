@@ -5,6 +5,7 @@
 ## Introduction
 
 CloudMorph is a decentralized cloud gaming/cloud application service. It still follows the idea of Cloud Gaming: application is run on remote server, screen and user input are streamed back and forth between clients and server in optimal way. On top of that, it builds a decentralized network of cloudapp providers and cloudapp consumers, where providers can host their own cloudapp with given toolset and consumers can use any app in the network. 
+**Demo**: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 
 ## Goal
 Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, which is a Cloud Gaming service on Retro Game hosted by myself, CloudMorph generalizes the system to bring any offline Window application to Cloud. The deployment of system is aimed to be simple with concise techstack and codebase. The goal is to create a distributed cloud application system when someone can contribute their offline application on the platform and other people can consume it.
@@ -34,6 +35,7 @@ Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, which is a Clo
 |                       Screenshot                       |                        Screenshot                         |
 | :----------------------------------------------------: | :-------------------------------------------------------: |
 | ![screenshot](docs/img/screenshotDiablo.png) Diablo II | ![screenshot](docs/img/screenshotPhotoshop.png) Photoshop |
+| ![screenshot](docs/img/screenshotRoadrash.png) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/screenshotVirtuaCop.png) Photoshop  |
 
 [Cloud Diablo](http://clouddiablo.com/) (Running on Singapore server)
 
@@ -74,6 +76,10 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 
 ## Design
 
+- **Mesh Network**
+![screenshot](docs/img/Decentralize.png)
+
+- **CloudApp core**
 ![screenshot](docs/img/CloudUniverse.png)
 
 - When Webserver is started, Wine Application is spawned inside a container at the same time. However, in the future, Wine Application needs to support multiplex to run multiple application in the same VM.
