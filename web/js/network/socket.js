@@ -52,7 +52,7 @@ const socket = (() => {
 
       log.info(message);
       switch (message) {
-        case "init_media_stream":
+        case "init":
           event.pub(MEDIA_STREAM_INITIALIZED, { stunturn: data.data });
           break;
         case "offer":

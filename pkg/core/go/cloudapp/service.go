@@ -108,7 +108,7 @@ func (s *Service) RemoveClient(clientID string) {
 func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ssrc uint32, stunturn string) *Client {
 	// The 1st packet
 	ws.Send(cws.WSPacket{
-		Type: "init_media_stream",
+		Type: "init",
 		Data: stunturn,
 	}, nil)
 
