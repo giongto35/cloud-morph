@@ -93,7 +93,6 @@
     x = e.offsetX;
     y = e.offsetY;
     boundRect = appscreen.getBoundingClientRect();
-    console.log(e.offsetX, e.offsetY);
     socket.send({
       type: "MOUSEDOWN",
       data: JSON.stringify({
@@ -110,7 +109,6 @@
     x = e.offsetX;
     y = e.offsetY;
     boundRect = appscreen.getBoundingClientRect();
-    console.log(e.offsetX, e.offsetY);
     socket.send({
       type: "MOUSEUP",
       data: JSON.stringify({
@@ -202,8 +200,13 @@
   //   const latency = await ajax.fetch(`${app.addr}/echo`, {method: "GET", redirect: "follow"}, timeoutMs);
   // }
 
-  const updateAppList = (appData) => {
-    appList = JSON.parse(appData);
+  const initApps = ({ cur_app_id, apps }) => {
+    curAppID = cur_app_id;
+    updateAppList(apps);
+  };
+
+  const updateAppList = (apps) => {
+    appList = apps;
     discoverydropdown.innerHTML = "";
     const timeoutMs = 1111;
 
@@ -250,7 +253,12 @@
   event.sub(MEDIA_STREAM_READY, () => rtcp.start());
   event.sub(CONNECTION_READY, onConnectionReady);
   event.sub(CHAT, (data) => appendChatMessage(data.chatrow));
-  event.sub(NUM_PLAYER, (data) => updateNumPlayers(data.numplayers));
-  event.sub(UPDATE_APP_LIST, (data) => updateAppList(data.appData));
+  event.sub(NUM_PLAYER, ({ data }) => updateNumPlayers(data));
+  event.sub(CLIENT_INIT, ({ data }) => {
+    initApps(JSON.parse(data));
+  });
+  event.sub(UPDATE_APP_LIST, ({ data }) => {
+    updateAppList(JSON.parse(data));
+  });
   // event.sub(CONNECTION_CLOSED, () => input.poll().disable());
 })($, document, event, env, socket);

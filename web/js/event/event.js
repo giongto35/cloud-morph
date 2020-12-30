@@ -99,3 +99,4 @@ const SETTINGS_CHANGED = "settingsChanged";
 const SETTINGS_CLOSED = "settingsClosed";
 
 const UPDATE_APP_LIST = "updateapplist";
+const CLIENT_INIT = "clientInit";

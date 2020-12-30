@@ -3,9 +3,10 @@ appFile: ROADRASH.exe
 windowTitle: "Road Rash"
 hardwareKey: false
 appName: RoadRash
-pageTitle: "Cloud Morph Demo"
+pageTitle: "RoadRash - A Cloud Morph Demo"
 appMode: collaborative
 hasChat: true
 screenWidth: 640
 screenHeight: 460
+discoveryHost: http://discovery.cloudmorph.io
 isWindowMode: false
