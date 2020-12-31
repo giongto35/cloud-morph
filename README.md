@@ -4,7 +4,7 @@
 ## Introduction
 
 CloudMorph is a decentralized cloud gaming/cloud application service. It still follows Cloud Gaming's idea: the application is run on remote servers, screen and user input are streamed back and forth between clients and server in optimal way. On top of that, it builds a decentralized network of cloudapp providers, and consumers, where providers can host their own cloudapp with a given toolset, and consumers can use any app in the network.  
-Demo Diablo [cloudiablo.com](clouddiablo.com) hosted by CloudMorph : https://www.youtube.com/watch?v=fkOpOQ-HwFY
+Demo Diablo [clouddiablo.com](clouddiablo.com) hosted by CloudMorph : https://www.youtube.com/watch?v=fkOpOQ-HwFY
 
 ## Goal
 Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cloud Gaming solution on Retro Game hosted on dedicated cloud infrastructure, CloudMorph generalizes the system to bring any offline Window application to a cloud mesh network. The deployment is simplified with a concise tech-stack and codebase. The goal is to create a distributed cloud application system when anyone can contribute their offline application on the platform, and other people can consume it.
