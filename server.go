@@ -173,7 +173,6 @@ func NewServer() *Server {
 	r.HandleFunc("/ws", server.WS)
 	r.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		log.Println(w, "echo")
 	})
 	if cfg.DiscoveryHost != "" {
 		r.HandleFunc("/apps", server.GetAppsHandler)

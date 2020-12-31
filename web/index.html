@@ -10,19 +10,21 @@
 
 <body>
   <div id="app-body">
-    <!--<video src="locahost:8080/test.sdp">-->
     <div id="app">
-      <video id="app-screen" oncontextmenu="return false;" muted playinfullscreen="false" playsinline
+      <div>
+      <video id="app-screen" oncontextmenu="return false;" muted playinfullscreen="false" poster="/static/img/loading.gif" playsinline
         onloadstart="this.volume=0.5" autoplay></video>
+      </div>
       <div id="app-meta">
         <label id="intro">Cloud Morph Demo</label></br>
         <label id="numplayers">Number of players:</label></br>
+        <label id="Discovery All games">Discovery all games from dropdown</label>
         <select class="drop" id="discoverydropdown">
         </select>
-        <button id="fullscreen" type="submit">Toggle chat</button>
-        <p>Powered by Cloud Morph. <a
-            href="https://github.com/giongto35/cloud-morph">github.com/giongto35/cloud-morph</a> </p>
-        <p>Built by <a href=https://www.linkedin.com/in/huuthanhnguyen />giongto35</a></p>
+        <button id="fullscreen" type="submit">Toggle chat</button></br>
+        <label>Powered by Cloud Morph: <a
+            href="https://github.com/giongto35/cloud-morph">github.com/giongto35/cloud-morph</a> </label></br>
+        <label>Built by <a href=https://www.linkedin.com/in/huuthanhnguyen />giongto35</a></label>
       </div>
     </div>
       <div id="chat">
