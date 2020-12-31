@@ -13,12 +13,10 @@
 }
 
 #app-screen {
-  /* width: 80vw;
-  height: 60vw; */
   height: 85vh;
-  width: calc(85*8/6)vh;
-  /* display: none; */
-  background-color: #222222;
+  /* calc(85*8/6)vh */
+  width: 113vh;
+  /* background-color: #222222; */
 }
 
 #app-meta {
