@@ -3,8 +3,8 @@
 
 ## Introduction
 
-CloudMorph is a decentralized cloud gaming/cloud application service. It still follows Cloud Gaming's idea: the application is run on remote servers, screen and user input are streamed back and forth between clients and server in optimal way. On top of that, it builds a decentralized network of cloudapp providers, and consumers, where providers can host their own cloudapp with a given toolset, and consumers can use any app in the network. 
-**Demo of [cloudiablo.com](clouddiablo.com) hosted on CloudMorph **: https://www.youtube.com/watch?v=fkOpOQ-HwFY
+CloudMorph is a decentralized cloud gaming/cloud application service. It still follows Cloud Gaming's idea: the application is run on remote servers, screen and user input are streamed back and forth between clients and server in optimal way. On top of that, it builds a decentralized network of cloudapp providers, and consumers, where providers can host their own cloudapp with a given toolset, and consumers can use any app in the network.  
+Demo Diablo [clouddiablo.com](clouddiablo.com) hosted by CloudMorph : https://www.youtube.com/watch?v=fkOpOQ-HwFY
 
 ## Goal
 Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cloud Gaming solution on Retro Game hosted on dedicated cloud infrastructure, CloudMorph generalizes the system to bring any offline Window application to a cloud mesh network. The deployment is simplified with a concise tech-stack and codebase. The goal is to create a distributed cloud application system when anyone can contribute their offline application on the platform, and other people can consume it.
@@ -50,10 +50,11 @@ We need 3  in the same folder:
 
 Example:
 - `setup_remote.sh $ip $mount_path`. Ex: `./setup_remote.sh 159.89.146.77 /apps/DiabloII`  
+- Tutorial Video: https://www.youtube.com/watch?v=w8uCkfZdHVc
 
 ### Deployment with setup file
 - Some offline game/application requires installation. The best flow I can think of is
-1. Run `interactive-wine.sh bash` and initialize the wine environment
+1. Run `interactive-wine.sh bash`, it will open environment with bash on mounted volume. After we finish initialization, we will push this volume to remote server using the below line.
 2.  `setup_remote.sh $ip $mount_path  syncvolume`
 
 
