@@ -7,7 +7,7 @@ CloudMorph is a decentralized cloud gaming/cloud application service. It still f
 Demo Diablo [cloudmorph.io](http://cloudmorph.io/) hosted by CloudMorph : https://www.youtube.com/watch?v=fkOpOQ-HwFY
 
 ## Goal
-Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cloud Gaming solution on Retro Game hosted on dedicated cloud infrastructure, CloudMorph generalizes the system to bring any offline Window application to a cloud mesh network. The deployment is simplified with a concise tech-stack and codebase. The goal is to create a distributed cloud application system when anyone can contribute their offline application on the platform, and other people can consume it.
+Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cloud Gaming solution on Retro Game hosted on dedicated cloud infrastructure, CloudMorph generalizes the system to bring any offline Windows application to a cloud mesh network. The deployment is simplified with a concise tech-stack and codebase. The goal is to create a distributed cloud application system when anyone can contribute their offline application on the platform, and other people can consume it.
 
 ## Usecases
 
@@ -25,7 +25,7 @@ Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cl
 ## Design Goal:
 1. **Mesh network**: Providers-Consumers over Peer To Peer communication.
 2. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
-3. **Generic/Cross-platform**: Run on web browser, web mobile. Target Window App instead of relying on gaming framework/emulator (like [CloudRetro](https://github.com/giongto35/cloud-game)).
+3. **Generic/Cross-platform**: Run on web browser, web mobile. Target Windows App instead of relying on gaming framework/emulator (like [CloudRetro](https://github.com/giongto35/cloud-game)).
 4. **Scalable**: Be able to scale on headless machines cluster horizontally.
 5. One line script deployment.
 
@@ -85,7 +85,7 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 
 - When Webserver starts, Wine Application is spawned inside a container at the same time. However, in the future, Wine Application needs to support multiplex to run multiple applications in the same VM.
 - Input captured from Client is sent to Virtual Machine over Websocket.
-- A C++ script (syncinput.exe) will listen to the event and simulates Window's OS event to Wine Application through WinAPI.
+- A C++ script (syncinput.exe) will listen to the event and simulates Windows OS event to Wine Application through WinAPI.
 - Application screen is captured in a Virtual Display Frame Buffer, which is later piped to FFMPEG.
 - FFMPEG will produce the screen stream to a VPX RTP stream.
 
@@ -96,9 +96,8 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 
 #### Why do I pick Linux Stack and Wine?
 
-- First, I consider writing the whole system in Window. However, Window lacks programming utilities, and Linux is more comfortable for me.
-- Wine is a Window Virtual Machine. Its performance is proven in Steam PlayOnLinux.
-- I may revise on this decision: 
+- First, I consider writing the whole system in Windows. However, Windows lacks programming utilities, and Linux is more comfortable for me.
+- Wine is a Windows Virtual Machine. Its performance is proven in Steam PlayOnLinux. Lutris.
 
 #### Headless server
 
@@ -116,13 +115,14 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 #### Why Golang, FFMPEG, C++
 
 - FFMPEG is used to grab XVFB Display (built-in functionality) and convert it to the VPX video stream. It can be substituted with GStreamer or any custom encoding solution.
-- C++ is chosen because it has good support for WindowAPI.
+- C++ is chosen because it has good support for WindowsAPI.
 - Golang is not really a crucial part of this design. It helps spawn Webserver conveniently. With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
 
 ## Roadmap
 
-- Fully Dockerize Webserver, so it's easier to setup.
-- Multiplex application sessions. Currently, one server can spawn only one application, and all users access the same session. (Collaborative gameplay)
-- Improve flow to deploy app needs initialization.
 - Performance improvement.
+- Multiplex application sessions. Currently, only collaborative mode is supported, which serves all application's sessions from the same single instance.
+- Improve flow to deploy app needs initialization.
+- Integrate with Lutris to simplify game initialization.
+- Web Mobile controller supprt. Currently, mouse click is simulated.
 - Packaging frontend as a component.
