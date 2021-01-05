@@ -92,6 +92,7 @@ func (s *Service) AddClient(clientID string, ws *cws.Client) *Client {
 }
 
 func (s *Service) RemoveClient(clientID string) {
+	close(s.clients[clientID].done)
 	delete(s.clients, clientID)
 }
 
@@ -120,7 +121,11 @@ func (c *Client) StreamListen() {
 	}()
 
 	for packet := range c.videoStream {
-		c.rtcConn.ImageChannel <- packet
+		select {
+		case <-c.done:
+			return
+		case c.rtcConn.ImageChannel <- packet:
+		}
 	}
 }
 
@@ -202,7 +207,7 @@ func (c *Client) Route(ssrc uint32) {
 
 func (c *Client) Close() {
 	if c.rtcConn != nil {
-		// c.rtcConn.Close()
+		c.rtcConn.StopClient()
 		c.rtcConn = nil
 	}
 	close(c.videoStream)
@@ -244,7 +249,11 @@ func (s *Service) Handle() {
 
 		for p := range s.ccApp.VideoStream() {
 			for _, client := range s.clients {
-				client.videoStream <- p
+				select {
+				case <-client.done:
+					continue
+				case client.videoStream <- p:
+				}
 			}
 		}
 	}()
