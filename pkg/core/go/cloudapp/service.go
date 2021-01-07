@@ -3,7 +3,6 @@ package cloudapp
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -139,7 +138,6 @@ func (c *Client) Handle() {
 		for packet := range c.videoStream {
 			select {
 			case <-c.cancel:
-				fmt.Println("cancel!!!")
 				break loop
 			case c.rtcConn.ImageChannel <- packet:
 			}
@@ -264,6 +262,7 @@ func (s *Service) Handle() {
 			for i, client := range s.clients {
 				select {
 				case <-client.cancel:
+					// stop producing for client
 					delete(s.clients, i)
 					close(client.videoStream)
 				case client.videoStream <- p:
@@ -271,15 +270,6 @@ func (s *Service) Handle() {
 			}
 		}
 	}()
-
-	go func() {
-		for {
-			fmt.Println("clients size: ", len(s.clients))
-			fmt.Println("s app videostream", len(s.ccApp.VideoStream()))
-			time.Sleep(time.Second)
-		}
-	}()
-
 	s.ccApp.Handle()
 }
 
