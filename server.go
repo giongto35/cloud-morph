@@ -111,11 +111,10 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	go func(browserClient *cws.Client) {
 		browserClient.Listen()
 		log.Println("Closing connection")
-		delete(s.wsClients, clientID)
-		s.capp.RemoveClient(clientID)
 		chatClient.Close()
-		serviceClient.Close()
 		browserClient.Close()
+		s.capp.RemoveClient(clientID)
+		delete(s.wsClients, clientID)
 		log.Println("Closed connection")
 	}(wsClient)
 }
