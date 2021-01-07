@@ -114,7 +114,6 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 		chatClient.Close()
 		browserClient.Close()
 		s.capp.RemoveClient(clientID)
-		delete(s.wsClients, clientID)
 		log.Println("Closed connection")
 	}(wsClient)
 }

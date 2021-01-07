@@ -259,11 +259,11 @@ func (s *Service) Handle() {
 			}
 		}()
 		for p := range s.ccApp.VideoStream() {
-			for i, client := range s.clients {
+			for id, client := range s.clients {
 				select {
 				case <-client.cancel:
 					// stop producing for client
-					delete(s.clients, i)
+					delete(s.clients, id)
 					close(client.videoStream)
 				case client.videoStream <- p:
 				}
