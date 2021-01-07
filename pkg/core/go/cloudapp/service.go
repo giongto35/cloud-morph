@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
@@ -43,6 +44,9 @@ type Client struct {
 	videoStream chan rtp.Packet
 	appEvents   chan Packet
 	// videoTrack   *webrtc.Track
+	// cancel to trigger cleaning up when client is disconnected
+	cancel chan struct{}
+	// done to notify if the client is done clean up
 	done chan struct{}
 	// TODO: Get rid of ssrc
 	ssrc uint32
@@ -76,7 +80,7 @@ func (c *Client) Heartbeat() {
 
 	for range timer {
 		select {
-		case <-c.done:
+		case <-c.cancel:
 			log.Println("Close heartbeat")
 			return
 		default:
@@ -92,7 +96,13 @@ func (s *Service) AddClient(clientID string, ws *cws.Client) *Client {
 }
 
 func (s *Service) RemoveClient(clientID string) {
-	delete(s.clients, clientID)
+	client := s.clients[clientID]
+	close(client.cancel)
+	<-client.done
+	if client.rtcConn != nil {
+		client.rtcConn.StopClient()
+		client.rtcConn = nil
+	}
 }
 
 func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ssrc uint32, stunturn string) *Client {
@@ -108,20 +118,35 @@ func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ss
 		ws:          ws,
 		ssrc:        ssrc,
 		videoStream: make(chan rtp.Packet, 1),
+		cancel:      make(chan struct{}),
 		done:        make(chan struct{}),
 	}
 }
 
-func (c *Client) StreamListen() {
+func (c *Client) Handle() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("Recovered when sent to close Image Channel")
 		}
 	}()
 
-	for packet := range c.videoStream {
-		c.rtcConn.ImageChannel <- packet
-	}
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+	loop:
+		for packet := range c.videoStream {
+			select {
+			case <-c.cancel:
+				break loop
+			case c.rtcConn.ImageChannel <- packet:
+			}
+		}
+		wg.Done()
+	}()
+	wg.Wait()
+
+	close(c.done)
 }
 
 func (c *Client) Route(ssrc uint32) {
@@ -173,7 +198,7 @@ func (c *Client) Route(ssrc uint32) {
 				log.Println("Error: Cannot set RemoteSDP of client: " + resp.SessionID)
 			}
 
-			go c.StreamListen()
+			go c.Handle()
 			return cws.EmptyPacket
 		},
 	)
@@ -198,14 +223,6 @@ func (c *Client) Route(ssrc uint32) {
 			return cws.EmptyPacket
 		})
 	}
-}
-
-func (c *Client) Close() {
-	if c.rtcConn != nil {
-		// c.rtcConn.Close()
-		c.rtcConn = nil
-	}
-	close(c.videoStream)
 }
 
 // NewCloudService returns a Cloud Service
@@ -238,17 +255,21 @@ func (s *Service) Handle() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Println("Recovered when sent to closed Video Stream channel")
+				log.Println("Recovered when sent to closed Video Stream channel", r)
 			}
 		}()
-
 		for p := range s.ccApp.VideoStream() {
-			for _, client := range s.clients {
-				client.videoStream <- p
+			for id, client := range s.clients {
+				select {
+				case <-client.cancel:
+					// stop producing for client
+					delete(s.clients, id)
+					close(client.videoStream)
+				case client.videoStream <- p:
+				}
 			}
 		}
 	}()
-
 	s.ccApp.Handle()
 }
 
