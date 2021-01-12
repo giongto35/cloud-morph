@@ -254,9 +254,10 @@ func (w *WebRTC) StopClient() {
 	log.Println("===StopClient===")
 	w.isConnected = false
 	if w.connection != nil {
+		log.Println("WebRTC Connection close")
 		w.connection.Close()
+		w.connection = nil
 	}
-	w.connection = nil
 	//close(w.InputChannel)
 	// webrtc is producer, so we close
 	// NOTE: ImageChannel is waiting for input. Close in writer is not correct for this

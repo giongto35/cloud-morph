@@ -3,6 +3,7 @@ package cloudapp
 
 import (
 	"bytes"
+	"container/ring"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -215,17 +216,26 @@ func (c *ccImpl) VideoStream() chan rtp.Packet {
 
 // Listen to videostream, output to videoStream channel
 func (c *ccImpl) listenVideoStream() {
+
 	// Broadcast video stream
 	go func() {
 		defer func() {
 			c.listener.Close()
 			log.Println("Closing app VM")
-			// close(appVMDone)
 		}()
+		r := ring.New(120)
 
+		n := r.Len()
+		for i := 0; i < n; i++ {
+			r.Value = make([]byte, 4096)
+			r = r.Next()
+		}
+
+		// TODO: Create a precreated memory, only pop after finish processing
 		// Read RTP packets forever and send them to the WebRTC Client
 		for {
-			inboundRTPPacket := make([]byte, 4096) // UDP MTU
+			inboundRTPPacket := r.Value.([]byte) // UDP MTU
+			r = r.Next()
 			n, _, err := c.listener.ReadFrom(inboundRTPPacket)
 			if err != nil {
 				log.Printf("error during read: %s", err)
