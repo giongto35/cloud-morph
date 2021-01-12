@@ -16,7 +16,6 @@ import (
 	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/cws"
 	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v2"
 )
 
 type InputEvent struct {
@@ -247,7 +246,7 @@ func (c *ccImpl) listenVideoStream() {
 				log.Printf("error during unmarshalling a packet: %s", err)
 				continue
 			}
-			packet.Header.PayloadType = webrtc.DefaultPayloadTypeVP8
+			packet.Header.PayloadType = 96
 
 			c.videoStream <- packet
 		}
