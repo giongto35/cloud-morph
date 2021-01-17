@@ -41,7 +41,7 @@ type Client struct {
 	clientID    string
 	ws          *cws.Client
 	rtcConn     *webrtc.WebRTC
-	videoStream chan rtp.Packet
+	videoStream chan *rtp.Packet
 	appEvents   chan Packet
 	// videoTrack   *webrtc.Track
 	// cancel to trigger cleaning up when client is disconnected
@@ -117,7 +117,7 @@ func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ss
 		clientID:    clientID,
 		ws:          ws,
 		ssrc:        ssrc,
-		videoStream: make(chan rtp.Packet, 1),
+		videoStream: make(chan *rtp.Packet, 1),
 		cancel:      make(chan struct{}),
 		done:        make(chan struct{}),
 	}
@@ -239,7 +239,7 @@ func NewCloudService(cfg config.Config) *Service {
 	return s
 }
 
-func (s *Service) VideoStream() chan rtp.Packet {
+func (s *Service) VideoStream() chan *rtp.Packet {
 	return s.ccApp.VideoStream()
 }
 

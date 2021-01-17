@@ -9,7 +9,9 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/pion/rtp"
+	"github.com/pion/rtp/codecs"
 	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media/samplebuilder"
 )
 
 // TODO: double check if no need TURN server here
@@ -33,8 +35,8 @@ type WebRTC struct {
 	connection  *webrtc.PeerConnection
 	isConnected bool
 	isClosed    bool
-	// for yuvI420 image
-	ImageChannel chan rtp.Packet
+
+	ImageChannel chan *rtp.Packet
 	AudioChannel chan []byte
 	InputChannel chan []byte
 
@@ -76,7 +78,7 @@ func NewWebRTC() *WebRTC {
 	w := &WebRTC{
 		ID: uuid.Must(uuid.NewV4()).String(),
 
-		ImageChannel: make(chan rtp.Packet, 30),
+		ImageChannel: make(chan *rtp.Packet, 30),
 		AudioChannel: make(chan []byte, 1),
 		InputChannel: make(chan []byte, 100),
 	}
@@ -92,7 +94,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 		}
 	}()
 	var err error
-	var videoTrack *webrtc.TrackLocalStaticRTP
+	var videoTrack *webrtc.TrackLocalStaticSample
 
 	// reset client
 	if w.isConnected {
@@ -109,7 +111,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	// add video track
 	// videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "app-video")
 	codec := webrtc.RTPCodecCapability{MimeType: "video/vp8"}
-	videoTrack, err = webrtc.NewTrackLocalStaticRTP(codec, "video", "app-video")
+	videoTrack, err = webrtc.NewTrackLocalStaticSample(codec, "video", "app-video")
 
 	if err != nil {
 		return "", err
@@ -271,7 +273,7 @@ func (w *WebRTC) IsConnected() bool {
 	return w.isConnected
 }
 
-func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack *webrtc.TrackLocalStaticRTP) {
+func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticSample, opusTrack *webrtc.TrackLocalStaticRTP) {
 	log.Println("Start streaming")
 	// receive frame buffer
 	go func() {
@@ -282,16 +284,19 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack 
 		// 	}
 		// }()
 
+		videoBuilder := samplebuilder.New(10, &codecs.VP8Packet{}, 90000)
 		for packet := range w.ImageChannel {
-			// packets := vp8Track.Packetizer().Packetize(data.Data, 1)
-			// for _, p := range packets {
-			// 	p.Header.Timestamp = data.Timestamp
-			err := vp8Track.WriteRTP(&packet)
-			if err != nil {
-				log.Println("Warn: Err write sample: ", err)
-				break
+			videoBuilder.Push(packet)
+			for {
+				sample := videoBuilder.Pop()
+				if sample == nil {
+					break
+				}
+
+				if writeErr := vp8Track.WriteSample(*sample); writeErr != nil {
+					panic(writeErr)
+				}
 			}
-			// }
 		}
 	}()
 
