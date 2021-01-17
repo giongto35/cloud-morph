@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v2"
-	"github.com/pion/webrtc/v2/pkg/media"
+	"github.com/pion/rtp/codecs"
+	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media/samplebuilder"
 )
 
 // TODO: double check if no need TURN server here
@@ -35,8 +35,8 @@ type WebRTC struct {
 	connection  *webrtc.PeerConnection
 	isConnected bool
 	isClosed    bool
-	// for yuvI420 image
-	ImageChannel chan rtp.Packet
+
+	ImageChannel chan *rtp.Packet
 	AudioChannel chan []byte
 	InputChannel chan []byte
 
@@ -78,7 +78,7 @@ func NewWebRTC() *WebRTC {
 	w := &WebRTC{
 		ID: uuid.Must(uuid.NewV4()).String(),
 
-		ImageChannel: make(chan rtp.Packet, 30),
+		ImageChannel: make(chan *rtp.Packet, 30),
 		AudioChannel: make(chan []byte, 1),
 		InputChannel: make(chan []byte, 100),
 	}
@@ -94,7 +94,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 		}
 	}()
 	var err error
-	var videoTrack *webrtc.Track
+	var videoTrack *webrtc.TrackLocalStaticSample
 
 	// reset client
 	if w.isConnected {
@@ -109,7 +109,9 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	}
 
 	// add video track
-	videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "app-video")
+	// videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "app-video")
+	codec := webrtc.RTPCodecCapability{MimeType: "video/vp8"}
+	videoTrack, err = webrtc.NewTrackLocalStaticSample(codec, "video", "app-video")
 
 	if err != nil {
 		return "", err
@@ -122,7 +124,8 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	log.Println("Add video track")
 
 	// add audio track
-	opusTrack, err := w.connection.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "audio", "app-audio")
+	// opusTrack, err := w.connection.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "audio", "app-audio")
+	opusTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "audio/opus"}, "audio", "game-audio")
 	if err != nil {
 		return "", err
 	}
@@ -270,7 +273,7 @@ func (w *WebRTC) IsConnected() bool {
 	return w.isConnected
 }
 
-func (w *WebRTC) startStreaming(vp8Track *webrtc.Track, opusTrack *webrtc.Track) {
+func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticSample, opusTrack *webrtc.TrackLocalStaticRTP) {
 	log.Println("Start streaming")
 	// receive frame buffer
 	go func() {
@@ -281,16 +284,19 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.Track, opusTrack *webrtc.Track)
 		// 	}
 		// }()
 
+		videoBuilder := samplebuilder.New(10, &codecs.VP8Packet{}, 90000)
 		for packet := range w.ImageChannel {
-			// packets := vp8Track.Packetizer().Packetize(data.Data, 1)
-			// for _, p := range packets {
-			// 	p.Header.Timestamp = data.Timestamp
-			err := vp8Track.WriteRTP(&packet)
-			if err != nil {
-				log.Println("Warn: Err write sample: ", err)
-				break
+			videoBuilder.Push(packet)
+			for {
+				sample := videoBuilder.Pop()
+				if sample == nil {
+					break
+				}
+
+				if writeErr := vp8Track.WriteSample(*sample); writeErr != nil {
+					panic(writeErr)
+				}
 			}
-			// }
 		}
 	}()
 
@@ -303,18 +309,18 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.Track, opusTrack *webrtc.Track)
 		// 	}
 		// }()
 
-		for data := range w.AudioChannel {
-			if !w.isConnected {
-				return
-			}
-			err := opusTrack.WriteSample(media.Sample{
-				Data:    data,
-				Samples: uint32(audioFrame / audioChannels),
-			})
-			if err != nil {
-				log.Println("Warn: Err write sample: ", err)
-			}
-		}
+		// for data := range w.AudioChannel {
+		// 	if !w.isConnected {
+		// 		return
+		// 	}
+		// 	err := opusTrack.WriteSample(media.Sample{
+		// 		Data:    data,
+		// 		Samples: uint32(audioFrame / audioChannels),
+		// 	})
+		// 	if err != nil {
+		// 		log.Println("Warn: Err write sample: ", err)
+		// 	}
+		// }
 	}()
 }
 
@@ -324,40 +330,4 @@ func (w *WebRTC) calculateFPS() int {
 	curFPS := time.Second / elapsedTime
 	w.curFPS = int(float32(w.curFPS)*0.9 + float32(curFPS)*0.1)
 	return w.curFPS
-}
-
-// streamRTP is based on to https://github.com/pion/webrtc/tree/master/examples/rtp-to-webrtc
-// It fetches from a RTP stream produced by FFMPEG and broadcast to all webRTC sessions
-func (w *WebRTC) StreamRTP(offer webrtc.SessionDescription, ssrc uint32) *webrtc.Track {
-	// We make our own mediaEngine so we can place the sender's codecs in it.  This because we must use the
-	// dynamic media type from the sender in our answer. This is not required if we are the offerer
-	mediaEngine := webrtc.MediaEngine{}
-	err := mediaEngine.PopulateFromSDP(offer)
-	if err != nil {
-		panic(err)
-	}
-
-	// Create a video track, using the same SSRC as the incoming RTP Pack)
-	videoTrack, err := w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "pion")
-	if err != nil {
-		panic(err)
-	}
-	if _, err = w.connection.AddTrack(videoTrack); err != nil {
-		panic(err)
-	}
-	log.Println("video track", videoTrack)
-
-	// Set the handler for ICE connection state
-	// This will notify you when the peer has connected/disconnected
-	// w.connection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-	// 	log.Printf("Connection State has changed %s \n", connectionState.String())
-	// })
-
-	// Set the remote SessionDescription
-	// if err = conn.SetRemoteDescription(offer); err != nil {
-	// 	panic(err)
-	// }
-	// log.Println("Done creating videotrack")
-
-	return videoTrack
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/cws"
 	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v2"
 )
 
 type InputEvent struct {
@@ -25,7 +24,7 @@ type InputEvent struct {
 }
 
 type CloudAppClient interface {
-	VideoStream() chan rtp.Packet
+	VideoStream() chan *rtp.Packet
 	SendInput(Packet)
 	Handle()
 	// TODO: Remove it
@@ -35,7 +34,7 @@ type CloudAppClient interface {
 type ccImpl struct {
 	isReady     bool
 	listener    *net.UDPConn
-	videoStream chan rtp.Packet
+	videoStream chan *rtp.Packet
 	appEvents   chan Packet
 	wineConn    *net.TCPConn
 	ssrc        uint32
@@ -60,7 +59,7 @@ var cuRTPPort = startRTPPort
 // NewCloudAppClient returns new cloudapp client
 func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	c := &ccImpl{
-		videoStream: make(chan rtp.Packet, 1),
+		videoStream: make(chan *rtp.Packet, 1),
 		appEvents:   appEvents,
 	}
 
@@ -210,7 +209,7 @@ func (c *ccImpl) newLocalStreamListener(rtpPort int) (*net.UDPConn, uint32) {
 	return listener, packet.SSRC
 }
 
-func (c *ccImpl) VideoStream() chan rtp.Packet {
+func (c *ccImpl) VideoStream() chan *rtp.Packet {
 	return c.videoStream
 }
 
@@ -242,12 +241,11 @@ func (c *ccImpl) listenVideoStream() {
 				continue
 			}
 
-			packet := rtp.Packet{}
+			packet := &rtp.Packet{}
 			if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
 				log.Printf("error during unmarshalling a packet: %s", err)
 				continue
 			}
-			packet.Header.PayloadType = webrtc.DefaultPayloadTypeVP8
 
 			c.videoStream <- packet
 		}
