@@ -1,13 +1,9 @@
-path: /apps/ # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
-appFile: Notepad.exe # File Name of the app in the directory
-windowTitle: Notepad # Window Title: not to show, it's the substring of title to help specify the running program in OS
-pageTitle: "Notepad - A Cloud Morph Demo" # Page Title: To display on webpage
-appName: Notepad # App name: to show in discovery
-appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
-hasChat: true # Turn on chat
-# hardwareKey: false # Some game using DirectX needs hardward key. Turn this flag on to receive the input
-# screenWidth: 800 # Optional: Default to be: 800
-# screenHeight: 600 # Optional: Default to be: 600
-# isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
-# discoveryHost: http://discovery.cloudmorph.io # Optional: to be discoverable if you plug-in to the discovery server
-# instanceAddr: clouddiablo.com # Address of a cloud service instance, discovery can find
+path: /apps/DiabloII
+appFile: Game.exe
+windowTitle: Diablo
+hardwareKey: false
+appName: Diablo
+pageTitle: "Diablo - A Cloud Morph Demo"
+appMode: collaborative
+discoveryHost: http://discovery.cloudmorph.io
+hasChat: true

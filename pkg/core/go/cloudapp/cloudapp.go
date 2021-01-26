@@ -226,7 +226,8 @@ func (c *ccImpl) listenVideoStream() {
 
 		n := r.Len()
 		for i := 0; i < n; i++ {
-			r.Value = make([]byte, 4096)
+			// r.Value = make([]byte, 4096)
+			r.Value = make([]byte, 1500)
 			r = r.Next()
 		}
 
