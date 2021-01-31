@@ -1,21 +1,21 @@
-# path: /apps/Starcraft
-# appFile: StarCraft.exe
-# windowTitle: Starcraft
-# hardwareKey: false
-# appName: Starcraft
-# pageTitle: "Starcraft - A Cloud Morph Demo"
-# appMode: collaborative
-# discoveryHost: http://discovery.cloudmorph.io
-# # screenWidth: 1024
-# # screenHeight: 768
-# hasChat: true
-# isWindowMode: false
-path: /
-appFile: notepad
-windowTitle: Diablo
+path: /apps/Starcraft
+appFile: StarCraft.exe
+windowTitle: Starcraft
 hardwareKey: false
-appName: Diablo
-pageTitle: "Diablo - A Cloud Morph Demo"
+appName: Starcraft
+pageTitle: "Starcraft - A Cloud Morph Demo"
 appMode: collaborative
 discoveryHost: http://discovery.cloudmorph.io
+# screenWidth: 1024
+# screenHeight: 768
 hasChat: true
+isWindowMode: false
+# path: /
+# appFile: notepad
+# windowTitle: Diablo
+# hardwareKey: false
+# appName: Diablo
+# pageTitle: "Diablo - A Cloud Morph Demo"
+# appMode: collaborative
+# discoveryHost: http://discovery.cloudmorph.io
+# hasChat: true
