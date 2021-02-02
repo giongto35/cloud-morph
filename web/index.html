@@ -10,25 +10,27 @@
 
 <body>
   <div id="app-body">
-    <div id="left-component"></div>
+    <div id="discovery">
+      <label id="Discovery All games">Applications in Cloud Morph Network</label>
+      <select class="drop" id="discoverydropdown" size=100>
+    </select>
+    </div>
     <div id="app">
       <video id="app-screen" oncontextmenu="return false;" muted playinfullscreen="false" poster="/static/img/loading.gif" playsinline
         onloadstart="this.volume=0.5" autoplay></video>
     </div>
     <div id="chat">
+      <label id="Discovery All games">Discuss</label>
       <pre id="chatoutput" class="messages"></pre>
-      <input id="chatusername" type="text" placeholder="Enter User Name to join" />
-      <textarea id="chatmessage" placeholder="Start typing the message" rows="3"></textarea>
+      <input id="chatusername" type="text" placeholder="Name" />
+      <textarea id="chatmessage" placeholder="Message" rows="3"></textarea>
       <button id="chatsubmit" type="submit">Send</button>
     </div>
   </div>
   <div id="app-meta">
     <label id="intro">Cloud Morph Demo</label></br>
     <label id="numplayers">Number of players:</label></br>
-    <label id="Discovery All games">Discovery all games from dropdown</label>
-    <select class="drop" id="discoverydropdown">
-    </select>
-    <button id="fullscreen" type="submit">Toggle chat</button></br>
+    <button id="fullscreen" type="submit">fullscreen</button></br>
     <label>Powered by Cloud Morph: <a
         href="https://github.com/giongto35/cloud-morph">github.com/giongto35/cloud-morph</a> </label></br>
     <label>Built by <a href=https://www.linkedin.com/in/huuthanhnguyen />giongto35</a></label>

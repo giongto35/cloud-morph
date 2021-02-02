@@ -260,19 +260,10 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack 
 	log.Println("Start streaming")
 	// receive frame buffer
 	go func() {
-		// defer func() {
-		// 	if r := recover(); r != nil {
-		// 		fmt.Println("Recovered from err", r)
-		// 		log.Println(debug.Stack())
-		// 	}
-		// }()
-
-		// videoBuilder := samplebuilder.New(10, &codecs.VP8Packet{}, 90000)
 		for packet := range w.ImageChannel {
 			if writeErr := vp8Track.WriteRTP(packet); writeErr != nil {
 				panic(writeErr)
 			}
-			// }
 		}
 	}()
 

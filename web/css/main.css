@@ -13,18 +13,29 @@
 
 #app-screen {
   height: 85vh;
-  /* calc(85*8/6)vh */
-  width: 113vh;
-  /* background-color: #222222; */
+  width: 113.33vh;
+  border-radius: 5px 5px 5px 5px;
+  background-color: #102a43;
+
+  -webkit-box-shadow: 0px 0px 2px 2px rgba(219, 222, 222, 1);
+  -moz-box-shadow: 0px 0px 2px 2px rgba(219, 222, 222, 1);
+  box-shadow: 0px 0px 2px 2px rgba(25, 25, 25, 1);
+
+  -webkit-box-shadow: 0px 0px 2px 2px rgba(219, 222, 222, 1);
+  -moz-box-shadow: 0px 0px 2px 2px rgba(219, 222, 222, 1);
+  box-shadow: 0px 0px 2px 2px rgba(25, 25, 25, 1);
 }
 
-#left-component {
+#discovery {
   width: 33.33%;
+  height: 100%;
   flex-grow: 1;
+  margin-right: 5px;
 }
 
 #app-meta {
   display: block;
+  align-items: center;
 }
 
 #chat {
@@ -35,16 +46,22 @@
   flex-grow: 1;
 }
 
-/* #chatusername { */
-  /* width: 0.33vw; */
-/* } */
-/* 
-#chatprofile {
+#discoverydropdown {
   width: 100%;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  padding-bottom: 10px;
+  max-height: 85vh;
+  border: 0px;
+  outline: 0px;
+  overflow: auto;
+  overflow-wrap: break-word;
+  background-color: #616e7c;
+  color: #eeeeee;
+}
+
+/* #chatoutput {
+  flex-grow: 1;
+  margin-top: 0px;
+  margin-bottom: 5px;
+  border-radius: 2px;
 } */
 
 #chatoutput {
@@ -54,8 +71,9 @@
   background-color: #616e7c;
   color: #eeeeee;
   flex-grow: 1;
-  margin-top: 5px;
+  margin-top: 0px;
   margin-bottom: 5px;
+  border-radius: 2px;
 }
 
 #chatinput {
@@ -68,8 +86,7 @@
   width: 100px;
 }
 
-
-input[type=text] {
+input[type="text"] {
   width: 100%;
   display: flex;
   flex-direction: row;
@@ -79,7 +96,7 @@ input[type=text] {
   border: none;
   border-radius: 2px;
   margin: 5px auto;
-  transition:background-color 0.5s ease;
+  transition: background-color 0.5s ease;
 }
 
 #messagelabel {
@@ -93,6 +110,7 @@ input[type=text] {
   background-color: #616e7c;
   margin: 5px auto;
   color: #f0f4f8;
+  border-radius: 2px;
 }
 
 .output-row {
@@ -119,9 +137,20 @@ body {
 }
 
 * {
-  font-family: Arial, Helvetica, sans-serif;
+  /* font-family: Arial, Helvetica, sans-serif; */
+  font-family: "Josefin Sans", sans-serif;
 }
 
 input {
   color: #121212;
+}
+
+::placeholder {
+  /* Chrome, Firefox, Opera, Safari 10.1+ */
+  color: #fcdab7;
+  opacity: 0.5; /* Firefox */
+}
+
+a {
+  color: #fcdab7;
 }
