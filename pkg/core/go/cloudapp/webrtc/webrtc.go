@@ -133,25 +133,6 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 
 	_, err = w.connection.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly})
 
-	// create data channel for input, and register callbacks
-	// order: true, negotiated: false, id: random
-	// inputTrack, err := w.connection.CreateDataChannel("app-input", nil)
-
-	// inputTrack.OnOpen(func() {
-	// 	log.Printf("Data channel '%s'-'%d' open.\n", inputTrack.Label(), inputTrack.ID())
-	// })
-
-	// Register text message handling
-	// inputTrack.OnMessage(func(msg webrtc.DataChannelMessage) {
-	// 	// TODO: Can add recover here
-	// 	w.InputChannel <- msg.Data
-	// })
-
-	// inputTrack.OnClose(func() {
-	// 	log.Println("Data channel closed")
-	// 	log.Println("Closed webrtc")
-	// })
-
 	// WebRTC state callback
 	w.connection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		log.Printf("ICE Connection State has changed: %s\n", connectionState.String())
@@ -246,6 +227,11 @@ func (w *WebRTC) AddCandidate(candidate string) error {
 
 // StopClient disconnect
 func (w *WebRTC) StopClient() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered from err. Maybe we closed a closed image channel", r)
+		}
+	}()
 	// if stopped, bypass
 	if w.isConnected == false {
 		return
@@ -283,13 +269,6 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack 
 
 		// videoBuilder := samplebuilder.New(10, &codecs.VP8Packet{}, 90000)
 		for packet := range w.ImageChannel {
-			// videoBuilder.Push(packet)
-			// for {
-			// sample := videoBuilder.Pop()
-			// if sample == nil {
-			// 	break
-			// }
-
 			if writeErr := vp8Track.WriteRTP(packet); writeErr != nil {
 				panic(writeErr)
 			}
