@@ -119,7 +119,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) initClientData(client *cws.Client) {
-	s.chat.SendChatHistory(clientID)
+	s.chat.SendChatHistory(client.GetID())
 	apps, err := s.GetApps()
 	if err != nil {
 		return
