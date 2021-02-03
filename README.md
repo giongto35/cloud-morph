@@ -1,15 +1,34 @@
 
-**Decentralized cloud gaming/cloud application service.**
+**Decentralized, Self-hosted cloud gaming/cloud application service.**
 
 ## Introduction
 
-CloudMorph is a decentralized cloud gaming/cloud application service. It still follows Cloud Gaming's idea: the application is run on remote servers, screen and user input are streamed back and forth between clients and server in optimal way. On top of that, it builds a decentralized network of cloudapp providers, and consumers, where providers can host their own cloudapp with a given toolset, and consumers can use any app in the network.  
-Demo Diablo [cloudmorph.io](http://cloudmorph.io/) hosted by CloudMorph : https://www.youtube.com/watch?v=fkOpOQ-HwFY
+CloudMorph is a decentralized, self-hosted cloud gaming/cloud application service. User can host their cloud gaming app with minimum configuration. By leveraging the ease of deployment, CloudMorph goal is to build a decentralized cloud-gaming network with app providers and consumers. 
+To bring a scalable and generic cloud gaming solution, CloudMorph has to cope with various challenges in video streaming optimization, Windows application Virtualization in headless server or P2P mesh network structurization.
 
-## Goal
+## Demo
+
+Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
+
+|                       Screenshot                       |                        Screenshot                         |
+| :----------------------------------------------------: | :-------------------------------------------------------: |
+| ![screenshot](docs/img/screenshotDiablo.png) Diablo II | ![screenshot](docs/img/screenshotPhotoshop.png) Photoshop |
+| ![screenshot](docs/img/screenshotRoadrash.png) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/screenshotStarcraft.png) Starcraft  |
+
+#### Demo Hosted by CloudMorph
+- [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph)
+- [Cloud Diablo US](http://cloudmorph.io/) (Demo of Collaborative play Diablo running in US server).
+Switch Applications using the sidebar on the left.
+
+## Design Goal:
+1. **Simplicity**: No API/ interface integration needed from application. One line script deployment to a public server to get work done.
+2. **Mesh network**: Providers-Consumers over Peer To Peer communication. After joining the network, Provider's Application is discoverable and launched with one click.
+3. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
+4. **Generic/Cross-platform**: Run on web browser, web mobile. Target Windows App instead of relying on gaming framework/emulator (like [CloudRetro](https://github.com/giongto35/cloud-game)).
+5. **Scalable**: Be able to scale on headless machines cluster horizontally.
+
+## Real-World Usecase
 Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cloud Gaming solution on Retro Game hosted on dedicated cloud infrastructure, CloudMorph generalizes the system to bring any offline Windows application to a cloud mesh network. The deployment is simplified with a concise tech-stack and codebase. The goal is to create a distributed cloud application system when anyone can contribute their offline application on the platform, and other people can consume it.
-
-## Usecases
 
 ##### For Developers
 - Experience playing/hosting Cloud Gaming on their own.
@@ -21,23 +40,6 @@ Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cl
 
 ##### For Providers
 - Playable Teaser: Application's teaser is playable, 
-
-## Design Goal:
-1. **Mesh network**: Providers-Consumers over Peer To Peer communication.
-2. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
-3. **Generic/Cross-platform**: Run on web browser, web mobile. Target Windows App instead of relying on gaming framework/emulator (like [CloudRetro](https://github.com/giongto35/cloud-game)).
-4. **Scalable**: Be able to scale on headless machines cluster horizontally.
-5. One line script deployment.
-
-## Demo
-
-|                       Screenshot                       |                        Screenshot                         |
-| :----------------------------------------------------: | :-------------------------------------------------------: |
-| ![screenshot](docs/img/screenshotDiablo.png) Diablo II | ![screenshot](docs/img/screenshotPhotoshop.png) Photoshop |
-| ![screenshot](docs/img/screenshotRoadrash.png) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/screenshotVirtuaCop.png) Photoshop  |
-
-[Cloud Morph](http://clouddiablo.com/) (Running on US server). You can select other applications in the dropdown and it will be instantly loaded.
-[Cloud Diablo](http://clouddiablo.com/) (Running on Singapore server)
 
 ## Deployment
 
@@ -118,11 +120,14 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 - C++ is chosen because it has good support for WindowsAPI.
 - Golang is not really a crucial part of this design. It helps spawn Webserver conveniently. With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
 
-## Roadmap
+## Road Map - Request for Help
 
-- Performance improvement.
+- UI improvement - I'm not frontend developer, so really need help on this.
+- Full Dockerize for easy local experiment.
+- Port C++ Window API to Rust.
+- Audio - With PulseAudio virtualization.
+- GPU acceleration. - Integrate with FFMPEG job. 
 - Multiplex application sessions. Currently, only collaborative mode is supported, which serves all application's sessions from the same single instance.
-- Improve flow to deploy app needs initialization.
-- Integrate with Lutris to simplify game initialization.
-- Web Mobile controller supprt. Currently, mouse click is simulated.
-- Packaging frontend as a component.
+- Performance optimization.
+- Web Mobile controller supprt. Currently, mouse click is already simulated.
+- Packaging frontend as a plugin that can be imported in any Webpage.

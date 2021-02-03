@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 cd winvm
-# docker build -t syncwine .
+docker build -t syncwine .
 docker rm -f appvm
-docker run -d --privileged --network=host --rm --name "appvm" --mount type=bind,source="$(pwd)"/apps,target=/apps \
+docker run -d --privileged --network=host --rm --name "appvm" \
+--mount type=bind,source="$(pwd)"/apps,target=/apps \
+--mount type=bind,source="$(pwd)"/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf \
 --env "apppath=$1" \
 --env "appfile=$2" \
 --env "appname=$3" \

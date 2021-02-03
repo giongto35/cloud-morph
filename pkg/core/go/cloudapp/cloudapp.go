@@ -226,7 +226,8 @@ func (c *ccImpl) listenVideoStream() {
 
 		n := r.Len()
 		for i := 0; i < n; i++ {
-			r.Value = make([]byte, 4096)
+			// r.Value = make([]byte, 4096)
+			r.Value = make([]byte, 1500)
 			r = r.Next()
 		}
 
@@ -241,6 +242,7 @@ func (c *ccImpl) listenVideoStream() {
 				continue
 			}
 
+			// TODOs: Don't assign packet here
 			packet := &rtp.Packet{}
 			if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
 				log.Printf("error during unmarshalling a packet: %s", err)

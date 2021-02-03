@@ -9,9 +9,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/pion/rtp"
-	"github.com/pion/rtp/codecs"
 	"github.com/pion/webrtc/v3"
-	"github.com/pion/webrtc/v3/pkg/media/samplebuilder"
 )
 
 // TODO: double check if no need TURN server here
@@ -94,7 +92,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 		}
 	}()
 	var err error
-	var videoTrack *webrtc.TrackLocalStaticSample
+	var videoTrack *webrtc.TrackLocalStaticRTP
 
 	// reset client
 	if w.isConnected {
@@ -109,9 +107,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	}
 
 	// add video track
-	// videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "app-video")
-	codec := webrtc.RTPCodecCapability{MimeType: "video/vp8"}
-	videoTrack, err = webrtc.NewTrackLocalStaticSample(codec, "video", "app-video")
+	videoTrack, err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8}, "video", "pion")
 
 	if err != nil {
 		return "", err
@@ -124,7 +120,6 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	log.Println("Add video track")
 
 	// add audio track
-	// opusTrack, err := w.connection.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "audio", "app-audio")
 	opusTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "audio/opus"}, "audio", "game-audio")
 	if err != nil {
 		return "", err
@@ -249,6 +244,11 @@ func (w *WebRTC) AddCandidate(candidate string) error {
 
 // StopClient disconnect
 func (w *WebRTC) StopClient() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered from err. Maybe we closed a closed image channel", r)
+		}
+	}()
 	// if stopped, bypass
 	if w.isConnected == false {
 		return
@@ -273,29 +273,13 @@ func (w *WebRTC) IsConnected() bool {
 	return w.isConnected
 }
 
-func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticSample, opusTrack *webrtc.TrackLocalStaticRTP) {
+func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack *webrtc.TrackLocalStaticRTP) {
 	log.Println("Start streaming")
 	// receive frame buffer
 	go func() {
-		// defer func() {
-		// 	if r := recover(); r != nil {
-		// 		fmt.Println("Recovered from err", r)
-		// 		log.Println(debug.Stack())
-		// 	}
-		// }()
-
-		videoBuilder := samplebuilder.New(10, &codecs.VP8Packet{}, 90000)
 		for packet := range w.ImageChannel {
-			videoBuilder.Push(packet)
-			for {
-				sample := videoBuilder.Pop()
-				if sample == nil {
-					break
-				}
-
-				if writeErr := vp8Track.WriteSample(*sample); writeErr != nil {
-					panic(writeErr)
-				}
+			if writeErr := vp8Track.WriteRTP(packet); writeErr != nil {
+				panic(writeErr)
 			}
 		}
 	}()
