@@ -21,11 +21,11 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 Switch Applications using the sidebar on the left.
 
 ## Design Goal:
-1. **Mesh network**: Providers-Consumers over Peer To Peer communication. After joining the network, Provider's Application is discoverable and launched with one click.
-2. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
-3. **Generic/Cross-platform**: Run on web browser, web mobile. Target Windows App instead of relying on gaming framework/emulator (like [CloudRetro](https://github.com/giongto35/cloud-game)).
-4. **Scalable**: Be able to scale on headless machines cluster horizontally.
-5. **Portable**: One line script deployment on a public server. 
+1. **Simplicity**: No API/ interface integration needed from application. One line script deployment to a public server to get work done.
+2. **Mesh network**: Providers-Consumers over Peer To Peer communication. After joining the network, Provider's Application is discoverable and launched with one click.
+3. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
+4. **Generic/Cross-platform**: Run on web browser, web mobile. Target Windows App instead of relying on gaming framework/emulator (like [CloudRetro](https://github.com/giongto35/cloud-game)).
+5. **Scalable**: Be able to scale on headless machines cluster horizontally.
 
 ## Real-World Usecase
 Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cloud Gaming solution on Retro Game hosted on dedicated cloud infrastructure, CloudMorph generalizes the system to bring any offline Windows application to a cloud mesh network. The deployment is simplified with a concise tech-stack and codebase. The goal is to create a distributed cloud application system when anyone can contribute their offline application on the platform, and other people can consume it.
@@ -120,11 +120,14 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 - C++ is chosen because it has good support for WindowsAPI.
 - Golang is not really a crucial part of this design. It helps spawn Webserver conveniently. With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
 
-## Roadmap
+## Road Map - Request for Help
 
-- Performance improvement.
+- UI improvement - I'm not frontend developer, so really need help on this.
+- Full Dockerize for easy local experiment.
+- Port C++ Window API to Rust.
+- Audio - With PulseAudio virtualization.
+- GPU acceleration. - Integrate with FFMPEG job. 
 - Multiplex application sessions. Currently, only collaborative mode is supported, which serves all application's sessions from the same single instance.
-- Improve flow to deploy app needs initialization.
-- Integrate with Lutris to simplify game initialization.
-- Web Mobile controller supprt. Currently, mouse click is simulated.
-- Packaging frontend as a component.
+- Performance optimization.
+- Web Mobile controller supprt. Currently, mouse click is already simulated.
+- Packaging frontend as a plugin that can be imported in any Webpage.
