@@ -3,7 +3,7 @@
 
 ## Introduction
 
-CloudMorph is a decentralized, self-hosted cloud gaming/cloud application service. User can host their cloud gaming app with minimum configuration. By leveraging the ease of deployment, CloudMorph goal is to build a decentralized cloud-gaming network with app providers and consumers. By coping with video streaming optimization, virtualization of Windows application on headless server and meticulous modularization, CloudMorph brings a scalable and generic cloud gaming solution
+CloudMorph is a decentralized, self-hosted cloud gaming/cloud application service. User can host their cloud gaming app with minimum configuration. By leveraging the ease of deployment, CloudMorph goal is to build a decentralized cloud-gaming network with app providers and consumers. To brings a scalable and generic cloud gaming solution, CloudMorph has to solved many challenges from video streaming optimization, Windows application Virtualization on headless server and P2P mesh network structurization.
 
 ## Demo
 
@@ -23,7 +23,7 @@ Demo Diablo [cloudmorph.io](http://cloudmorph.io/) hosted by CloudMorph : https:
 4. **Scalable**: Be able to scale on headless machines cluster horizontally.
 5. One line script deployment.
 
-## Goal
+## Real-World Usecase
 Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cloud Gaming solution on Retro Game hosted on dedicated cloud infrastructure, CloudMorph generalizes the system to bring any offline Windows application to a cloud mesh network. The deployment is simplified with a concise tech-stack and codebase. The goal is to create a distributed cloud application system when anyone can contribute their offline application on the platform, and other people can consume it.
 
 ##### For Developers
@@ -36,9 +36,6 @@ Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cl
 
 ##### For Providers
 - Playable Teaser: Application's teaser is playable, 
-
-
-It still follows Cloud Gaming's idea: the application is run on remote servers, screen and user input are streamed back and forth between clients and server in optimal way. On top of that, it builds a decentralized network of cloudapp providers, and consumers, where providers can host their own cloudapp with a given framework, and consumers can use any app in the network.  
 
 ## Deployment
 
