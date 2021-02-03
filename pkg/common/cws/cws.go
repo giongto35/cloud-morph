@@ -104,7 +104,7 @@ func (c *Client) Receive(id string, f func(request WSPacket) (response WSPacket)
 		resp.SessionID = request.SessionID
 
 		// Skip request if it is EmptyPacket
-		if request == EmptyPacket {
+		if resp == EmptyPacket {
 			return
 		}
 		respText, err := json.Marshal(resp)
