@@ -242,6 +242,7 @@ func (c *ccImpl) listenVideoStream() {
 				continue
 			}
 
+			// TODOs: Don't assign packet here
 			packet := &rtp.Packet{}
 			if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
 				log.Printf("error during unmarshalling a packet: %s", err)

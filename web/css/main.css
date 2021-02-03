@@ -28,7 +28,7 @@
 
 #discovery {
   width: 33.33%;
-  height: 100%;
+  max-height: 85vh;
   flex-grow: 1;
   margin-right: 5px;
 }
@@ -48,7 +48,6 @@
 
 #discoverydropdown {
   width: 100%;
-  max-height: 85vh;
   border: 0px;
   outline: 0px;
   overflow: auto;

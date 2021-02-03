@@ -106,8 +106,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 		return "", err
 	}
 
-	// sdd video track
-	// videoTrack, err = w.connection.NewTrack(webrtc.DefaultPayloadTypeVP8, ssrc, "video", "app-video")
+	// add video track
 	videoTrack, err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8}, "video", "pion")
 
 	if err != nil {
@@ -121,7 +120,6 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	log.Println("Add video track")
 
 	// add audio track
-	// opusTrack, err := w.connection.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "audio", "app-audio")
 	opusTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "audio/opus"}, "audio", "game-audio")
 	if err != nil {
 		return "", err
@@ -132,6 +130,25 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	}
 
 	_, err = w.connection.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RtpTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly})
+
+	// create data channel for input, and register callbacks
+	// order: true, negotiated: false, id: random
+	// inputTrack, err := w.connection.CreateDataChannel("app-input", nil)
+
+	// inputTrack.OnOpen(func() {
+	// 	log.Printf("Data channel '%s'-'%d' open.\n", inputTrack.Label(), inputTrack.ID())
+	// })
+
+	// Register text message handling
+	// inputTrack.OnMessage(func(msg webrtc.DataChannelMessage) {
+	// 	// TODO: Can add recover here
+	// 	w.InputChannel <- msg.Data
+	// })
+
+	// inputTrack.OnClose(func() {
+	// 	log.Println("Data channel closed")
+	// 	log.Println("Closed webrtc")
+	// })
 
 	// WebRTC state callback
 	w.connection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
