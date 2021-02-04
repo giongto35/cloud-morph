@@ -91,6 +91,10 @@ const KEYBOARD_KEY_PRESSED = "keyboardKeyPressed";
 const AXIS_CHANGED = "axisChanged";
 const CONTROLLER_UPDATED = "controllerUpdated";
 
+const MOUSE_DOWN = "mouseDown";
+const MOUSE_UP = "mouseUp";
+const MOUSE_MOVE = "mouseMove";
+
 const DPAD_TOGGLE = "dpadToggle";
 const STATS_TOGGLE = "statsToggle";
 const HELP_OVERLAY_TOGGLED = "helpOverlayToggled";
