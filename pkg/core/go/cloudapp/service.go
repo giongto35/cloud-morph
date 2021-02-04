@@ -144,6 +144,21 @@ func (c *Client) Handle() {
 		}
 		wg.Done()
 	}()
+
+	wg.Add(1)
+	go func() {
+		// Data channel input
+		for rawInput := range c.rtcConn.InputChannel {
+			// TODO: No dynamic allocation
+			wspacket := cws.WSPacket{}
+			err := json.Unmarshal(rawInput, &wspacket)
+			if err != nil {
+				log.Println(err)
+			}
+			c.appEvents <- convertWSPacket(wspacket)
+		}
+		wg.Done()
+	}()
 	wg.Wait()
 
 	close(c.done)
@@ -216,13 +231,6 @@ func (c *Client) Route(ssrc uint32) {
 			return cws.EmptyPacket
 		},
 	)
-
-	for _, event := range appEventTypes {
-		c.ws.Receive(event, func(req cws.WSPacket) (resp cws.WSPacket) {
-			c.appEvents <- convertWSPacket(req)
-			return cws.EmptyPacket
-		})
-	}
 }
 
 // NewCloudService returns a Cloud Service

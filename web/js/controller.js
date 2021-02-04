@@ -4,10 +4,6 @@
  */
 (() => {
   const pingIntervalMs = 2000; // 2 secs
-  const MOUSE_DOWN = 0;
-  const MOUSE_UP = 1;
-  const MOUSE_LEFT = 0;
-  const MOUSE_RIGHT = 1;
   var isFullscreen = false;
 
   // TODO: move to chat.js // Non core logic
@@ -46,10 +42,59 @@
     log.info("[control] app start");
 
     // TODO: Remove
-    socket.start(gameList.getCurrentGame(), env.isMobileDevice(), room.getId());
+    // socket.start(gameList.getCurrentGame(), env.isMobileDevice(), room.getId());
 
     // // end clear
     // input.poll().enable();
+  };
+
+  const onKeyPress = (data) => {
+    rtcp.input(
+      JSON.stringify({
+        type: "KEYDOWN",
+        data: JSON.stringify({
+          keyCode: data.key,
+        }),
+      })
+    );
+  };
+
+  const onKeyRelease = (data) => {
+    rtcp.input(
+      JSON.stringify({
+        type: "KEYUP",
+        data: JSON.stringify({
+          keyCode: data.key,
+        }),
+      })
+    );
+  };
+
+  const onMouseDown = (data) => {
+    rtcp.input(
+      JSON.stringify({
+        type: "MOUSEDOWN",
+        data: JSON.stringify(data),
+      })
+    );
+  };
+
+  const onMouseUp = (data) => {
+    rtcp.input(
+      JSON.stringify({
+        type: "MOUSEUP",
+        data: JSON.stringify(data),
+      })
+    );
+  };
+
+  const onMouseMove = (data) => {
+    rtcp.input(
+      JSON.stringify({
+        type: "MOUSEMOVE",
+        data: JSON.stringify(data),
+      })
+    );
   };
 
   document.addEventListener("keydown", (e) => {
@@ -59,12 +104,7 @@
     ) {
       return;
     }
-    socket.send({
-      type: "KEYDOWN",
-      data: JSON.stringify({
-        keyCode: e.keyCode,
-      }),
-    });
+    event.pub(KEY_PRESSED, { key: e.keyCode });
   });
 
   document.addEventListener("keyup", (e) => {
@@ -74,12 +114,7 @@
     ) {
       return;
     }
-    socket.send({
-      type: "KEYUP",
-      data: JSON.stringify({
-        keyCode: e.keyCode,
-      }),
-    });
+    event.pub(KEY_RELEASED, { key: e.keyCode });
   });
 
   discoverydropdown.addEventListener("change", () => {
@@ -93,15 +128,12 @@
     x = e.offsetX;
     y = e.offsetY;
     boundRect = appscreen.getBoundingClientRect();
-    socket.send({
-      type: "MOUSEDOWN",
-      data: JSON.stringify({
-        isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-        x: e.offsetX,
-        y: e.offsetY,
-        width: boundRect.width,
-        height: boundRect.height,
-      }),
+    event.pub(MOUSE_DOWN, {
+      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
+      x: e.offsetX,
+      y: e.offsetY,
+      width: boundRect.width,
+      height: boundRect.height,
     });
   });
 
@@ -109,15 +141,12 @@
     x = e.offsetX;
     y = e.offsetY;
     boundRect = appscreen.getBoundingClientRect();
-    socket.send({
-      type: "MOUSEUP",
-      data: JSON.stringify({
-        isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-        x: e.offsetX,
-        y: e.offsetY,
-        width: boundRect.width,
-        height: boundRect.height,
-      }),
+    event.pub(MOUSE_UP, {
+      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
+      x: e.offsetX,
+      y: e.offsetY,
+      width: boundRect.width,
+      height: boundRect.height,
     });
   });
 
@@ -125,15 +154,12 @@
     x = e.offsetX;
     y = e.offsetY;
     boundRect = appscreen.getBoundingClientRect();
-    socket.send({
-      type: "MOUSEMOVE",
-      data: JSON.stringify({
-        isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-        x: e.offsetX,
-        y: e.offsetY,
-        width: boundRect.width,
-        height: boundRect.height,
-      }),
+    event.pub(MOUSE_MOVE, {
+      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
+      x: e.offsetX,
+      y: e.offsetY,
+      width: boundRect.width,
+      height: boundRect.height,
     });
   });
 
@@ -261,4 +287,10 @@
     updateAppList(JSON.parse(data));
   });
   // event.sub(CONNECTION_CLOSED, () => input.poll().disable());
+  event.sub(KEY_PRESSED, onKeyPress);
+  event.sub(KEY_RELEASED, onKeyRelease);
+  event.sub(MOUSE_MOVE, onMouseMove);
+  event.sub(MOUSE_DOWN, onMouseDown);
+  event.sub(MOUSE_UP, onMouseUp);
+  event.sub(KEY_STATE_UPDATED, (data) => rtcp.input(data));
 })($, document, event, env, socket);
