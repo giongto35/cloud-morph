@@ -52,6 +52,27 @@
     // input.poll().enable();
   };
 
+  const onKeyPress = (data) => {
+    rtcp.input(
+      JSON.stringify({
+        type: "KEYDOWN",
+        data: JSON.stringify({
+          keyCode: data.key,
+        }),
+      })
+    );
+  };
+  const onKeyRelease = (data) => {
+    rtcp.input(
+      JSON.stringify({
+        type: "KEYUP",
+        data: JSON.stringify({
+          keyCode: data.key,
+        }),
+      })
+    );
+  };
+
   document.addEventListener("keydown", (e) => {
     if (
       document.activeElement === username ||
@@ -59,12 +80,7 @@
     ) {
       return;
     }
-    socket.send({
-      type: "KEYDOWN",
-      data: JSON.stringify({
-        keyCode: e.keyCode,
-      }),
-    });
+    event.pub(KEY_PRESSED, { key: e.keyCode });
   });
 
   document.addEventListener("keyup", (e) => {
@@ -74,12 +90,7 @@
     ) {
       return;
     }
-    socket.send({
-      type: "KEYUP",
-      data: JSON.stringify({
-        keyCode: e.keyCode,
-      }),
-    });
+    event.pub(KEY_RELEASED, { key: e.keyCode });
   });
 
   discoverydropdown.addEventListener("change", () => {
@@ -261,4 +272,7 @@
     updateAppList(JSON.parse(data));
   });
   // event.sub(CONNECTION_CLOSED, () => input.poll().disable());
+  event.sub(KEY_PRESSED, onKeyPress);
+  event.sub(KEY_RELEASED, onKeyRelease);
+  event.sub(KEY_STATE_UPDATED, (data) => rtcp.input(data));
 })($, document, event, env, socket);
