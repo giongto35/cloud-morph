@@ -133,22 +133,22 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 
 	// create data channel for input, and register callbacks
 	// order: true, negotiated: false, id: random
-	// inputTrack, err := w.connection.CreateDataChannel("app-input", nil)
+	inputTrack, err := w.connection.CreateDataChannel("app-input", nil)
 
-	// inputTrack.OnOpen(func() {
-	// 	log.Printf("Data channel '%s'-'%d' open.\n", inputTrack.Label(), inputTrack.ID())
-	// })
+	inputTrack.OnOpen(func() {
+		log.Printf("Data channel '%s'-'%d' open.\n", inputTrack.Label(), inputTrack.ID())
+	})
 
 	// Register text message handling
-	// inputTrack.OnMessage(func(msg webrtc.DataChannelMessage) {
-	// 	// TODO: Can add recover here
-	// 	w.InputChannel <- msg.Data
-	// })
+	inputTrack.OnMessage(func(msg webrtc.DataChannelMessage) {
+		// TODO: Can add recover here
+		w.InputChannel <- msg.Data
+	})
 
-	// inputTrack.OnClose(func() {
-	// 	log.Println("Data channel closed")
-	// 	log.Println("Closed webrtc")
-	// })
+	inputTrack.OnClose(func() {
+		log.Println("Data channel closed")
+		log.Println("Closed webrtc")
+	})
 
 	// WebRTC state callback
 	w.connection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
@@ -261,7 +261,7 @@ func (w *WebRTC) StopClient() {
 		w.connection.Close()
 		w.connection = nil
 	}
-	//close(w.InputChannel)
+	close(w.InputChannel)
 	// webrtc is producer, so we close
 	// NOTE: ImageChannel is waiting for input. Close in writer is not correct for this
 	close(w.ImageChannel)
