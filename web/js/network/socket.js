@@ -103,20 +103,20 @@ const socket = (() => {
       data: JSON.stringify(workers),
       packet_id: packetId,
     });
-  const start = (appName, isMobile) =>
-    send({
-      id: "start",
-      data: JSON.stringify({
-        app_name: gameName,
-        is_mobile: isMobile,
-      }),
-    });
+  // const start = (appName, isMobile) =>
+  //   send({
+  //     id: "start",
+  //     data: JSON.stringify({
+  //       app_name: gameName,
+  //       is_mobile: isMobile,
+  //     }),
+  //   });
   // const quit = (roomId) => send({"id": "quit", "data": "", "room_id": roomId});
 
   return {
     send: send,
     latency: latency,
-    start: start,
+    // start: start,
     connect: connect,
     // quit: quit,
   };

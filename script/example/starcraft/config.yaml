@@ -1,0 +1,11 @@
+path: /apps/Starcraft # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
+appFile: StarCraft.exe # File Name of the app in the directory
+windowTitle: Starcraft # Window Title: not to show, it's the substring of title to help specify the running program in OS
+pageTitle: "Starcraft - A Cloud Morph Demo" # Page Title: To display on webpage
+appName: Starcraft # App name: to show in discovery
+appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
+hasChat: true # Turn on chat
+hardwareKey: false # Some game using DirectX needs hardward key. Turn this flag on to receive the input
+screenWidth: 800 # Optional: Default to be: 800
+screenHeight: 600 # Optional: Default to be: 600
+isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
