@@ -121,16 +121,21 @@
     });
   });
 
-  appscreen.addEventListener("mousemove", function (e) {
-    x = e.offsetX;
-    y = e.offsetY;
+  document.addEventListener("mousemove", function (e) {
+    console.log(
+      e.offsetX,
+      e.offsetY,
+      appscreen.offsetLeft,
+      appscreen.offsetTop
+    );
     boundRect = appscreen.getBoundingClientRect();
+    console.log(e.x, e.y, boundRect.left, boundRect.top);
     socket.send({
       type: "MOUSEMOVE",
       data: JSON.stringify({
         isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-        x: e.offsetX,
-        y: e.offsetY,
+        x: e.clientX - boundRect.left,
+        y: e.clientY - boundRect.top,
         width: boundRect.width,
         height: boundRect.height,
       }),
