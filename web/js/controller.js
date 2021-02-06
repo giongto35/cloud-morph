@@ -205,9 +205,10 @@
   //   const latency = await ajax.fetch(`${app.addr}/echo`, {method: "GET", redirect: "follow"}, timeoutMs);
   // }
 
-  const initApps = ({ cur_app_id, apps }) => {
+  const initApps = ({ cur_app_id, cur_app, apps }) => {
     curAppID = cur_app_id;
     updateAppList(apps);
+    updatePage(cur_app);
   };
 
   const updateAppList = (apps) => {
@@ -258,8 +259,8 @@
   const updatePage = (app) => {
     chatd.style.visibility = app.has_chat;
     appTitle.innerText = app.page_title;
-    appScreen.height = vh(85);
-    appScreen.width = (appScreen.height * app.screen_width) / app.screen_height;
+    appScreen.style.height = "85vh";
+    appScreen.style.width = `${(85 * app.screen_width) / app.screen_height}vh`; // maintain 800x600
     numplayers.style.visibility = app.collaborative;
   };
 

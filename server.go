@@ -50,6 +50,7 @@ type Server struct {
 	capp             *cloudapp.Service
 	chat             *textchat.TextChat
 	discoveryHandler *discoveryHandler
+	appMeta          appDiscoveryMeta
 }
 
 type discoveryHandler struct {
@@ -71,8 +72,10 @@ type appDiscoveryMeta struct {
 }
 
 type initData struct {
-	CurAppID string             `json:"cur_app_id"`
-	Apps     []appDiscoveryMeta `json:"apps"`
+	CurAppID string `json:"cur_app_id"`
+	// App maynot be inside Apps because App can be in local, not in discovery
+	App  appDiscoveryMeta   `json:"cur_app"`
+	Apps []appDiscoveryMeta `json:"apps"`
 }
 
 // WSO handles all connections from user/frontend to coordinator
@@ -129,6 +132,7 @@ func (s *Server) initClientData(client *cws.Client) {
 	}
 	data := initData{
 		CurAppID: s.appID,
+		App:      s.appMeta,
 		Apps:     apps,
 	}
 	jsonData, err := json.Marshal(data)
@@ -206,7 +210,7 @@ func NewServer() *Server {
 	// Launch App VM
 	server.capp = cloudapp.NewCloudService(cfg)
 	server.chat = textchat.NewTextChat()
-	appID, err := server.RegisterApp(appDiscoveryMeta{
+	appMeta := appDiscoveryMeta{
 		Addr:         cfg.InstanceAddr,
 		AppName:      cfg.AppName,
 		AppMode:      cfg.AppMode,
@@ -214,11 +218,14 @@ func NewServer() *Server {
 		PageTitle:    cfg.PageTitle,
 		ScreenWidth:  cfg.ScreenWidth,
 		ScreenHeight: cfg.ScreenHeight,
-	})
+	}
+
+	appID, err := server.RegisterApp(appMeta)
 	if err != nil {
 		log.Println(err)
 	}
 	server.appID = appID
+	server.appMeta = appMeta
 	log.Println("Registered with AppID", server.appID)
 
 	if cfg.DiscoveryHost != "" {
