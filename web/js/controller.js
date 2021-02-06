@@ -16,10 +16,12 @@
   const username = document.getElementById("chatusername");
   const message = document.getElementById("chatmessage");
   const fullscreen = document.getElementById("fullscreen");
+  const appBody = document.getElementById("app-body");
   const appd = document.getElementById("app");
   const chatd = document.getElementById("chat");
   const numplayers = document.getElementById("numplayers");
   const discoverydropdown = document.getElementById("discoverydropdown");
+  const discovery = document.getElementById("discovery");
   const appTitle = document.getElementById("app-title");
   const appScreen = document.getElementById("app-screen");
   let curAppID = 0;
@@ -161,15 +163,20 @@
     isFullscreen = !isFullscreen;
     if (isFullscreen) {
       chatd.style.display = "none";
+      discovery.style.display = "none";
+      appBody.style.justifyContent = "center";
       appd.style.display = "flex";
       appd.style.flexDirection = "row";
+      appd.style.flexGrow = 0;
       appScreen.style.height = "100vh";
       appScreen.style.width = "133.33vh"; // maintain 800x600
     } else {
-      chatd.style.display = "block";
+      discovery.style.display = "block";
+      chatd.style.display = "flex";
       appd.style.display = "block";
       appScreen.style.height = "85vh";
       appScreen.style.width = `${(85 * 8) / 6}vh`; // maintain 800x600
+      appScreen.style.flexGrow = 1;
     }
   });
 
