@@ -58,13 +58,16 @@ type discoveryHandler struct {
 	apps          []appDiscoveryMeta
 }
 
+// TODO: sync with discovery.go
 type appDiscoveryMeta struct {
-	ID        string `json:"id"`
-	AppName   string `json:"app_name"`
-	Addr      string `json:"addr"`
-	AppMode   string `json:"app_mode"`
-	HasChat   bool   `json:"has_chat"`
-	PageTitle string `json:"page_title"`
+	ID           string `json:"id"`
+	AppName      string `json:"app_name"`
+	Addr         string `json:"addr"`
+	AppMode      string `json:"app_mode"`
+	HasChat      bool   `json:"has_chat"`
+	PageTitle    string `json:"page_title"`
+	ScreenWidth  int    `json:"screen_width"`
+	ScreenHeight int    `json:"screen_height"`
 }
 
 type initData struct {
@@ -204,11 +207,13 @@ func NewServer() *Server {
 	server.capp = cloudapp.NewCloudService(cfg)
 	server.chat = textchat.NewTextChat()
 	appID, err := server.RegisterApp(appDiscoveryMeta{
-		Addr:      cfg.InstanceAddr,
-		AppName:   cfg.AppName,
-		AppMode:   cfg.AppMode,
-		HasChat:   cfg.HasChat,
-		PageTitle: cfg.PageTitle,
+		Addr:         cfg.InstanceAddr,
+		AppName:      cfg.AppName,
+		AppMode:      cfg.AppMode,
+		HasChat:      cfg.HasChat,
+		PageTitle:    cfg.PageTitle,
+		ScreenWidth:  cfg.ScreenWidth,
+		ScreenHeight: cfg.ScreenHeight,
 	})
 	if err != nil {
 		log.Println(err)

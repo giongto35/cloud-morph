@@ -28,12 +28,14 @@ type kvstorage struct {
 }
 
 type appDiscoveryMeta struct {
-	ID        string `json:"id"`
-	AppName   string `json:"app_name"`
-	Addr      string `json:"addr"`
-	AppMode   string `json:"app_mode"`
-	HasChat   bool   `json:"has_chat"`
-	PageTitle string `json:"page_title"`
+	ID           string `json:"id"`
+	AppName      string `json:"app_name"`
+	Addr         string `json:"addr"`
+	AppMode      string `json:"app_mode"`
+	HasChat      bool   `json:"has_chat"`
+	PageTitle    string `json:"page_title"`
+	ScreenWidth  int    `json:"screen_width"`
+	ScreenHeight int    `json:"screen_height"`
 }
 
 type appDiscovery struct {

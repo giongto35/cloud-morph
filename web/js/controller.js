@@ -20,8 +20,8 @@
   const chatd = document.getElementById("chat");
   const numplayers = document.getElementById("numplayers");
   const discoverydropdown = document.getElementById("discoverydropdown");
-  // const appTitle = document.getElementById("appTitle");
-  const appscreen = document.getElementById("app-screen");
+  const appTitle = document.getElementById("app-title");
+  const appScreen = document.getElementById("app-screen");
   let curAppID = 0;
 
   var offerst;
@@ -89,10 +89,10 @@
     updatePage(app);
   });
 
-  appscreen.addEventListener("mousedown", (e) => {
+  appScreen.addEventListener("mousedown", (e) => {
     x = e.offsetX;
     y = e.offsetY;
-    boundRect = appscreen.getBoundingClientRect();
+    boundRect = appScreen.getBoundingClientRect();
     socket.send({
       type: "MOUSEDOWN",
       data: JSON.stringify({
@@ -105,10 +105,10 @@
     });
   });
 
-  appscreen.addEventListener("mouseup", (e) => {
+  appScreen.addEventListener("mouseup", (e) => {
     x = e.offsetX;
     y = e.offsetY;
-    boundRect = appscreen.getBoundingClientRect();
+    boundRect = appScreen.getBoundingClientRect();
     socket.send({
       type: "MOUSEUP",
       data: JSON.stringify({
@@ -125,10 +125,10 @@
     console.log(
       e.offsetX,
       e.offsetY,
-      appscreen.offsetLeft,
-      appscreen.offsetTop
+      appScreen.offsetLeft,
+      appScreen.offsetTop
     );
-    boundRect = appscreen.getBoundingClientRect();
+    boundRect = appScreen.getBoundingClientRect();
     console.log(e.x, e.y, boundRect.left, boundRect.top);
     socket.send({
       type: "MOUSEMOVE",
@@ -142,7 +142,7 @@
     });
   });
 
-  appscreen.addEventListener("click", (e) => {
+  appScreen.addEventListener("click", (e) => {
     e.preventDefault();
     return false;
   });
@@ -163,13 +163,13 @@
       chatd.style.display = "none";
       appd.style.display = "flex";
       appd.style.flexDirection = "row";
-      appscreen.style.height = "100vh";
-      appscreen.style.width = "133.33vh"; // maintain 800x600
+      appScreen.style.height = "100vh";
+      appScreen.style.width = "133.33vh"; // maintain 800x600
     } else {
       chatd.style.display = "block";
       appd.style.display = "block";
-      appscreen.style.height = "85vh";
-      appscreen.style.width = `${(85 * 8) / 6}vh`; // maintain 800x600
+      appScreen.style.height = "85vh";
+      appScreen.style.width = `${(85 * 8) / 6}vh`; // maintain 800x600
     }
   });
 
@@ -239,9 +239,27 @@
     });
   };
 
+  function vh(v) {
+    var h = Math.max(
+      document.documentElement.clientHeight,
+      window.innerHeight || 0
+    );
+    return (v * h) / 100;
+  }
+
+  function vw(v) {
+    var w = Math.max(
+      document.documentElement.clientWidth,
+      window.innerWidth || 0
+    );
+    return (v * w) / 100;
+  }
+
   const updatePage = (app) => {
     chatd.style.visibility = app.has_chat;
-    // appTitle.innerText = app.page_title;
+    appTitle.innerText = app.page_title;
+    appScreen.height = vh(85);
+    appScreen.width = (appScreen.height * app.screen_width) / app.screen_height;
     numplayers.style.visibility = app.collaborative;
   };
 
@@ -249,7 +267,7 @@
     rtcp.start(data.stunturn);
   });
   event.sub(MEDIA_STREAM_SDP_AVAILABLE, (data) =>
-    rtcp.setRemoteDescription(data.sdp, appscreen)
+    rtcp.setRemoteDescription(data.sdp, appScreen)
   );
   event.sub(MEDIA_STREAM_CANDIDATE_ADD, (data) =>
     rtcp.addCandidate(data.candidate)

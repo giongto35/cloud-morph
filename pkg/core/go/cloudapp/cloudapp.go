@@ -312,7 +312,6 @@ func (c *ccImpl) simulateMouseEvent(jsonPayload string, mouseState int) {
 	json.Unmarshal([]byte(jsonPayload), &p)
 	p.X = p.X * c.screenWidth / p.Width
 	p.Y = p.Y * c.screenHeight / p.Height
-	fmt.Println(p.X, c.screenWidth, p.Width)
 
 	// Mouse is in format of comma separated "12.4,52.3"
 	vmMouseMsg := fmt.Sprintf("M%d,%d,%f,%f,%f,%f|", p.IsLeft, mouseState, p.X, p.Y, p.Width, p.Height)
