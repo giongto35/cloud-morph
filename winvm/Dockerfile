@@ -15,7 +15,10 @@ RUN aptitude install -y winehq-stable
 
 RUN wget -nv -O /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks \
     && chmod +x /usr/bin/winetricks
-RUN winetricks d3dx9_43
+
+# Silence all the "fixme: blah blah blah" messages from wine
+ENV WINEDEBUG fixme-all
+RUN winetricks -q dotnet45 d3dx9_43
 
 # Download gecko and mono installers
 COPY download_gecko_and_mono.sh /root/download_gecko_and_mono.sh
