@@ -32,13 +32,15 @@ type CloudAppClient interface {
 }
 
 type ccImpl struct {
-	isReady     bool
-	listener    *net.UDPConn
-	videoStream chan *rtp.Packet
-	appEvents   chan Packet
-	wineConn    *net.TCPConn
-	ssrc        uint32
-	payloadType uint8
+	isReady      bool
+	listener     *net.UDPConn
+	videoStream  chan *rtp.Packet
+	appEvents    chan Packet
+	wineConn     *net.TCPConn
+	screenWidth  float32
+	screenHeight float32
+	ssrc         uint32
+	payloadType  uint8
 }
 
 // Packet represents a packet in cloudapp
@@ -128,6 +130,7 @@ func (c *ccImpl) launchAppVM(rtpPort int, cfg config.Config) chan struct{} {
 	var stderr bytes.Buffer
 	var params []string
 
+	// Setup wine params and run
 	log.Println("execing run-wine.sh")
 	// TODO: refactor to key value
 	params = []string{cfg.Path, cfg.AppFile, cfg.WindowTitle}
@@ -153,6 +156,10 @@ func (c *ccImpl) launchAppVM(rtpPort int, cfg config.Config) chan struct{} {
 		panic(err)
 	}
 	log.Println("execed run-client.sh")
+
+	// update flag
+	c.screenWidth = float32(cfg.ScreenWidth)
+	c.screenHeight = float32(cfg.ScreenHeight)
 
 	done := make(chan struct{})
 	// clean up func
@@ -303,6 +310,8 @@ func (c *ccImpl) simulateMouseEvent(jsonPayload string, mouseState int) {
 	}
 	p := &mousePayload{}
 	json.Unmarshal([]byte(jsonPayload), &p)
+	p.X = p.X * c.screenWidth / p.Width
+	p.Y = p.Y * c.screenHeight / p.Height
 
 	// Mouse is in format of comma separated "12.4,52.3"
 	vmMouseMsg := fmt.Sprintf("M%d,%d,%f,%f,%f,%f|", p.IsLeft, mouseState, p.X, p.Y, p.Width, p.Height)

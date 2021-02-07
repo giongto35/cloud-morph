@@ -294,8 +294,8 @@ void processEvent(string ev, bool isDxGame)
     else if (ev[0] == 'M')
     {
         Mouse mouse = parseMousePayload(ev.substr(1, ev.length() - 1));
-        float x = mouse.x * screenWidth / mouse.relwidth;
-        float y = mouse.y * screenHeight / mouse.relheight;
+        float x = mouse.x;
+        float y = mouse.y;
         sendMouseDown(mouse.isLeft, mouse.state, x, y);
     }
 }

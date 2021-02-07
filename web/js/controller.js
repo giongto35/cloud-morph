@@ -12,12 +12,14 @@
   const username = document.getElementById("chatusername");
   const message = document.getElementById("chatmessage");
   const fullscreen = document.getElementById("fullscreen");
+  const appBody = document.getElementById("app-body");
   const appd = document.getElementById("app");
   const chatd = document.getElementById("chat");
   const numplayers = document.getElementById("numplayers");
   const discoverydropdown = document.getElementById("discoverydropdown");
-  // const appTitle = document.getElementById("appTitle");
-  const appscreen = document.getElementById("app-screen");
+  const discovery = document.getElementById("discovery");
+  const appTitle = document.getElementById("app-title");
+  const appScreen = document.getElementById("app-screen");
   let curAppID = 0;
 
   var offerst;
@@ -124,7 +126,7 @@
     updatePage(app);
   });
 
-  appscreen.addEventListener("mousedown", (e) => {
+  appScreen.addEventListener("mousedown", (e) => {
     x = e.offsetX;
     y = e.offsetY;
     boundRect = appscreen.getBoundingClientRect();
@@ -137,7 +139,7 @@
     });
   });
 
-  appscreen.addEventListener("mouseup", (e) => {
+  appScreen.addEventListener("mouseup", (e) => {
     x = e.offsetX;
     y = e.offsetY;
     boundRect = appscreen.getBoundingClientRect();
@@ -150,20 +152,28 @@
     });
   });
 
-  appscreen.addEventListener("mousemove", function (e) {
-    x = e.offsetX;
-    y = e.offsetY;
-    boundRect = appscreen.getBoundingClientRect();
-    event.pub(MOUSE_MOVE, {
-      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-      x: e.offsetX,
-      y: e.offsetY,
-      width: boundRect.width,
-      height: boundRect.height,
+  document.addEventListener("mousemove", function (e) {
+    console.log(
+      e.offsetX,
+      e.offsetY,
+      appScreen.offsetLeft,
+      appScreen.offsetTop
+    );
+    boundRect = appScreen.getBoundingClientRect();
+    console.log(e.x, e.y, boundRect.left, boundRect.top);
+    socket.send({
+      type: "MOUSEMOVE",
+      data: JSON.stringify({
+        isLeft: e.button == 0 ? 1 : 0, // 1 is right button
+        x: e.clientX - boundRect.left,
+        y: e.clientY - boundRect.top,
+        width: boundRect.width,
+        height: boundRect.height,
+      }),
     });
   });
 
-  appscreen.addEventListener("click", (e) => {
+  appScreen.addEventListener("click", (e) => {
     e.preventDefault();
     return false;
   });
@@ -182,15 +192,20 @@
     isFullscreen = !isFullscreen;
     if (isFullscreen) {
       chatd.style.display = "none";
+      discovery.style.display = "none";
+      appBody.style.justifyContent = "center";
       appd.style.display = "flex";
       appd.style.flexDirection = "row";
-      appscreen.style.height = "100vh";
-      appscreen.style.width = "133.33vh"; // maintain 800x600
+      appd.style.flexGrow = 0;
+      appScreen.style.height = "100vh";
+      appScreen.style.width = "133.33vh"; // maintain 800x600
     } else {
-      chatd.style.display = "block";
+      discovery.style.display = "block";
+      chatd.style.display = "flex";
       appd.style.display = "block";
-      appscreen.style.height = "85vh";
-      appscreen.style.width = `${(85 * 8) / 6}vh`; // maintain 800x600
+      appScreen.style.height = "85vh";
+      appScreen.style.width = `${(85 * 8) / 6}vh`; // maintain 800x600
+      appScreen.style.flexGrow = 1;
     }
   });
 
@@ -226,9 +241,10 @@
   //   const latency = await ajax.fetch(`${app.addr}/echo`, {method: "GET", redirect: "follow"}, timeoutMs);
   // }
 
-  const initApps = ({ cur_app_id, apps }) => {
+  const initApps = ({ cur_app_id, cur_app, apps }) => {
     curAppID = cur_app_id;
     updateAppList(apps);
+    updatePage(cur_app);
   };
 
   const updateAppList = (apps) => {
@@ -260,9 +276,27 @@
     });
   };
 
+  function vh(v) {
+    var h = Math.max(
+      document.documentElement.clientHeight,
+      window.innerHeight || 0
+    );
+    return (v * h) / 100;
+  }
+
+  function vw(v) {
+    var w = Math.max(
+      document.documentElement.clientWidth,
+      window.innerWidth || 0
+    );
+    return (v * w) / 100;
+  }
+
   const updatePage = (app) => {
     chatd.style.visibility = app.has_chat;
-    // appTitle.innerText = app.page_title;
+    appTitle.innerText = app.page_title;
+    appScreen.style.height = "85vh";
+    appScreen.style.width = `${(85 * app.screen_width) / app.screen_height}vh`; // maintain 800x600
     numplayers.style.visibility = app.collaborative;
   };
 
@@ -270,7 +304,7 @@
     rtcp.start(data.stunturn);
   });
   event.sub(MEDIA_STREAM_SDP_AVAILABLE, (data) =>
-    rtcp.setRemoteDescription(data.sdp, appscreen)
+    rtcp.setRemoteDescription(data.sdp, appScreen)
   );
   event.sub(MEDIA_STREAM_CANDIDATE_ADD, (data) =>
     rtcp.addCandidate(data.candidate)

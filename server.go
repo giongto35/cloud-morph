@@ -50,6 +50,7 @@ type Server struct {
 	capp             *cloudapp.Service
 	chat             *textchat.TextChat
 	discoveryHandler *discoveryHandler
+	appMeta          appDiscoveryMeta
 }
 
 type discoveryHandler struct {
@@ -58,18 +59,23 @@ type discoveryHandler struct {
 	apps          []appDiscoveryMeta
 }
 
+// TODO: sync with discovery.go
 type appDiscoveryMeta struct {
-	ID        string `json:"id"`
-	AppName   string `json:"app_name"`
-	Addr      string `json:"addr"`
-	AppMode   string `json:"app_mode"`
-	HasChat   bool   `json:"has_chat"`
-	PageTitle string `json:"page_title"`
+	ID           string `json:"id"`
+	AppName      string `json:"app_name"`
+	Addr         string `json:"addr"`
+	AppMode      string `json:"app_mode"`
+	HasChat      bool   `json:"has_chat"`
+	PageTitle    string `json:"page_title"`
+	ScreenWidth  int    `json:"screen_width"`
+	ScreenHeight int    `json:"screen_height"`
 }
 
 type initData struct {
-	CurAppID string             `json:"cur_app_id"`
-	Apps     []appDiscoveryMeta `json:"apps"`
+	CurAppID string `json:"cur_app_id"`
+	// App maynot be inside Apps because App can be in local, not in discovery
+	App  appDiscoveryMeta   `json:"cur_app"`
+	Apps []appDiscoveryMeta `json:"apps"`
 }
 
 // WSO handles all connections from user/frontend to coordinator
@@ -126,6 +132,7 @@ func (s *Server) initClientData(client *cws.Client) {
 	}
 	data := initData{
 		CurAppID: s.appID,
+		App:      s.appMeta,
 		Apps:     apps,
 	}
 	jsonData, err := json.Marshal(data)
@@ -203,17 +210,22 @@ func NewServer() *Server {
 	// Launch App VM
 	server.capp = cloudapp.NewCloudService(cfg)
 	server.chat = textchat.NewTextChat()
-	appID, err := server.RegisterApp(appDiscoveryMeta{
-		Addr:      cfg.InstanceAddr,
-		AppName:   cfg.AppName,
-		AppMode:   cfg.AppMode,
-		HasChat:   cfg.HasChat,
-		PageTitle: cfg.PageTitle,
-	})
+	appMeta := appDiscoveryMeta{
+		Addr:         cfg.InstanceAddr,
+		AppName:      cfg.AppName,
+		AppMode:      cfg.AppMode,
+		HasChat:      cfg.HasChat,
+		PageTitle:    cfg.PageTitle,
+		ScreenWidth:  cfg.ScreenWidth,
+		ScreenHeight: cfg.ScreenHeight,
+	}
+
+	appID, err := server.RegisterApp(appMeta)
 	if err != nil {
 		log.Println(err)
 	}
 	server.appID = appID
+	server.appMeta = appMeta
 	log.Println("Registered with AppID", server.appID)
 
 	if cfg.DiscoveryHost != "" {
