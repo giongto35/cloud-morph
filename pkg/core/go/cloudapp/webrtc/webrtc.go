@@ -35,7 +35,7 @@ type WebRTC struct {
 	isClosed    bool
 
 	ImageChannel chan *rtp.Packet
-	AudioChannel chan []byte
+	AudioChannel chan *rtp.Packet
 	InputChannel chan []byte
 
 	Done     bool
@@ -77,7 +77,7 @@ func NewWebRTC() *WebRTC {
 		ID: uuid.Must(uuid.NewV4()).String(),
 
 		ImageChannel: make(chan *rtp.Packet, 30),
-		AudioChannel: make(chan []byte, 1),
+		AudioChannel: make(chan *rtp.Packet, 30),
 		InputChannel: make(chan []byte, 100),
 	}
 	return w
@@ -120,7 +120,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 	log.Println("Add video track")
 
 	// add audio track
-	opusTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "audio/opus"}, "audio", "game-audio")
+	opusTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus}, "audio", "pion")
 	if err != nil {
 		return "", err
 	}
@@ -286,32 +286,17 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack 
 
 	// send audio
 	go func() {
-		// defer func() {
-		// 	if r := recover(); r != nil {
-		// 		fmt.Println("Recovered from err", r)
-		// 		log.Println(debug.Stack())
-		// 	}
-		// }()
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("Recovered from err", r)
+			}
+		}()
 
-		// for data := range w.AudioChannel {
-		// 	if !w.isConnected {
-		// 		return
-		// 	}
-		// 	err := opusTrack.WriteSample(media.Sample{
-		// 		Data:    data,
-		// 		Samples: uint32(audioFrame / audioChannels),
-		// 	})
-		// 	if err != nil {
-		// 		log.Println("Warn: Err write sample: ", err)
-		// 	}
-		// }
+		for packet := range w.AudioChannel {
+			fmt.Println("streaming ", packet)
+			if writeErr := opusTrack.WriteRTP(packet); writeErr != nil {
+				panic(writeErr)
+			}
+		}
 	}()
-}
-
-func (w *WebRTC) calculateFPS() int {
-	elapsedTime := time.Now().Sub(w.lastTime)
-	w.lastTime = time.Now()
-	curFPS := time.Second / elapsedTime
-	w.curFPS = int(float32(w.curFPS)*0.9 + float32(curFPS)*0.1)
-	return w.curFPS
 }

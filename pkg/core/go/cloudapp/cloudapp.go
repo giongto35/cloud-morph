@@ -25,6 +25,7 @@ type InputEvent struct {
 
 type CloudAppClient interface {
 	VideoStream() chan *rtp.Packet
+	AudioStream() chan *rtp.Packet
 	SendInput(Packet)
 	Handle()
 	// TODO: Remove it
@@ -32,15 +33,17 @@ type CloudAppClient interface {
 }
 
 type ccImpl struct {
-	isReady      bool
-	listener     *net.UDPConn
-	videoStream  chan *rtp.Packet
-	appEvents    chan Packet
-	wineConn     *net.TCPConn
-	screenWidth  float32
-	screenHeight float32
-	ssrc         uint32
-	payloadType  uint8
+	isReady       bool
+	videoListener *net.UDPConn
+	audioListener *net.UDPConn
+	videoStream   chan *rtp.Packet
+	audioStream   chan *rtp.Packet
+	appEvents     chan Packet
+	wineConn      *net.TCPConn
+	screenWidth   float32
+	screenHeight  float32
+	ssrc          uint32
+	payloadType   uint8
 }
 
 // Packet represents a packet in cloudapp
@@ -49,19 +52,22 @@ type Packet struct {
 	Data string `json:"data"`
 }
 
-const startRTPPort = 5004
+const startVideoRTPPort = 5004
+const startAudioRTPPort = 4004
 const eventKeyDown = "KEYDOWN"
 const eventKeyUp = "KEYUP"
 const eventMouseMove = "MOUSEMOVE"
 const eventMouseDown = "MOUSEDOWN"
 const eventMouseUp = "MOUSEUP"
 
-var cuRTPPort = startRTPPort
+var curVideoRTPPort = startVideoRTPPort
+var curAudioRTPPort = startAudioRTPPort
 
 // NewCloudAppClient returns new cloudapp client
 func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	c := &ccImpl{
 		videoStream: make(chan *rtp.Packet, 1),
+		audioStream: make(chan *rtp.Packet, 1),
 		appEvents:   appEvents,
 	}
 
@@ -75,16 +81,24 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		panic(err)
 	}
 
-	c.launchAppVM(cuRTPPort, cfg)
+	c.launchAppVM(curVideoRTPPort, curAudioRTPPort, cfg)
 	log.Println("Launched application VM")
 
 	// Read video stream from encoded video stream produced by FFMPEG
-	listener, listenerssrc := c.newLocalStreamListener(cuRTPPort)
-	c.listener = listener
+	log.Println("Setup Video Listener")
+	videoListener, listenerssrc := c.newLocalStreamListener(curVideoRTPPort)
+	c.videoListener = videoListener
 	c.ssrc = listenerssrc
+	log.Println("Setup Audio Listener")
+	audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
+	c.audioListener = audioListener
+	c.ssrc = audiolistenerssrc
+	log.Println("Done Listener")
 
 	c.listenVideoStream()
 	log.Println("Launched Video stream listener")
+	c.listenAudioStream()
+	log.Println("Launched Audio stream listener")
 
 	// Maintain input stream from server to Virtual Machine over websocket
 	// Why Websocket: because normal IPC cannot communicate cross OS.
@@ -122,7 +136,7 @@ func (c *ccImpl) GetSSRC() uint32 {
 }
 
 // done to forcefully stop all processes
-func (c *ccImpl) launchAppVM(rtpPort int, cfg config.Config) chan struct{} {
+func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg config.Config) chan struct{} {
 	var cmd *exec.Cmd
 	var streamCmd *exec.Cmd
 
@@ -220,13 +234,17 @@ func (c *ccImpl) VideoStream() chan *rtp.Packet {
 	return c.videoStream
 }
 
+func (c *ccImpl) AudioStream() chan *rtp.Packet {
+	return c.audioStream
+}
+
 // Listen to videostream, output to videoStream channel
-func (c *ccImpl) listenVideoStream() {
+func (c *ccImpl) listenAudioStream() {
 
 	// Broadcast video stream
 	go func() {
 		defer func() {
-			c.listener.Close()
+			c.audioListener.Close()
 			log.Println("Closing app VM")
 		}()
 		r := ring.New(120)
@@ -243,7 +261,49 @@ func (c *ccImpl) listenVideoStream() {
 		for {
 			inboundRTPPacket := r.Value.([]byte) // UDP MTU
 			r = r.Next()
-			n, _, err := c.listener.ReadFrom(inboundRTPPacket)
+			n, _, err := c.audioListener.ReadFrom(inboundRTPPacket)
+			if err != nil {
+				log.Printf("error during read: %s", err)
+				continue
+			}
+
+			// TODOs: Don't assign packet here
+			packet := &rtp.Packet{}
+			if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
+				log.Printf("error during unmarshalling a packet: %s", err)
+				continue
+			}
+
+			c.audioStream <- packet
+		}
+	}()
+
+}
+
+// Listen to videostream, output to videoStream channel
+func (c *ccImpl) listenVideoStream() {
+
+	// Broadcast video stream
+	go func() {
+		defer func() {
+			c.videoListener.Close()
+			log.Println("Closing app VM")
+		}()
+		r := ring.New(120)
+
+		n := r.Len()
+		for i := 0; i < n; i++ {
+			// r.Value = make([]byte, 4096)
+			r.Value = make([]byte, 1500)
+			r = r.Next()
+		}
+
+		// TODO: Create a precreated memory, only pop after finish processing
+		// Read RTP packets forever and send them to the WebRTC Client
+		for {
+			inboundRTPPacket := r.Value.([]byte) // UDP MTU
+			r = r.Next()
+			n, _, err := c.videoListener.ReadFrom(inboundRTPPacket)
 			if err != nil {
 				log.Printf("error during read: %s", err)
 				continue

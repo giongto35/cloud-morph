@@ -42,6 +42,7 @@ type Client struct {
 	ws          *cws.Client
 	rtcConn     *webrtc.WebRTC
 	videoStream chan *rtp.Packet
+	audioStream chan *rtp.Packet
 	appEvents   chan Packet
 	// videoTrack   *webrtc.Track
 	// cancel to trigger cleaning up when client is disconnected
@@ -118,6 +119,7 @@ func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ss
 		ws:          ws,
 		ssrc:        ssrc,
 		videoStream: make(chan *rtp.Packet, 1),
+		audioStream: make(chan *rtp.Packet, 1),
 		cancel:      make(chan struct{}),
 		done:        make(chan struct{}),
 	}
@@ -132,6 +134,7 @@ func (c *Client) Handle() {
 
 	wg := sync.WaitGroup{}
 
+	// Video Stream
 	wg.Add(1)
 	go func() {
 	loop:
@@ -145,6 +148,21 @@ func (c *Client) Handle() {
 		wg.Done()
 	}()
 
+	// Audio Stream
+	wg.Add(1)
+	go func() {
+	loop:
+		for packet := range c.audioStream {
+			select {
+			case <-c.cancel:
+				break loop
+			case c.rtcConn.AudioChannel <- packet:
+			}
+		}
+		wg.Done()
+	}()
+
+	// Input Stream
 	wg.Add(1)
 	go func() {
 		// Data channel input
@@ -274,6 +292,24 @@ func (s *Service) Handle() {
 					delete(s.clients, id)
 					close(client.videoStream)
 				case client.videoStream <- p:
+				}
+			}
+		}
+	}()
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Println("Recovered when sent to closed Video Stream channel", r)
+			}
+		}()
+		for p := range s.ccApp.AudioStream() {
+			for _, client := range s.clients {
+				select {
+				case <-client.cancel:
+					// stop producing for client
+					// delete(s.clients, id)
+					// close(client.videoStream)
+				case client.audioStream <- p:
 				}
 			}
 		}

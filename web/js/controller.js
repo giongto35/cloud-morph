@@ -242,7 +242,11 @@
       appList.map((app) => {
         const start = Date.now();
         return ajax
-          .fetch(`echo`, { method: "GET", redirect: "follow" }, timeoutMs)
+          .fetch(
+            `${app.addr.slice(0, -5)}?_=${start}`,
+            { method: "GET", redirect: "follow" },
+            timeoutMs
+          )
           .then(() => ({ [app.addr]: Date.now() - start }))
           .catch(() => ({ [app.addr]: 9999 }));
       })
