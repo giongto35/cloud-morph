@@ -127,9 +127,7 @@
   });
 
   appScreen.addEventListener("mousedown", (e) => {
-    x = e.offsetX;
-    y = e.offsetY;
-    boundRect = appscreen.getBoundingClientRect();
+    boundRect = appScreen.getBoundingClientRect();
     event.pub(MOUSE_DOWN, {
       isLeft: e.button == 0 ? 1 : 0, // 1 is right button
       x: e.offsetX,
@@ -140,9 +138,7 @@
   });
 
   appScreen.addEventListener("mouseup", (e) => {
-    x = e.offsetX;
-    y = e.offsetY;
-    boundRect = appscreen.getBoundingClientRect();
+    boundRect = appScreen.getBoundingClientRect();
     event.pub(MOUSE_UP, {
       isLeft: e.button == 0 ? 1 : 0, // 1 is right button
       x: e.offsetX,
@@ -153,23 +149,13 @@
   });
 
   document.addEventListener("mousemove", function (e) {
-    console.log(
-      e.offsetX,
-      e.offsetY,
-      appScreen.offsetLeft,
-      appScreen.offsetTop
-    );
     boundRect = appScreen.getBoundingClientRect();
-    console.log(e.x, e.y, boundRect.left, boundRect.top);
-    socket.send({
-      type: "MOUSEMOVE",
-      data: JSON.stringify({
-        isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-        x: e.clientX - boundRect.left,
-        y: e.clientY - boundRect.top,
-        width: boundRect.width,
-        height: boundRect.height,
-      }),
+    event.pub(MOUSE_MOVE, {
+      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
+      x: e.clientX - boundRect.left,
+      y: e.clientY - boundRect.top,
+      width: boundRect.width,
+      height: boundRect.height,
     });
   });
 
