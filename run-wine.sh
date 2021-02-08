@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 cd winvm
-pkill ffmpeg
+# pkill ffmpeg
 # ffmpeg -f pulse -i default -t 30 -c:a libopus -f mulaw -f rtp rtp://127.0.0.1:4004 &
 docker build -t syncwine .
 docker rm -f appvm

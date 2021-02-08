@@ -243,7 +243,7 @@
         const start = Date.now();
         return ajax
           .fetch(
-            `${app.addr.slice(0, -5)}?_=${start}`,
+            `http://${app.addr}/echo?_=${start}`,
             { method: "GET", redirect: "follow" },
             timeoutMs
           )
