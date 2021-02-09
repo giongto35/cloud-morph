@@ -159,10 +159,15 @@
     });
   });
 
-  appScreen.addEventListener("click", (e) => {
-    e.preventDefault();
-    return false;
-  });
+  document.addEventListener(
+    "contextmenu",
+    function (e) {
+      if (isFullscreen) {
+        e.preventDefault();
+      }
+    },
+    false
+  );
 
   chatsubmit.addEventListener("click", (e) => {
     socket.send({
@@ -183,8 +188,8 @@
       appd.style.display = "flex";
       appd.style.flexDirection = "row";
       appd.style.flexGrow = 0;
-      appScreen.style.height = "100vh";
-      appScreen.style.width = "133.33vh"; // maintain 800x600
+      appScreen.style.height = "99vh";
+      appScreen.style.width = `${(99.0 * 8) / 6}vh`; // maintain 800x600
     } else {
       discovery.style.display = "block";
       chatd.style.display = "flex";
@@ -242,7 +247,11 @@
       appList.map((app) => {
         const start = Date.now();
         return ajax
-          .fetch(`echo`, { method: "GET", redirect: "follow" }, timeoutMs)
+          .fetch(
+            `http://${app.addr}/echo?_=${start}`,
+            { method: "GET", redirect: "follow" },
+            timeoutMs
+          )
           .then(() => ({ [app.addr]: Date.now() - start }))
           .catch(() => ({ [app.addr]: 9999 }));
       })
