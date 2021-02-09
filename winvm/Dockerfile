@@ -7,7 +7,7 @@ RUN apt-get update -y
 RUN apt-get clean
 RUN apt-get autoremove
 RUN apt-get update -y
-RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb wine64 mingw-w64 ffmpeg cabextract aptitude vim
+RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb mingw-w64 ffmpeg cabextract aptitude vim
 #RUN apt-get update -y
 #RUN apt-get install --no-install-recommends --assume-yes pulseaudio socat alsa-utils
 
@@ -23,9 +23,10 @@ RUN wget -nv -O /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks
 
 # Silence all the "fixme: blah blah blah" messages from wine
 ENV WINEDEBUG fixme-all
-ENV WINEARCH win32
-RUN WINEARCH=win32 winetricks --force -q dotnet45
+#ENV WINEARCH win32
+#RUN WINEARCH=win32 winetricks --force -q dotnet48
 RUN winetricks d3dx9_43
+RUN winetricks --force -q dotnet48
 
 # Download gecko and mono installers
 COPY download_gecko_and_mono.sh /root/download_gecko_and_mono.sh
