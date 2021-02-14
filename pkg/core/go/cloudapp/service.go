@@ -307,8 +307,7 @@ func (s *Service) Handle() {
 				select {
 				case <-client.cancel:
 					// stop producing for client
-					// delete(s.clients, id)
-					// close(client.videoStream)
+					close(client.audioStream)
 				case client.audioStream <- p:
 				}
 			}
