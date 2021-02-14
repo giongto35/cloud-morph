@@ -90,15 +90,15 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	c.videoListener = videoListener
 	c.ssrc = listenerssrc
 	log.Println("Setup Audio Listener")
-	// audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
-	// c.audioListener = audioListener
-	// c.ssrc = audiolistenerssrc
-	// log.Println("Done Listener")
+	audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
+	c.audioListener = audioListener
+	c.ssrc = audiolistenerssrc
+	log.Println("Done Listener")
 
 	c.listenVideoStream()
 	log.Println("Launched Video stream listener")
-	// c.listenAudioStream()
-	// log.Println("Launched Audio stream listener")
+	c.listenAudioStream()
+	log.Println("Launched Audio stream listener")
 
 	// Maintain input stream from server to Virtual Machine over websocket
 	// Why Websocket: because normal IPC cannot communicate cross OS.

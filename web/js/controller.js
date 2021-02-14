@@ -73,6 +73,7 @@
   };
 
   const onMouseDown = (data) => {
+    appScreen.muted = false;
     rtcp.input(
       JSON.stringify({
         type: "MOUSEDOWN",
