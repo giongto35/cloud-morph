@@ -21,11 +21,8 @@ RUN wget -nv -O /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks
 
 # Silence all the "fixme: blah blah blah" messages from wine
 ENV WINEDEBUG fixme-all
-#ENV WINEARCH win32
-#RUN WINEARCH=win32 winetricks --force -q dotnet48
 RUN winetricks d3dx9_43
 RUN winetricks --force -q dotnet48
-# RUN apt-get install --no-install-recommends --assume-yes dbus pulseaudio
 
 # Download gecko and mono installers
 COPY download_gecko_and_mono.sh /root/download_gecko_and_mono.sh
