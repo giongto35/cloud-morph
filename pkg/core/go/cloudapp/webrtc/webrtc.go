@@ -293,7 +293,6 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack 
 		}()
 
 		for packet := range w.AudioChannel {
-			fmt.Println("streaming ", packet)
 			if writeErr := opusTrack.WriteRTP(packet); writeErr != nil {
 				panic(writeErr)
 			}
