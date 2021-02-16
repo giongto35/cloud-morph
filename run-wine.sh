@@ -15,7 +15,4 @@ docker run -d --privileged --network=host --rm --name "appvm" \
 --env "screenheight=$6" \
 --env "wineoptions=$7" \
 --env "DISPLAY=:99" \
--v /run/dbus-1/:/run/dbus-1/ -v /dev/shm:/dev/shm \
--v /var/run/dbus/:/var/run/dbus/ \
--v /etc/dbus-1/:/etc/dbus-1/ \
 --volume "winecfg:/root/.wine" syncwine supervisord
