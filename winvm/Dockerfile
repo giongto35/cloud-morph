@@ -7,9 +7,7 @@ RUN apt-get update -y
 RUN apt-get clean
 RUN apt-get autoremove
 RUN apt-get update -y
-RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb mingw-w64 ffmpeg cabextract aptitude vim
-#RUN apt-get update -y
-#RUN apt-get install --no-install-recommends --assume-yes pulseaudio socat alsa-utils
+RUN apt-get install --no-install-recommends --assume-yes wget software-properties-common gpg-agent supervisor xvfb mingw-w64 ffmpeg cabextract aptitude vim pulseaudio
 
 RUN dpkg --add-architecture i386
 RUN wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add -
@@ -23,8 +21,6 @@ RUN wget -nv -O /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks
 
 # Silence all the "fixme: blah blah blah" messages from wine
 ENV WINEDEBUG fixme-all
-#ENV WINEARCH win32
-#RUN WINEARCH=win32 winetricks --force -q dotnet48
 RUN winetricks d3dx9_43
 RUN winetricks --force -q dotnet48
 
@@ -36,6 +32,7 @@ RUN chmod +x /root/download_gecko_and_mono.sh \
 RUN mkdir -p /winevm
 WORKDIR /winevm
 COPY ./ ./
+COPY ./default.pa /etc/pulse/
 # Compile syncinput.exe
 RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o /winevm/syncinput.exe -lws2_32 -lpthread -static
 
