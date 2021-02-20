@@ -3,6 +3,7 @@ package cloudapp
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -265,10 +266,6 @@ func NewCloudService(cfg config.Config) *Service {
 	return s
 }
 
-func (s *Service) VideoStream() chan *rtp.Packet {
-	return s.ccApp.VideoStream()
-}
-
 func (s *Service) SendInput(packet Packet) {
 	s.ccApp.SendInput(packet)
 }
@@ -288,8 +285,10 @@ func (s *Service) Handle() {
 			for id, client := range s.clients {
 				select {
 				case <-client.cancel:
+					fmt.Println("Closing Video")
 					// stop producing for client
 					delete(s.clients, id)
+					close(client.audioStream)
 					close(client.videoStream)
 				case client.videoStream <- p:
 				}
@@ -305,9 +304,10 @@ func (s *Service) Handle() {
 		for p := range s.ccApp.AudioStream() {
 			for _, client := range s.clients {
 				select {
-				case <-client.cancel:
-					// stop producing for client
-					close(client.audioStream)
+				// case <-client.cancel:
+				// fmt.Println("Closing Audio")
+				// stop producing for client
+				// close(client.audioStream)
 				case client.audioStream <- p:
 				}
 			}
