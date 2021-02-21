@@ -1,5 +1,6 @@
 #FROM golang:1.14
-FROM ubuntu:18.04
+#FROM ubuntu:18.04
+FROM ubuntu:20.04
 #FROM debian:10-slim
 
 RUN apt update

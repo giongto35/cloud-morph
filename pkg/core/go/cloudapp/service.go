@@ -146,6 +146,7 @@ func (c *Client) Handle() {
 			}
 		}
 		wg.Done()
+		log.Println("Closed Service Video Channel")
 	}()
 
 	// Audio Stream
@@ -160,10 +161,11 @@ func (c *Client) Handle() {
 			}
 		}
 		wg.Done()
+		log.Println("Closed Service Audio Channel")
 	}()
 
-	// Input Stream
-	wg.Add(1)
+	// Input stream is closed after StopClient . TODO: check if can close earlier
+	// wg.Add(1)
 	go func() {
 		// Data channel input
 		for rawInput := range c.rtcConn.InputChannel {
@@ -175,10 +177,9 @@ func (c *Client) Handle() {
 			}
 			c.appEvents <- convertWSPacket(wspacket)
 		}
-		wg.Done()
+		// wg.Done()
 	}()
 	wg.Wait()
-
 	close(c.done)
 }
 
@@ -265,10 +266,6 @@ func NewCloudService(cfg config.Config) *Service {
 	return s
 }
 
-func (s *Service) VideoStream() chan *rtp.Packet {
-	return s.ccApp.VideoStream()
-}
-
 func (s *Service) SendInput(packet Packet) {
 	s.ccApp.SendInput(packet)
 }
@@ -288,8 +285,10 @@ func (s *Service) Handle() {
 			for id, client := range s.clients {
 				select {
 				case <-client.cancel:
+					log.Println("Closing Video Audio")
 					// stop producing for client
 					delete(s.clients, id)
+					close(client.audioStream)
 					close(client.videoStream)
 				case client.videoStream <- p:
 				}
@@ -305,9 +304,10 @@ func (s *Service) Handle() {
 		for p := range s.ccApp.AudioStream() {
 			for _, client := range s.clients {
 				select {
-				case <-client.cancel:
-					// stop producing for client
-					close(client.audioStream)
+				// case <-client.cancel:
+				// fmt.Println("Closing Audio")
+				// stop producing for client
+				// close(client.audioStream)
 				case client.audioStream <- p:
 				}
 			}

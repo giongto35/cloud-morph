@@ -1,0 +1,15 @@
+{
+    "git.ignoreLimitWarning": true,
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "script/example": true,
+        "**/example": true,
+        "script/*.*": true,
+        "example": true
+    },
+    "explorerExclude.backup": null
+}

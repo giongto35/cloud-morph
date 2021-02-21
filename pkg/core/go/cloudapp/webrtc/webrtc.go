@@ -162,6 +162,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32) (s
 
 		}
 		if connectionState == webrtc.ICEConnectionStateFailed || connectionState == webrtc.ICEConnectionStateClosed || connectionState == webrtc.ICEConnectionStateDisconnected {
+			log.Println("ICE Connection failed")
 			w.StopClient()
 		}
 	})
@@ -246,21 +247,22 @@ func (w *WebRTC) AddCandidate(candidate string) error {
 func (w *WebRTC) StopClient() {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered from err. Maybe we closed a closed image channel", r)
+			fmt.Println("Recovered from err. Maybe we closed a closed channel", r)
 		}
 	}()
 	// if stopped, bypass
-	if w.isConnected == false {
-		return
-	}
+	// if w.isConnected == false {
+	// 	return
+	// }
 
 	log.Println("===StopClient===")
-	w.isConnected = false
 	if w.connection != nil {
 		log.Println("WebRTC Connection close")
 		w.connection.Close()
 		w.connection = nil
 	}
+	// w.isConnected = false
+	log.Println("Close Input channel")
 	close(w.InputChannel)
 	// webrtc is producer, so we close
 	// NOTE: ImageChannel is waiting for input. Close in writer is not correct for this
