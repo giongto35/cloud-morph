@@ -3,7 +3,6 @@ package cloudapp
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -147,6 +146,7 @@ func (c *Client) Handle() {
 			}
 		}
 		wg.Done()
+		log.Println("Closed Service Video Channel")
 	}()
 
 	// Audio Stream
@@ -161,10 +161,11 @@ func (c *Client) Handle() {
 			}
 		}
 		wg.Done()
+		log.Println("Closed Service Audio Channel")
 	}()
 
-	// Input Stream
-	wg.Add(1)
+	// Input stream is closed after StopClient . TODO: check if can close earlier
+	// wg.Add(1)
 	go func() {
 		// Data channel input
 		for rawInput := range c.rtcConn.InputChannel {
@@ -176,10 +177,9 @@ func (c *Client) Handle() {
 			}
 			c.appEvents <- convertWSPacket(wspacket)
 		}
-		wg.Done()
+		// wg.Done()
 	}()
 	wg.Wait()
-
 	close(c.done)
 }
 
@@ -285,7 +285,7 @@ func (s *Service) Handle() {
 			for id, client := range s.clients {
 				select {
 				case <-client.cancel:
-					fmt.Println("Closing Video")
+					log.Println("Closing Video Audio")
 					// stop producing for client
 					delete(s.clients, id)
 					close(client.audioStream)
