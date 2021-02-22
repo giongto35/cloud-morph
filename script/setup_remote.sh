@@ -4,15 +4,19 @@ RPATH=/root
 ssh root@$1 "cd $RPATH; rm -rf cloud-morph; git clone https://github.com/giongto35/cloud-morph.git"
 rsync ./config.yaml root@$1:cloud-morph/
 ssh root@$1 "cd $RPATH/cloud-morph; ./setup.sh"
-rsync -r $2 root@$1:$RPATH/cloud-morph/winvm/apps
 
-if [ "$3" == "syncvolume" ]; then
+if [ -d "apps" ]; then
+    echo "SYNCING APPS"
+    rsync -r apps root@$1:$RPATH/cloud-morph/winvm/
+fi
+
+if [ -d "wine" ]; then
     echo "SYNCING VOLUME"
     # For pre-setup/non-portable flow: to sync volume copy wine environment from local to server
     # copy local wine folder to remote .wine
     rsync -r wine root@$1:$RPATH
     # mount $RPATH to r
-    ssh root@$1 "docker run -v $RPATH:/rpath --volume winecfg:$RPATH/.wine syncwine cp -rf /rpath/wine/* $RPATH/.wine"
+    ssh root@$1 "docker run -v $RPATH:/rpath --volume winecfg:$RPATH/.wine syncwine bash -c 'cp -rf /rpath/wine/* /root/.wine'"
 fi
 
 # Run server. 
