@@ -9,8 +9,10 @@ cd winvm
 #-p 4004:4004/udp -p 5004:5004/udp -p 9090:9090/udp --publish-all \
 docker build -t syncwine .
 docker rm -f appvm
-docker run -d --privileged --rm --name "appvm" \
+echo "RUN"
+docker run -t -d --privileged --rm --name "appvm" \
 --mount type=bind,source="$(pwd)"/apps,target=/apps \
+--expose 9090 \
 --mount type=bind,source="$(pwd)"/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf  \
 --env "apppath=$1" \
 --env "appfile=$2" \
@@ -21,6 +23,6 @@ docker run -d --privileged --rm --name "appvm" \
 --env "wineoptions=$7" \
 --env "DISPLAY=:99" \
 --volume "winecfg:/root/.wine" syncwine supervisord
-docker run -d syncwine bash
+#docker run -d syncwine bash
 echo "DONE"
 exit 0

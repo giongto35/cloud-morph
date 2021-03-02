@@ -33,8 +33,14 @@ int clientConnect()
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
-    addr.sin_addr.s_addr = INADDR_ANY;
-
+    //addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_addr.s_addr = inet_addr( "host.docker.internal");
+    //if(inet_pton(AF_INET, "host.docker.internal", &addr.sin_addr)<=0)  
+    //{ 
+        //printf("\nInvalid address/ Address not supported \n"); 
+        //return -1; 
+    //} 
+   
     connect(server, reinterpret_cast<SOCKADDR *>(&addr), sizeof(addr));
     cout << "Connected to server!" << endl;
     return server;
