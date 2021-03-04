@@ -9,7 +9,7 @@ cd winvm
 #-p 4004:4004/udp -p 5004:5004/udp -p 9090:9090/udp --publish-all \
 docker build -t syncwine .
 docker rm -f appvm
-if [ $(uname -s) == "darwin" ]
+if [ $(uname -s) == "Darwin" ]
 then
     echo "Spawn container on Mac"
     docker run -t -d --privileged --rm --name "appvm" \

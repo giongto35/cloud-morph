@@ -32,12 +32,14 @@ int clientConnect()
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
-    if (dockerHost == "host.docker.internal")
+    if (strcmp(dockerHost, "host.docker.internal") == 0)
     {
-        addr.sin_addr.s_addr = inet_addr("host.docker.internal");
+        cout << "using host docker internal";
+        addr.sin_addr.s_addr = inet_addr( "host.docker.internal");
     }
     else
     {
+        cout << "using any local";
         addr.sin_addr.s_addr = INADDR_ANY;
     }
 
@@ -332,6 +334,7 @@ int main(int argc, char *argv[])
     getDesktopResolution(screenWidth, screenHeight);
     cout << "width " << screenWidth << " "
          << "height " << screenHeight << endl;
+    cout << "Docker host" << dockerHost << endl;
 
     formatWindow(hwnd);
 
