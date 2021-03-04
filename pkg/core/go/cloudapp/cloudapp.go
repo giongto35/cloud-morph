@@ -105,12 +105,9 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	// Maintain input stream from server to Virtual Machine over websocket
 	// Why Websocket: because normal IPC cannot communicate cross OS.
 	go func() {
-		fmt.Println("tcp conn func")
 		for {
 			// Polling Wine socket connection (input stream)
-			fmt.Printf("polling tcp %+v", ln)
 			conn, err := ln.AcceptTCP()
-			fmt.Println("polled")
 			if err != nil {
 				// handle error
 			}
@@ -150,6 +147,29 @@ func print(stdout io.ReadCloser) {
 	}
 }
 
+func runApp(params []string) {
+	fmt.Println("params: ", params)
+	cmd := exec.Command("./run-wine.sh", params...)
+	cmd.Env = os.Environ()
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cmd.Start()
+	go func() {
+		buf := bufio.NewReader(stdout) // Notice that this is not in a loop
+		for {
+			line, _, _ := buf.ReadLine()
+			if string(line) == "" {
+				continue
+			}
+			fmt.Println(string(line))
+		}
+	}()
+	log.Println("execed run-client.sh")
+	cmd.Wait()
+}
+
 // done to forcefully stop all processes
 func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg config.Config) chan struct{} {
 	var cmd *exec.Cmd
@@ -175,31 +195,7 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 		params = append(params, "")
 	}
 
-	fmt.Println("params: ", params)
-	s := []string{"./run-wine.sh"}
-	cmd = exec.Command("/bin/sh", append(s, params...)...)
-	//cmd = exec.Command("./run-wine.sh", params...)
-	cmd.Env = os.Environ()
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Fatal(err)
-	}
-	cmd.Start()
-
-	go func() {
-		buf := bufio.NewReader(stdout) // Notice that this is not in a loop
-		for {
-			line, _, _ := buf.ReadLine()
-			if string(line) == "" {
-				continue
-			}
-			fmt.Println(string(line))
-		}
-	}()
-	log.Println("execed run-client.sh")
-	cmd.Wait()
-
+	runApp(params)
 	// update flag
 	c.screenWidth = float32(cfg.ScreenWidth)
 	c.screenHeight = float32(cfg.ScreenHeight)
@@ -223,11 +219,11 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 
 // healthCheckVM to maintain connection
 func (c *ccImpl) healthCheckVM() {
-	fmt.Println("healthchecking")
 	for {
-		fmt.Println("health check")
 		_, err := c.wineConn.Write([]byte{0})
-		fmt.Println(err)
+		if err != nil {
+			fmt.Println(err)
+		}
 		time.Sleep(2 * time.Second)
 	}
 }
