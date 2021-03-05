@@ -326,7 +326,7 @@ int main(int argc, char *argv[])
     }
     if (argc > 3)
     {
-        dockerHost = argv[3];
+        strcpy(dockerHostm, argv[3]);
     }
 
     hwnd = 0;
