@@ -14,7 +14,7 @@ chrono::_V2::system_clock::time_point last_ping;
 bool done;
 HWND hwnd;
 char *winTitle;
-char *dockerHost;
+char dockerHost[20];
 
 const byte MOUSE_MOVE = 0;
 const byte MOUSE_DOWN = 1;
@@ -34,13 +34,13 @@ int clientConnect()
     addr.sin_port = htons(9090);
     if (strcmp(dockerHost, "host.docker.internal") == 0)
     {
-        cout << "using host docker internal";
-        addr.sin_addr.s_addr = inet_addr( "host.docker.internal");
+    cout << "using host docker internal";
+    addr.sin_addr.s_addr = inet_addr( "host.docker.internal");
     }
     else
     {
-        cout << "using any local";
-        addr.sin_addr.s_addr = INADDR_ANY;
+    cout << "using any local";
+    addr.sin_addr.s_addr = INADDR_ANY;
     }
 
     connect(server, reinterpret_cast<SOCKADDR *>(&addr), sizeof(addr));
@@ -326,7 +326,7 @@ int main(int argc, char *argv[])
     }
     if (argc > 3)
     {
-        strcpy(dockerHostm, argv[3]);
+         strcpy(dockerHost, argv[3]);
     }
 
     hwnd = 0;
