@@ -34,13 +34,13 @@ int clientConnect()
     addr.sin_port = htons(9090);
     if (strcmp(dockerHost, "host.docker.internal") == 0)
     {
-    cout << "using host docker internal";
-    addr.sin_addr.s_addr = inet_addr( "host.docker.internal");
+        cout << "using host docker internal";
+        addr.sin_addr.s_addr = inet_addr( "host.docker.internal");
     }
     else
     {
-    cout << "using any local";
-    addr.sin_addr.s_addr = INADDR_ANY;
+        cout << "using any local";
+        addr.sin_addr.s_addr = INADDR_ANY;
     }
 
     connect(server, reinterpret_cast<SOCKADDR *>(&addr), sizeof(addr));
