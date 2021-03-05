@@ -32,6 +32,7 @@ int clientConnect()
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
+    cout << dockerHost << endl;
     if (strcmp(dockerHost, "host.docker.internal") == 0)
     {
         cout << "using host docker internal";
@@ -309,8 +310,6 @@ void processEvent(string ev, bool isDxGame)
 
 int main(int argc, char *argv[])
 {
-    server = clientConnect();
-
     winTitle = (char *)"Notepad";
     bool isDxGame = false;
     if (argc > 1)
@@ -328,6 +327,8 @@ int main(int argc, char *argv[])
     {
          strcpy(dockerHost, argv[3]);
     }
+
+    server = clientConnect();
 
     hwnd = 0;
     cout << "Connected " << server << endl;
