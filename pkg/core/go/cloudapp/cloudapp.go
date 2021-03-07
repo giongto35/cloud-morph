@@ -205,7 +205,7 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 
 // healthCheckVM to maintain connection
 func (c *ccImpl) healthCheckVM() {
-	log.Println("starting health check")
+	log.Println("Starting health check")
 	for {
 		_, err := c.wineConn.Write([]byte{0})
 		if err != nil {
