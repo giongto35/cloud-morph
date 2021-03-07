@@ -17,7 +17,7 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 
 #### Demo Hosted by CloudMorph
 - [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph)
-- [Cloud Diablo US](http://cloudmorph.io/) (Demo of Collaborative play Diablo running in US server).
+- [Cloud Diablo US](http://us.clouddiablo.com/) (Demo of Collaborative play Diablo running in US server).
 Switch Applications using the sidebar on the left.
 
 #### Experience deployment on your own:
@@ -97,10 +97,17 @@ Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cl
 ## Technical
 
 #### WebRTC
-- Golang is not really a crucial part of this design. It helps spawn Webserver conveniently. With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
+- WebRTC is crucial technology for P2P communication. It helps:
+  - Direct Communication between Provider and consumer.
+  - NAT Traversal by ICE.
+    - Find a best way for direct P2P communication
+- RTP: Real Time Transport Protocol
+  - UDP underline
+- With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
 
 #### Windows Virtualization on Linux OS
 
+- Windows is an essential OS for gaming application. Linux is development friendly and provides more programming utilities.
 - First, I consider writing the whole system in Windows. However, Windows lacks programming utilities, and Linux is more comfortable for me.
 - Wine is a Windows Virtual Machine. Its performance is proven in Steam PlayOnLinux. Lutris.
 
