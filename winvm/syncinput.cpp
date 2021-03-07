@@ -14,6 +14,7 @@ chrono::_V2::system_clock::time_point last_ping;
 bool done;
 HWND hwnd;
 char *winTitle;
+char dockerHost[20];
 
 const byte MOUSE_MOVE = 0;
 const byte MOUSE_DOWN = 1;
@@ -26,15 +27,42 @@ int clientConnect()
     WSADATA wsa_data;
     SOCKADDR_IN addr;
 
+    memset(&addr, 0, sizeof(addr));
     WSAStartup(MAKEWORD(2, 0), &wsa_data);
     int server = socket(AF_INET, SOCK_STREAM, 0);
 
-    //inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr.s_addr);
-
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
-    addr.sin_addr.s_addr = INADDR_ANY;
+    if (strcmp(dockerHost, "host.docker.internal") == 0)
+    {
+	char ip[100];
+	struct hostent *he;
+	struct in_addr **addr_list;
+	if ( (he = gethostbyname( dockerHost ) ) == NULL) 
+	{
+		//gethostbyname failed
+		printf("gethostbyname failed : %d" , WSAGetLastError());
+		return 1;
+	}
+	//Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
+	addr_list = (struct in_addr **) he->h_addr_list;
+	for(int i = 0; addr_list[i] != NULL; i++) 
+	{
+		//Return the first one;
+		strcpy(ip , inet_ntoa(*addr_list[i]) );
+	}
 
+        cout << "using host docker internal" << endl;
+        cout << "ip from hostname: " << ip << endl;
+        addr.sin_addr.s_addr = inet_addr(ip);
+    }
+    else
+    {
+        cout << "using any local" << endl;
+        addr.sin_addr.s_addr = INADDR_ANY;
+    }
+
+    cout << "Connecting to server!" << endl;
     connect(server, reinterpret_cast<SOCKADDR *>(&addr), sizeof(addr));
     cout << "Connected to server!" << endl;
     return server;
@@ -117,7 +145,6 @@ HWND sendIt(int key, bool state, bool isDxGame)
     {
         ip.ki.dwFlags |= KEYEVENTF_KEYUP;
     }
-    //cout << temp << endl;
     SendInput(1, &ip, sizeof(INPUT));
 
     // ip.ki.dwFlags |= KEYEVENTF_KEYUP;
@@ -302,8 +329,6 @@ void processEvent(string ev, bool isDxGame)
 
 int main(int argc, char *argv[])
 {
-    server = clientConnect();
-
     winTitle = (char *)"Notepad";
     bool isDxGame = false;
     if (argc > 1)
@@ -317,12 +342,19 @@ int main(int argc, char *argv[])
             isDxGame = true;
         }
     }
+    if (argc > 3)
+    {
+         strcpy(dockerHost, argv[3]);
+    }
+
+    server = clientConnect();
 
     hwnd = 0;
     cout << "Connected " << server << endl;
     getDesktopResolution(screenWidth, screenHeight);
     cout << "width " << screenWidth << " "
          << "height " << screenHeight << endl;
+    cout << "Docker host" << dockerHost << endl;
 
     formatWindow(hwnd);
 

@@ -2,12 +2,13 @@
 package cloudapp
 
 import (
-	"bytes"
+	"bufio"
 	"container/ring"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"os/exec"
 	"strconv"
 	"syscall"
@@ -106,16 +107,15 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		for {
 			// Polling Wine socket connection (input stream)
 			conn, err := ln.AcceptTCP()
+			log.Println("Accepted a TCP connection")
 			if err != nil {
-				// handle error
+				log.Println("err: ", err)
 			}
 			conn.SetKeepAlive(true)
 			conn.SetKeepAlivePeriod(10 * time.Second)
 			c.wineConn = conn
-			// Successfully obtain input stream
-			log.Println("Server is successfully lauched!")
-			log.Println("Listening at :8080")
 			c.isReady = true
+			log.Println("Launched IPC with VM")
 			go c.healthCheckVM()
 		}
 	}()
@@ -135,13 +135,34 @@ func (c *ccImpl) GetSSRC() uint32 {
 	return c.ssrc
 }
 
+func runApp(params []string) {
+	log.Println("params: ", params)
+	cmd := exec.Command("./run-wine.sh", params...)
+	cmd.Env = os.Environ()
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cmd.Start()
+	go func() {
+		buf := bufio.NewReader(stdout) // Notice that this is not in a loop
+		for {
+			line, _, _ := buf.ReadLine()
+			if string(line) == "" {
+				continue
+			}
+			log.Println(string(line))
+		}
+	}()
+	log.Println("execed run-client.sh")
+	cmd.Wait()
+}
+
 // done to forcefully stop all processes
 func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg config.Config) chan struct{} {
 	var cmd *exec.Cmd
 	var streamCmd *exec.Cmd
 
-	var out bytes.Buffer
-	var stderr bytes.Buffer
 	var params []string
 
 	// Setup wine params and run
@@ -160,17 +181,7 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 		params = append(params, "")
 	}
 
-	fmt.Println("params: ", params)
-	cmd = exec.Command("./run-wine.sh", params...)
-
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		panic(err)
-	}
-	log.Println("execed run-client.sh")
-
+	runApp(params)
 	// update flag
 	c.screenWidth = float32(cfg.ScreenWidth)
 	c.screenHeight = float32(cfg.ScreenHeight)
@@ -194,8 +205,12 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 
 // healthCheckVM to maintain connection
 func (c *ccImpl) healthCheckVM() {
+	log.Println("Starting health check")
 	for {
-		c.wineConn.Write([]byte{0})
+		_, err := c.wineConn.Write([]byte{0})
+		if err != nil {
+			log.Println(err)
+		}
 		time.Sleep(2 * time.Second)
 	}
 }

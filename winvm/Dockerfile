@@ -23,7 +23,8 @@ RUN wget -nv -O /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks
 # Silence all the "fixme: blah blah blah" messages from wine
 ENV WINEDEBUG fixme-all
 RUN winetricks d3dx9_43
-RUN winetricks --force -q dotnet48
+# uncomment it for lutris game
+#RUN winetricks --force -q dotnet48
 
 # Download gecko and mono installers
 COPY download_gecko_and_mono.sh /root/download_gecko_and_mono.sh
@@ -38,4 +39,3 @@ COPY ./default.pa /etc/pulse/
 RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o /winevm/syncinput.exe -lws2_32 -lpthread -static
 
 COPY ./supervisord.conf /etc/supervisor/conf.d/
-## ENTRYPOINT ["/winevm/supervisord"]
