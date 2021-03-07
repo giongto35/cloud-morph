@@ -35,6 +35,3 @@ else
     --env "DISPLAY=:99" \
     --volume "winecfg:/root/.wine" syncwine supervisord
 fi
-#docker run -d syncwine bash
-echo "DONE"
-exit 0
