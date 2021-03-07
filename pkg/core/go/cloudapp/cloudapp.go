@@ -6,7 +6,6 @@ import (
 	"container/ring"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -137,16 +136,6 @@ func convertWSPacket(packet cws.WSPacket) Packet {
 
 func (c *ccImpl) GetSSRC() uint32 {
 	return c.ssrc
-}
-
-// to print the processed information when stdout gets a new line
-func print(stdout io.ReadCloser) {
-	c := time.Tick(10 * time.Millisecond)
-	for range c {
-		r := bufio.NewReader(stdout)
-		line, _, _ := r.ReadLine()
-		log.Printf("line: %s", line)
-	}
 }
 
 func runApp(params []string) {
