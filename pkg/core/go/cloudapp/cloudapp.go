@@ -104,7 +104,6 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	// Maintain input stream from server to Virtual Machine over websocket
 	// Why Websocket: because normal IPC cannot communicate cross OS.
 	go func() {
-		log.Println("Running IPC with VM")
 		for {
 			// Polling Wine socket connection (input stream)
 			conn, err := ln.AcceptTCP()
@@ -115,10 +114,8 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 			conn.SetKeepAlive(true)
 			conn.SetKeepAlivePeriod(10 * time.Second)
 			c.wineConn = conn
-			// Successfully obtain input stream
-			log.Println("Server is successfully lauched!")
-			log.Println("Listening at :8080")
 			c.isReady = true
+			log.Println("Launched IPC with VM")
 			go c.healthCheckVM()
 		}
 	}()
