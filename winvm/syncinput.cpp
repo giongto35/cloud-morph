@@ -27,23 +27,25 @@ int clientConnect()
     WSADATA wsa_data;
     SOCKADDR_IN addr;
 
+        memset(&addr, 0, sizeof(addr));
     WSAStartup(MAKEWORD(2, 0), &wsa_data);
     int server = socket(AF_INET, SOCK_STREAM, 0);
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
     cout << dockerHost << endl;
-    if (strcmp(dockerHost, "host.docker.internal") == 0)
-    {
+    //if (strcmp(dockerHost, "host.docker.internal") == 0)
+    //{
         cout << "using host docker internal";
-        addr.sin_addr.s_addr = inet_addr( "host.docker.internal");
-    }
-    else
-    {
-        cout << "using any local";
-        addr.sin_addr.s_addr = INADDR_ANY;
-    }
+        addr.sin_addr.s_addr = inet_addr( "192.168.65.2");
+    //}
+    //else
+    //{
+        //cout << "using any local";
+        //addr.sin_addr.s_addr = INADDR_ANY;
+    //}
 
+    cout << "Connecting to server!" << endl;
     connect(server, reinterpret_cast<SOCKADDR *>(&addr), sizeof(addr));
     cout << "Connected to server!" << endl;
     return server;
@@ -323,10 +325,10 @@ int main(int argc, char *argv[])
             isDxGame = true;
         }
     }
-    if (argc > 3)
-    {
-         strcpy(dockerHost, argv[3]);
-    }
+    //if (argc > 3)
+    //{
+         //strcpy(dockerHost, argv[3]);
+    //}
 
     server = clientConnect();
 

@@ -105,10 +105,13 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	// Maintain input stream from server to Virtual Machine over websocket
 	// Why Websocket: because normal IPC cannot communicate cross OS.
 	go func() {
+		log.Println("Running IPC with VM")
 		for {
 			// Polling Wine socket connection (input stream)
 			conn, err := ln.AcceptTCP()
+			log.Println("Accepted a TCP connection")
 			if err != nil {
+				log.Println("err: ", err)
 				// handle error
 			}
 			conn.SetKeepAlive(true)
@@ -143,12 +146,12 @@ func print(stdout io.ReadCloser) {
 	for range c {
 		r := bufio.NewReader(stdout)
 		line, _, _ := r.ReadLine()
-		fmt.Printf("line: %s", line)
+		log.Printf("line: %s", line)
 	}
 }
 
 func runApp(params []string) {
-	fmt.Println("params: ", params)
+	log.Println("params: ", params)
 	cmd := exec.Command("./run-wine.sh", params...)
 	cmd.Env = os.Environ()
 	stdout, err := cmd.StdoutPipe()
@@ -163,7 +166,7 @@ func runApp(params []string) {
 			if string(line) == "" {
 				continue
 			}
-			fmt.Println(string(line))
+			log.Println(string(line))
 		}
 	}()
 	log.Println("execed run-client.sh")
@@ -219,10 +222,12 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 
 // healthCheckVM to maintain connection
 func (c *ccImpl) healthCheckVM() {
+	log.Println("starting health check")
 	for {
-		_, err := c.wineConn.Write([]byte{0})
+		p, err := c.wineConn.Write([]byte{0})
+		log.Println("Sending", p, err)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 		time.Sleep(2 * time.Second)
 	}

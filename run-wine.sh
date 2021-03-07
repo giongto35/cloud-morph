@@ -12,10 +12,11 @@ docker rm -f appvm
 if [ $(uname -s) == "Darwin" ]
 then
     echo "Spawn container on Mac"
-    docker run -t -d --privileged --rm --name "appvm" \
+    docker run -d --privileged --rm --name "appvm" \
     --mount type=bind,source="$(pwd)"/apps,target=/apps \
-    --expose 9090 \
     --mount type=bind,source="$(pwd)"/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf  \
+    --expose 9090/tcp \
+    -p 9090 \
     --env "apppath=$1" \
     --env "appfile=$2" \
     --env "appname=$3" \
