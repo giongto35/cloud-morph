@@ -112,7 +112,6 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 			log.Println("Accepted a TCP connection")
 			if err != nil {
 				log.Println("err: ", err)
-				// handle error
 			}
 			conn.SetKeepAlive(true)
 			conn.SetKeepAlivePeriod(10 * time.Second)
@@ -178,8 +177,6 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	var cmd *exec.Cmd
 	var streamCmd *exec.Cmd
 
-	//var out bytes.Buffer
-	//var stderr bytes.Buffer
 	var params []string
 
 	// Setup wine params and run
@@ -224,8 +221,7 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 func (c *ccImpl) healthCheckVM() {
 	log.Println("starting health check")
 	for {
-		p, err := c.wineConn.Write([]byte{0})
-		log.Println("Sending", p, err)
+		_, err := c.wineConn.Write([]byte{0})
 		if err != nil {
 			log.Println(err)
 		}

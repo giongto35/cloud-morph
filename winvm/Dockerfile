@@ -35,9 +35,6 @@ WORKDIR /winevm
 COPY ./ ./
 COPY ./default.pa /etc/pulse/
 # Compile syncinput.exe
-RUN apt-get install --no-install-recommends --assume-yes curl
 RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o /winevm/syncinput.exe -lws2_32 -lpthread -static
 
 COPY ./supervisord.conf /etc/supervisor/conf.d/
-## ENTRYPOINT ["/winevm/supervisord"]
-EXPOSE 9090

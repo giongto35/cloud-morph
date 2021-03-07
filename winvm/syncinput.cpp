@@ -27,23 +27,40 @@ int clientConnect()
     WSADATA wsa_data;
     SOCKADDR_IN addr;
 
-        memset(&addr, 0, sizeof(addr));
+    memset(&addr, 0, sizeof(addr));
     WSAStartup(MAKEWORD(2, 0), &wsa_data);
     int server = socket(AF_INET, SOCK_STREAM, 0);
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
-    cout << dockerHost << endl;
-    //if (strcmp(dockerHost, "host.docker.internal") == 0)
-    //{
-        cout << "using host docker internal";
-        addr.sin_addr.s_addr = inet_addr( "192.168.65.2");
-    //}
-    //else
-    //{
-        //cout << "using any local";
-        //addr.sin_addr.s_addr = INADDR_ANY;
-    //}
+    if (strcmp(dockerHost, "host.docker.internal") == 0)
+    {
+	char ip[100];
+	struct hostent *he;
+	struct in_addr **addr_list;
+	if ( (he = gethostbyname( dockerHost ) ) == NULL) 
+	{
+		//gethostbyname failed
+		printf("gethostbyname failed : %d" , WSAGetLastError());
+		return 1;
+	}
+	//Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
+	addr_list = (struct in_addr **) he->h_addr_list;
+	for(int i = 0; addr_list[i] != NULL; i++) 
+	{
+		//Return the first one;
+		strcpy(ip , inet_ntoa(*addr_list[i]) );
+	}
+
+        cout << "using host docker internal" << endl;
+        cout << "ip from hostname: " << ip << endl;
+        addr.sin_addr.s_addr = inet_addr(ip);
+    }
+    else
+    {
+        cout << "using any local" << endl;
+        addr.sin_addr.s_addr = INADDR_ANY;
+    }
 
     cout << "Connecting to server!" << endl;
     connect(server, reinterpret_cast<SOCKADDR *>(&addr), sizeof(addr));
@@ -325,10 +342,10 @@ int main(int argc, char *argv[])
             isDxGame = true;
         }
     }
-    //if (argc > 3)
-    //{
-         //strcpy(dockerHost, argv[3]);
-    //}
+    if (argc > 3)
+    {
+         strcpy(dockerHost, argv[3]);
+    }
 
     server = clientConnect();
 
