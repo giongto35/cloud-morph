@@ -6,19 +6,21 @@
 CloudMorph is a decentralized, self-hosted cloud gaming/cloud application platform. User can host their cloud gaming solution with minimum configuration. By leveraging the ease of deployment, CloudMorph goal is to build a decentralized cloud-gaming network with providers and consumers. 
 To bring a scalable, performant and universal cloud gaming solution, CloudMorph has to cope with many technical challenges from Windows application Virtualization in headless server, OS event simulation, Video/Audio encoding pipeline and optimization, NAT traversal, P2P network structurization, etc.
 
+Discord: [https://discord.gg/ux2rDqwu2W](Join us)
+
 ## Demo
 
 Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 
 |                       Screenshot                       |                        Screenshot                         |
 | :----------------------------------------------------: | :-------------------------------------------------------: |
-| ![screenshot](docs/img/screenshotDiablo.png) Diablo II | ![screenshot](docs/img/screenshotPhotoshop.png) Photoshop |
+| ![screenshot](docs/img/screenshotDiablo.png) [Diablo II US](http://us.clouddiablo.com/) | ![screenshot](docs/img/screenshotPhotoshop.png) Photoshop |
 | ![screenshot](docs/img/screenshotRoadrash.png) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/screenshotStarcraft.png) Starcraft  |
 
 #### Demo Hosted by CloudMorph
 - [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph)
 - [Cloud Diablo US](http://us.clouddiablo.com/) (Demo of Collaborative play Diablo running in US server).
-Switch Applications using the sidebar on the left.
+Switch applications using the sidebar on the left.
 
 #### Experience deployment on your own:
 - Run `setup_remote.sh 111.111.111.111` with 111.111.111.111 is your host. What you will get is a Notepad hosted on your remote machine. More details about deployment is below
@@ -39,8 +41,8 @@ Then we need 3 in the same folder:
 5. `apps`: a folder contains the app you want to deploy. For example, `DiabloII`. If your application is from other folder ex "Program Files", we can leave it empty. We just need to configure the `config.yaml`
 6. `setup_remote.sh`: a script to deploy your application to server
 
-Example:
-- `setup_remote.sh $ip $mount_path`. Ex: `./setup_remote.sh 159.89.146.77 /apps/DiabloII`  
+Run:
+- `setup_remote.sh $ip`. Ex: `./setup_remote.sh 159.89.146.77`  
 - Tutorial Video: https://www.youtube.com/watch?v=w8uCkfZdHVc
 
 ### Deployment with Lutris
@@ -67,13 +69,13 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 
 ### Design
 
-- Decentralize
+#### Decentralize
 ![screenshot](docs/img/Decentralize.png)
 
 - After running `setup-remote.sh` with configured `discoveryHost` attribute, application will be registered in Discovery list.
 - Client will query discovery host list of joinable host, then the client can pick any application in the discovery list.
 
-- **CloudApp core**
+#### CloudApp Core
 ![screenshot](docs/img/CloudUniverse.png)
 
 - When a Web Service starts, Application Container, named "CloudApp Core", is spawned. Inside the container there are Application + Virtual Display/Audio + Windows Event Simulation Utility. Multiple Containers can be spawned on demand.
