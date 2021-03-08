@@ -3,10 +3,10 @@
 
 ## Introduction
 
-CloudMorph is a decentralized, self-hosted cloud gaming/cloud application platform. User can host their cloud gaming solution with minimum configuration. By leveraging the ease of deployment, CloudMorph goal is to build a decentralized cloud-gaming network with providers and consumers. 
+CloudMorph is a decentralized, self-hosted cloud gaming/cloud application platform. User can host their cloud gaming solution with minimum configuration. By leveraging the ease of deployment, CloudMorph goal is to build a decentralized cloud-gaming network with providers and consumers.  
 To bring a scalable, performant and universal cloud gaming solution, CloudMorph has to cope with many technical challenges from Windows application Virtualization in headless server, OS event simulation, Video/Audio encoding pipeline and optimization, NAT traversal, P2P network structurization, etc.
 
-Discord: [https://discord.gg/ux2rDqwu2W](Join us)
+**Discord**: [Join Us](https://discord.gg/ux2rDqwu2W)
 
 ## Demo
 
@@ -65,10 +65,7 @@ Access to your local at
 
 Note: the wine application is run in Docker. You can run it without docker by changing `run-wine.sh` to `run-wine-nodocker.sh` in `server.go` for easier debugging.
 
-## Technical
-
 ### Design
-
 #### Decentralize
 ![screenshot](docs/img/Decentralize.png)
 
@@ -88,7 +85,6 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 - Overall, the "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in container with the interface declared at `core/go/cloudapp`.
 
 ### Detailed Technology
-
 #### WebRTC
 
 - [WebRTC](https://en.wikipedia.org/wiki/WebRTC) is the leading technology for P2P communication. It eases P2P direct communication between Provider and Consumer.
