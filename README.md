@@ -63,8 +63,67 @@ Access to your local at
 
 Note: the wine application is run in Docker. You can run it without docker by changing `run-wine.sh` to `run-wine-nodocker.sh` in `server.go` for easier debugging.
 
+## Technical
+
+### Design
+
+- Decentralize
+![screenshot](docs/img/Decentralize.png)
+
+- After running `setup-remote.sh` with configured `discoveryHost` attribute, application will be registered in Discovery list.
+- Client will query discovery host list of joinable host, then the client can pick any application in the discovery list.
+
+- **CloudApp core**
+![screenshot](docs/img/CloudUniverse.png)
+
+- When a Web Service starts, Application Container, named "CloudApp Core", is spawned. Inside the container there are Application + Virtual Display/Audio + Windows Event Simulation Utility. Multiple Containers can be spawned on demand.
+- Input captured from Client is sent to Web Service using WebRTC Data Channel (UDP)
+- Web Service will send received input events to Virtual Machine over a socket.
+- The utility (syncinput.exe) will listen to the input events and simulates equivalent Windows OS event to Wine Application through WinAPI.
+- Application screen/ Audio is captured in a Virtual Display Frame Buffer (XVFB)/ Virtual Audio (PulseAudio), which is later piped to FFMPEG.
+- FFMPEG encode the Video Stream to VPX RTP stream and Audio Stream to Opus stream.
+
+- Overall, the "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in container with the interface declared at `core/go/cloudapp`.
+
+### Detailed Technology
+
+#### WebRTC
+
+- [WebRTC](https://en.wikipedia.org/wiki/WebRTC) is the leading technology for P2P communication. It eases P2P direct communication between Provider and Consumer.
+  - NAT Traversal through ICE:
+    - Find a best way for direct P2P communication that can bypass firewall.
+  - RTP: Real Time Transport Protocol.
+  - Builtin Streaming Video/Audio Encoding.
+- With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
+
+#### Windows Virtualization on Linux OS
+
+- Cloud Morph spawns application inside a virtualized Windows OS (using Wine) inside a Linux OS.
+- Windows is the most popular OS for gaming application. Linux is development friendly and provides more programming utilities.
+- Wine is a Windows Virtual Machine on Linux. Its performance for AAA game is proven in Steam PlayOnLinux, Lutris.
+- Wine Application and its utilities is packaged in a Linux Docker container, so Web service can spawn new containers on demand.
+
+#### Headless server
+
+- Headless server is a server without display. When you acquire any cloud instances from AWS, Digital Ocean, GCloud..., it is headless because there is no display attached to it. Similar usage you can find in Chrome Selminium CI/CD pipeline.
+- Being able to run the application in Headless will enable the ability to scale horizontally by improvisoning more cloud machines. 
+- Graphic is captured in Virtual Frame Buffer (XVFB) and Audio is captured in Virtual Audio (pulseaudio). Encoding pipeline will fetch media from these virtual Display/Audio.
+
+#### Video/Audio Encoding pipeline
+
+- Encoding Pipeline for Video and Audio relies on powerful FFMPEG. 
+- Web Service listen to FFMPEG result and pipe out to all users.
+
+#### Inter Process Communication between Web Service and Cloud Gaming Container
+
+- Any user interaction will be sent to Web Service and then Web Service will talk to Windows Application inside Container. Even Web Service and Application is inside the same machine, they communicate with each other using Websocket over a specified shared network port. Other kinds of Inter Process Communication is not applicable here.
+
+#### Event Simulation
+
+- Inside container, there is a "syncinput" utility that listen to user interaction over WebSocket and simulate Windows Application events over WindowsAPI.
+- C++ is chosen because it has good support for WindowsAPI.
+
 ## Real-World Usecase
-Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cloud Gaming solution on Retro Game hosted on dedicated cloud infrastructure, CloudMorph generalizes the system to bring any offline Windows application to a cloud mesh network. The deployment is simplified with a concise tech-stack and codebase. The goal is to create a distributed cloud application system when anyone can contribute their offline application on the platform, and other people can consume it.
 
 ##### For Developers
 - Experience playing/hosting Cloud Gaming on their own.
@@ -77,55 +136,6 @@ Unlike **[CloudRetro](https://github.com/giongto35/cloud-game)**, a Completed Cl
 ##### For Providers
 - Playable Teaser: Application's teaser is playable, 
 
-## Design
-
-- **Mesh Network**
-![screenshot](docs/img/Decentralize.png)
-
-- **CloudApp core**
-![screenshot](docs/img/CloudUniverse.png)
-
-- When Webserver starts, Wine Application is spawned inside a container at the same time. However, in the future, Wine Application needs to support multiplex to run multiple applications in the same VM.
-- Input captured from Client is sent to Virtual Machine over Websocket.
-- A C++ script (syncinput.exe) will listen to the event and simulates Windows OS event to Wine Application through WinAPI.
-- Application screen is captured in a Virtual Display Frame Buffer, which is later piped to FFMPEG.
-- FFMPEG will produce the screen stream to a VPX RTP stream.
-
-- In the end, the core module receives **Input** as WebSocket event and **Output** as RTP stream. You can check the interface at `core/go/cloudapp`
-- Webserver interacts with Virtual Machine using these Input and Output format.
-
-## Technical
-
-#### WebRTC
-- WebRTC is crucial technology for P2P communication. It helps:
-  - Direct Communication between Provider and consumer.
-  - NAT Traversal by ICE.
-    - Find a best way for direct P2P communication
-- RTP: Real Time Transport Protocol
-  - UDP underline
-- With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
-
-#### Windows Virtualization on Linux OS
-
-- Windows is an essential OS for gaming application. Linux is development friendly and provides more programming utilities.
-- First, I consider writing the whole system in Windows. However, Windows lacks programming utilities, and Linux is more comfortable for me.
-- Wine is a Windows Virtual Machine. Its performance is proven in Steam PlayOnLinux. Lutris.
-
-#### Headless server
-
-- Headless server is a server without display. When you acquire any cloud instances from AWS, Digital Ocean, GCloud..., it is headless because there is no monitor attached to it.
-- One of the most challenging problems is to deal with Headless when your application/game always requires a graphic monitor, graphic driver. Being able to run on a Headless server is a goal. We can improvision new application instances and scale gaming sessions properly.
-
-#### Inter Process Communication between Web Service and Cloud Gaming Container
-
-- Even though Wine application and server stay in the same machine, they theoretically run on different OS. Normal Internal Process Communication becomes challenging and not suitable. Network communication using Websocket over some defined ports can help in this case.
-
-#### Video/Audio Encoding pipeline
-
-- FFMPEG is used to grab XVFB Display (built-in functionality) and convert it to the VPX video stream. It can be substituted with GStreamer or any custom encoding solution.
-
-#### Event Simulation
-- C++ is chosen because it has good support for WindowsAPI.
 
 ## Road Map - Request for Help
 
