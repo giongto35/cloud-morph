@@ -17,7 +17,7 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 | ![screenshot](docs/img/screenshotDiablo.png) [Diablo II US](http://us.clouddiablo.com/) | ![screenshot](docs/img/screenshotPhotoshop.png) Photoshop |
 | ![screenshot](docs/img/screenshotRoadrash.png) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/screenshotStarcraft.png) Starcraft  |
 
-#### Demo Hosted by CloudMorph
+#### CloudMorph Demo
 - [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph)
 - [Cloud Diablo US](http://us.clouddiablo.com/) (Demo of Collaborative play Diablo running in US server).
 Switch applications using the sidebar on the left.
@@ -45,10 +45,10 @@ Run:
 - `setup_remote.sh $ip`. Ex: `./setup_remote.sh 159.89.146.77`  
 - Tutorial Video: https://www.youtube.com/watch?v=w8uCkfZdHVc
 
-### Deployment with Lutris
+**Deployment with Lutris**
 - Lutris eases the installation of a game on Linux. **The recommended flow is to install game with Lutris and copy produced wine environment to Cloud Morph**
 
-### Deployment Example
+**Deployment Example**
 - `script/example` contains example applications configuration. Note: `/apps` is left empty due to copyright.
 
 # Technical
