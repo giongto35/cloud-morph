@@ -129,15 +129,14 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 
 ##### For Developers
 - Experience playing/hosting Cloud Gaming on their own.
-- Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized to be easily extended to different tech stacks.
+- Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized to be easily extended to different tech stacks. E.g Python, Java ...
 
 ##### For Consumers.
 - Multi-platform: be able to run web-browser, mobile web.
-- Collaborative Gaming: Multiple people plays the same game. Ex. Twitch play pokemon, or http://clouddiablo.com/ - A cloudmorph demo.
+- Collaborative Gaming: Multiple people plays the same game. Ex. Twitch play pokemon, or like in http://clouddiablo.com/.
 
 ##### For Providers
-- Playable Teaser: Application's teaser is playable, 
-
+- Playable Teaser: Application's teaser is playable, so users can experience new game directly on Browser.
 
 ## Road Map - Request for Help
 
