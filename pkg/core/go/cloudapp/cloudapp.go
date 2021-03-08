@@ -224,7 +224,7 @@ func (c *ccImpl) Handle() {
 // newLocalStreamListener returns RTP: listener and SSRC of that listener
 func (c *ccImpl) newLocalStreamListener(rtpPort int) (*net.UDPConn, uint32) {
 	// Open a UDP Listener for RTP Packets on port 5004
-	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: rtpPort})
+	listener, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("localhost"), Port: rtpPort})
 	if err != nil {
 		panic(err)
 	}
