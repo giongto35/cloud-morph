@@ -46,7 +46,7 @@ Run:
 - Tutorial Video: https://www.youtube.com/watch?v=w8uCkfZdHVc
 
 **Deployment with Lutris**
-- Lutris eases the installation of a game on Linux. **The recommended flow is to install game with Lutris and copy produced wine environment to Cloud Morph**
+- Lutris eases the installation of a game on Linux. **The recommended flow is to install game with Lutris and copy produced wine environment to Cloud Morph**.
 
 **Deployment Example**
 - `script/example` contains example applications configuration. Note: `/apps` is left empty due to copyright.
