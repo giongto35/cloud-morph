@@ -22,6 +22,7 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 - [Cloud Diablo US](http://us.clouddiablo.com/) (Demo of Collaborative play Diablo running in US server).
 Switch applications using the sidebar on the left.
 
+#### Getting Started
 #### Experience deployment on your own:
 - Run `setup_remote.sh 111.111.111.111` with 111.111.111.111 is your host. What you will get is a Notepad hosted on your remote machine. More details about deployment is below
 
@@ -51,7 +52,6 @@ Run:
 **Deployment Example**
 - `script/example` contains example applications configuration. Note: `/apps` is left empty due to copyright.
 
-# Technical
 ## Development
 
 The service is based on Golang, C++, and Linux X11 utility tools (Xvfb, ffmpeg).
@@ -85,41 +85,6 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 - Overall, the "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in container with the interface declared at `core/go/cloudapp`.
 
 ### Detailed Technology
-#### WebRTC
-
-- [WebRTC](https://en.wikipedia.org/wiki/WebRTC) is the leading technology for P2P communication. It eases P2P direct communication between Provider and Consumer.
-  - NAT Traversal through ICE:
-    - Find a best way for direct P2P communication that can bypass firewall.
-  - RTP: Real Time Transport Protocol.
-  - Builtin Streaming Video/Audio Encoding.
-- With [Pion](https://github.com/pion/webrtc/) library in Go, WebRTC streaming becomes really handy.
-
-#### Windows Virtualization on Linux OS
-
-- Cloud Morph spawns application inside a virtualized Windows OS (using Wine) inside a Linux OS.
-- Windows is the most popular OS for gaming application. Linux is development friendly and provides more programming utilities.
-- Wine is a Windows Virtual Machine on Linux. Its performance for AAA game is proven in Steam PlayOnLinux, Lutris.
-- Wine Application and its utilities is packaged in a Linux Docker container, so Web service can spawn new containers on demand.
-
-#### Headless server
-
-- Headless server is a server without display. When you acquire any cloud instances from AWS, Digital Ocean, GCloud..., it is headless because there is no display attached to it. Similar usage you can find in Chrome Selminium CI/CD pipeline.
-- Being able to run the application in Headless will enable the ability to scale horizontally by improvisoning more cloud machines. 
-- Graphic is captured in Virtual Frame Buffer (XVFB) and Audio is captured in Virtual Audio (pulseaudio). Encoding pipeline will fetch media from these virtual Display/Audio.
-
-#### Video/Audio Encoding pipeline
-
-- Encoding Pipeline for Video and Audio relies on powerful FFMPEG. 
-- Web Service listen to FFMPEG result and pipe out to all users.
-
-#### Inter Process Communication between Web Service and Cloud Gaming Container
-
-- Any user interaction will be sent to Web Service and then Web Service will talk to Windows Application inside Container. Even Web Service and Application is inside the same machine, they communicate with each other using Websocket over a specified shared network port. Other kinds of Inter Process Communication is not applicable here.
-
-#### Event Simulation
-
-- Inside container, there is a "syncinput" utility that listen to user interaction over WebSocket and simulate Windows Application events over WindowsAPI.
-- C++ is chosen because it has good support for WindowsAPI.
 
 ## Real-World Usecase
 
