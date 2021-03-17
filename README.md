@@ -85,6 +85,7 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 - Overall, the "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in container with the interface declared at `core/go/cloudapp`.
 
 ### Detailed Technology
+[wiki](https://github.com/giongto35/cloud-morph/wiki)
 
 ## Real-World Usecase
 
