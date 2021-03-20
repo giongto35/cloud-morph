@@ -4,7 +4,8 @@
 ## Introduction
 
 CloudMorph is a decentralized, self-hosted cloud gaming/cloud application platform. User can host their cloud gaming solution with minimum configuration. By leveraging the ease of deployment, CloudMorph goal is to build a decentralized cloud-gaming network with providers and consumers.  
-To bring a scalable, performant and universal cloud gaming solution, CloudMorph has to cope with many technical challenges from Windows application Virtualization in headless server, OS event simulation, Video/Audio encoding pipeline and optimization, NAT traversal, P2P network structurization, etc.
+To bring a scalable, performant and universal cloud gaming solution, CloudMorph has to cope with many technical challenges in Low Latency Streaming, Windows application Virtualization in headless server, OS event simulation, Video/Audio encoding pipeline and optimization, NAT traversal, P2P network structurization, etc.
+Unlike [CloudRetro](https://github.com/giongto35/cloud-game), which is a completed Cloud Gaming solution for Retro Game hosted on a dedicated cloud infrastructure, CloudMorph decentralized the hosting to users for any Windows Games/Applications by a generic and modularized solution.
 
 **Discord**: [Join Us](https://discord.gg/ux2rDqwu2W)
 
@@ -24,16 +25,15 @@ Switch applications using the sidebar on the left.
 
 #### Getting Started
 #### Experience deployment on your own:
-- Run `setup_remote.sh 111.111.111.111` with 111.111.111.111 is your host. What you will get is a Notepad hosted on your remote machine. More details about deployment is at below.
+- Run `setup_remote.sh 111.111.111.111` with ``111.111.111.111`` is your host. What you will get is a Notepad hosted on your remote machine. More details about deployment is at below.
 
 ## Design Goal:
 1. **Cloud gaming**: Game is run in a remote cloud instance. Video/Audio are streamed to user in the most optimal way using advanced encoding technology.
 2. **Cross-platform compatibility**: App is run on web browser, the most universal built-in that can fit in multiple platforms Desktop/Mobile. No console, plugin, external app or devices are needed.
-1. **Simplicity**: No API/ interface integration needed from application. One line script deployment to a public server to get work done.
-2. **Mesh network**: Providers-Consumers over Peer To Peer communication. After joining the network, Provider's Application is discoverable and launched with one click.
-3. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
-4. **Generic/Cross-platform**: Run on web browser, web mobile. Target Windows App instead of relying on gaming framework/emulator. (like [CloudRetro](https://github.com/giongto35/cloud-game)).
-5. **Scalable**: Be able to scale on headless machines cluster horizontally.
+3. **Deployment Simplicity**: No API/ interface integration needed from application. One line script deployment to a server to get work done.
+4. **Mesh network**: Providers-Consumers over Peer To Peer communication. After joining the network, Provider's Application is discoverable and launched with one click.
+5. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
+6. **Scalable**: Able to provision new machines, and scale on headless machines cluster horizontally.
 
 ## Deployment
 
@@ -73,15 +73,14 @@ Note: the wine application is run in Docker. You can run it without docker by ch
 ![screenshot](docs/img/CloudUniverse.png)
 
 1. When a Web Service starts, Application Container, named "CloudApp Core", is spawned. Inside the container there are Application + Virtual Display/Audio + Windows Event Simulation Utility. Multiple Containers can be spawned on demand.
-2. A P2P connection will be setup between a client and service. With the help of WebRTC Pion.
-    In this process
-2. Input captured from Client is sent to Web Service using WebRTC Data Channel (UDP)
-3. Web Service will send received input events to Virtual Machine over a socket.
-4. The utility (syncinput.exe) will listen to the input events and simulates equivalent Windows OS event to Wine Application through WinAPI.
-5. Application screen/ Audio is captured in a Virtual Display Frame Buffer (XVFB)/ Virtual Audio (PulseAudio), which is later piped to FFMPEG.
-6. FFMPEG encode the Video Stream to VPX RTP stream and Audio Stream to Opus stream.
+2. A P2P connection will be setup between a client and service. [WebRTC Pion](https://github.com/pion/webrtc) is a great library to handle WebRTC.
+3. Input captured from Client is sent to Web Service using WebRTC Data Channel (UDP)
+4. Web Service will send received input events to Virtual Machine over a socket.
+5. The utility (syncinput.exe) will listen to the input events and simulates equivalent Windows OS event to Wine Application through WinAPI.
+6. Application screen/ Audio is captured in a Virtual Display Frame Buffer (XVFB)/ Virtual Audio (PulseAudio), which is later piped to FFMPEG.
+7. FFMPEG encode the Video Stream to VPX RTP stream and Audio Stream to Opus stream.
 
-7. Overall, the "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in container with the interface declared at `core/go/cloudapp`.
+8. Overall, "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in container with the interface declared at `core/go/cloudapp`.
 
 #### Decentralize
 ![screenshot](docs/img/Decentralize.png)
