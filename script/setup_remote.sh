@@ -24,5 +24,5 @@ ssh root@$1 "cd $RPATH/cloud-morph; pkill server; nohup ./server > /dev/null &> 
  #Run Server in supervisord
 ssh root@$1 "apt-get install -y supervisor | true"
 rsync ../../supervisord.conf root@$1:/etc/supervisor/conf.d
-ssh root@$1 "cd $RPATH/cloud-morph; go build server.go; supervisord | true; service supervisor stop; service supervisor start"
+ssh root@$1 "cd $RPATH/cloud-morph; go build server.go; service supervisor stop; pkill server | true;  supervisord | true; service supervisor start;"
 ssh root@$1 "iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080; iptables-save;"

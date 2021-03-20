@@ -137,6 +137,12 @@ func (c *Client) Handle() {
 	// Video Stream
 	wg.Add(1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Println("Recovered. Maybe we :sent to Closed Channel", r)
+			}
+		}()
+
 	loop:
 		for packet := range c.videoStream {
 			select {
@@ -152,6 +158,12 @@ func (c *Client) Handle() {
 	// Audio Stream
 	wg.Add(1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Println("Recovered. Maybe we :sent to Closed Channel", r)
+			}
+		}()
+
 	loop:
 		for packet := range c.audioStream {
 			select {
