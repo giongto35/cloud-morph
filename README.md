@@ -14,8 +14,8 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 
 |                       Screenshot                       |                        Screenshot                         |
 | :----------------------------------------------------: | :-------------------------------------------------------: |
-| ![screenshot](docs/img/diablo.gif) [Diablo II US](http://us.clouddiablo.com/) | ![screenshot](docs/img/starcraft.gif) [Starcraft](http://cloudstarcraft.com/) |
-| ![screenshot](docs/img/roadrash.gif) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | |
+| ![screenshot](docs/img/diablo.gif) [Diablo II-US](http://us.clouddiablo.com/) | ![screenshot](docs/img/starcraft.gif) [Starcraft](http://cloudstarcraft.com/) |
+| ![screenshot](docs/img/roadrash.gif) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/changegame.gif)  Switching games |
 
 #### CloudMorph Demo
 - [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph)
@@ -24,9 +24,11 @@ Switch applications using the sidebar on the left.
 
 #### Getting Started
 #### Experience deployment on your own:
-- Run `setup_remote.sh 111.111.111.111` with 111.111.111.111 is your host. What you will get is a Notepad hosted on your remote machine. More details about deployment is below
+- Run `setup_remote.sh 111.111.111.111` with 111.111.111.111 is your host. What you will get is a Notepad hosted on your remote machine. More details about deployment is at below.
 
 ## Design Goal:
+1. **Cloud gaming**: Game is run in a remote cloud instance. Video/Audio are streamed to user in the most optimal way using advanced encoding technology.
+2. **Cross-platform compatibility**: App is run on web browser, the most universal built-in that can fit in multiple platforms Desktop/Mobile. No console, plugin, external app or devices are needed.
 1. **Simplicity**: No API/ interface integration needed from application. One line script deployment to a public server to get work done.
 2. **Mesh network**: Providers-Consumers over Peer To Peer communication. After joining the network, Provider's Application is discoverable and launched with one click.
 3. **Modularizable**: A concise technical stack to **develop**/**deploy** for cloud gaming/ cloud application service.
