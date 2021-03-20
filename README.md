@@ -14,8 +14,8 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 
 |                       Screenshot                       |                        Screenshot                         |
 | :----------------------------------------------------: | :-------------------------------------------------------: |
-| ![screenshot](docs/img/screenshotDiablo.png) [Diablo II US](http://us.clouddiablo.com/) | ![screenshot](docs/img/screenshotPhotoshop.png) Photoshop |
-| ![screenshot](docs/img/screenshotRoadrash.png) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/screenshotStarcraft.png) Starcraft  |
+| ![screenshot](docs/img/diablo.gif) [Diablo II US](http://us.clouddiablo.com/) | ![screenshot](docs/img/starcraft.gif) Starcraft |
+| ![screenshot](docs/img/roadrash.gif) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/screenshotStarcraft.png) Starcraft  |
 
 #### CloudMorph Demo
 - [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph)
@@ -35,11 +35,11 @@ Switch applications using the sidebar on the left.
 
 ## Deployment
 
-Foremost, you need an Ubuntu instance with a public network firewall. For example, you can use the given `script/create_do.sh` to create a digital ocean instance.
-Then we need 3 in the same folder:
+Foremost, we need an Ubuntu instance with a public network firewall. For example, we can use the given `script/create_do.sh` to create a digital ocean instance.
+Then we put below 4 in the same folder:
 1. `config.yaml`: app config, the app configuration
-3. `wine`: whole wine folder from `.wine`. If there is no wine folder, the basic wine envirnoment will be you.
-5. `apps`: a folder contains the app you want to deploy. For example, `DiabloII`. If your application is from other folder ex "Program Files", we can leave it empty. We just need to configure the `config.yaml`
+3. `wine`: whole wine folder from `.wine`. If there is no wine folder, the deployment will use the default `.wine` from installation.
+5. `apps`: a folder contains the app you want to deploy. For example, `DiabloII`. If your application is from other folder ex "Program Files", we can leave it empty. We just need to configure `config.yaml` to point to correct app path
 6. `setup_remote.sh`: a script to deploy your application to server
 
 Run:
@@ -66,23 +66,26 @@ Access to your local at
 Note: the wine application is run in Docker. You can run it without docker by changing `run-wine.sh` to `run-wine-nodocker.sh` in `server.go` for easier debugging.
 
 ### Design
-#### Decentralize
-![screenshot](docs/img/Decentralize.png)
-
-- After running `setup-remote.sh` with configured `discoveryHost` attribute, application will be registered in Discovery list.
-- Client will query discovery host list of joinable host, then the client can pick any application in the discovery list.
 
 #### CloudApp Core
 ![screenshot](docs/img/CloudUniverse.png)
 
-- When a Web Service starts, Application Container, named "CloudApp Core", is spawned. Inside the container there are Application + Virtual Display/Audio + Windows Event Simulation Utility. Multiple Containers can be spawned on demand.
-- Input captured from Client is sent to Web Service using WebRTC Data Channel (UDP)
-- Web Service will send received input events to Virtual Machine over a socket.
-- The utility (syncinput.exe) will listen to the input events and simulates equivalent Windows OS event to Wine Application through WinAPI.
-- Application screen/ Audio is captured in a Virtual Display Frame Buffer (XVFB)/ Virtual Audio (PulseAudio), which is later piped to FFMPEG.
-- FFMPEG encode the Video Stream to VPX RTP stream and Audio Stream to Opus stream.
+1. When a Web Service starts, Application Container, named "CloudApp Core", is spawned. Inside the container there are Application + Virtual Display/Audio + Windows Event Simulation Utility. Multiple Containers can be spawned on demand.
+2. A P2P connection will be setup between a client and service. With the help of WebRTC Pion.
+    In this process
+2. Input captured from Client is sent to Web Service using WebRTC Data Channel (UDP)
+3. Web Service will send received input events to Virtual Machine over a socket.
+4. The utility (syncinput.exe) will listen to the input events and simulates equivalent Windows OS event to Wine Application through WinAPI.
+5. Application screen/ Audio is captured in a Virtual Display Frame Buffer (XVFB)/ Virtual Audio (PulseAudio), which is later piped to FFMPEG.
+6. FFMPEG encode the Video Stream to VPX RTP stream and Audio Stream to Opus stream.
 
-- Overall, the "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in container with the interface declared at `core/go/cloudapp`.
+7. Overall, the "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in container with the interface declared at `core/go/cloudapp`.
+
+#### Decentralize
+![screenshot](docs/img/Decentralize.png)
+
+- If the configuration in `config.yaml` includes `discoveryHost` attribute, application will be discorable by everyone in Discovery list in sidebar.
+- In this flow, Client will query discovery host list of joinable host, then the client can pick any application in the discovery list.
 
 ### Detailed Technology
 [wiki](https://github.com/giongto35/cloud-morph/wiki)
