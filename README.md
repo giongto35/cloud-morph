@@ -18,7 +18,7 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 | ![screenshot](docs/img/roadrash.gif) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/changegame.gif)  Browse and Switch games |
 
 #### CloudMorph Demo
-- [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph)
+- [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph).
 - [Cloud Diablo US](http://us.clouddiablo.com/) (Demo of Collaborative play Diablo running in US server).
 Switch applications using the sidebar on the left.
 
@@ -49,7 +49,7 @@ Run:
 - Tutorial Video: https://www.youtube.com/watch?v=w8uCkfZdHVc
 
 **Deployment with Lutris**
-- Lutris eases the installation of a game on Linux. **The recommended flow is to install game with Lutris and copy produced wine environment to Cloud Morph**
+- Lutris eases the installation of a game on Linux. **The recommended flow is to install game with Lutris and copy produced wine environment to Cloud Morph**.
 
 **Deployment Example**
 - `script/example` contains example applications configuration. Note: `/apps` is left empty due to copyright.
