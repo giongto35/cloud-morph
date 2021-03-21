@@ -12,8 +12,8 @@ Unlike [CloudRetro](https://github.com/giongto35/cloud-game), a completed Cloud 
 
 Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 
-|                       Screenshot                       |                        Screenshot                         |
-| :----------------------------------------------------: | :-------------------------------------------------------: |
+|                       Screenshot                       |                     Screenshot                         |
+| :----------------------------------------------------: | :----------------------------------------------------: |
 | ![screenshot](docs/img/diablo.gif) [Diablo II-US](http://us.clouddiablo.com/) | ![screenshot](docs/img/starcraft.gif) [Starcraft](http://cloudstarcraft.com/) |
 | ![screenshot](docs/img/roadrash.gif) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/changegame.gif) Browse and Switch games |
 
