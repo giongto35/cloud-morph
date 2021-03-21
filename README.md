@@ -15,7 +15,7 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 |                       Screenshot                       |                        Screenshot                         |
 | :----------------------------------------------------: | :-------------------------------------------------------: |
 | ![screenshot](docs/img/diablo.gif) [Diablo II-US](http://us.clouddiablo.com/) | ![screenshot](docs/img/starcraft.gif) [Starcraft](http://cloudstarcraft.com/) |
-| ![screenshot](docs/img/roadrash.gif) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/changegame.gif)  Browse and Switch games |
+| ![screenshot](docs/img/roadrash.gif) [RoadRash](https://www.youtube.com/watch?v=A2JcFaVlOO4) | ![screenshot](docs/img/changegame.gif) Browse and Switch games |
 
 #### CloudMorph Demo
 - [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph).
@@ -72,7 +72,7 @@ Note: the wine application is run inside Docker. You can run it without docker b
 ![screenshot](docs/img/CloudUniverse.png)
 
 1. When a Web Service starts, Application Container, named "CloudApp Core", is spawned. Inside the Container there are Application + Virtual Display/Audio + Windows Event Simulation Utility. Multiple Containers can be spawned on demand.
-2. Web Service will be in charge of P2P communication. When a user/client connects the service, the service will initialize a WebRTC connection between the client and service. This project uses [WebRTC Pion](https://github.com/pion/webrtc) is a great library to handle WebRTC in Golang.
+2. Web Service will be in charge of P2P communication. When a user/client connects the service, the service will initialize a WebRTC connection between the client and service. This project uses [WebRTC Pion](https://github.com/pion/webrtc), which is an awesome library for WebRTC in Golang.
 3. Input captured from Client is sent to Web Service using WebRTC Data Channel (UDP).
 4. Web Service will send received input events to Virtual Machine over a socket.
 5. The utility (syncinput.exe) will listen to the input events and simulates equivalent Windows OS events to Wine Application through WinAPI.
