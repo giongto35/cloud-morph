@@ -37,13 +37,13 @@ Switch applications using the sidebar on the left.
 ## Deployment
 
 Foremost, we need an Ubuntu instance with a public network firewall (No firewall rule to ease the P2P communication). For example, we can use the provided `script/create_do.sh` to create a digital ocean instance.
-Then we put 4 below in the same directory
+Then we prepare the below in the same directory
 1. `config.yaml`: app config, the app configuration
 2. `wine`: whole wine folder from `.wine`. If there is no wine folder, the deployment will use bare `.wine` from installation.
-3. `apps`: the folder contains the app we are going to deploy, which will later be mapped to `winvn/apps` in the remote instances. For example, `DiabloII`. If your application is in another folder, ex "Program Files", we can leave it empty. We need to configure `config.yaml` to point to the correct app path.
-4. `setup_remote.sh`: a script to deploy your application to server
+3. `apps`: the folder contains the app we are going to deploy, which will later be mapped to `winvn/apps` in the remote instances. For example, `DiabloII`. If your application is already inside the synced wine environment at 2, ex "Program Files", we can skip it. We need to configure `config.yaml`, apppath to point to the correct app path.
+4. `setup_remote.sh`: a copy of script in `winvm/script` to deploy your application to server.
 
-After that, we run when you are in the folder:
+After that, we run `setup_remote` from inside the folder:
 - `setup_remote.sh $ip`. Ex: `./setup_remote.sh 159.89.146.77`  
 - Tutorial Video: https://www.youtube.com/watch?v=w8uCkfZdHVc
 
