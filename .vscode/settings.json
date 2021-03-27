@@ -1,15 +1,16 @@
 {
     "git.ignoreLimitWarning": true,
     "files.exclude": {
-        "**/.git": true,
-        "**/.svn": true,
-        "**/.hg": true,
-        "**/CVS": true,
         "**/.DS_Store": true,
-        "script/example": true,
+        "**/.git": true,
+        "**/.hg": true,
+        "**/.svn": true,
+        "**/apps": true,
+        "**/CVS": true,
         "**/example": true,
+        "example": true,
         "script/*.*": true,
-        "example": true
+        "script/example": true
     },
     "explorerExclude.backup": null
 }
