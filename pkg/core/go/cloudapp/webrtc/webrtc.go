@@ -76,8 +76,8 @@ func NewWebRTC() *WebRTC {
 	w := &WebRTC{
 		ID: uuid.Must(uuid.NewV4()).String(),
 
-		ImageChannel: make(chan *rtp.Packet, 30),
-		AudioChannel: make(chan *rtp.Packet, 30),
+		ImageChannel: make(chan *rtp.Packet, 1),
+		AudioChannel: make(chan *rtp.Packet, 1),
 		InputChannel: make(chan []byte, 100),
 	}
 	return w
@@ -280,6 +280,7 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack 
 	// receive frame buffer
 	go func() {
 		for packet := range w.ImageChannel {
+			fmt.Println(packet)
 			if writeErr := vp8Track.WriteRTP(packet); writeErr != nil {
 				panic(writeErr)
 			}
