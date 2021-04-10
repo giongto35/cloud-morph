@@ -1,4 +1,7 @@
 **Decentralized, Self-hosted cloud gaming/cloud application service.**
+**Video Demo**: https://youtu.be/eFR7fLy9z6E
+**Technical Document**: https://github.com/giongto35/cloud-morph/wiki
+**CloudRetro**: [https://github.com/giongto35/cloud-game](https://github.com/giongto35/cloud-game): Sister project, Cloud Gaming Service For Retro Games
 
 ## Introduction
 
