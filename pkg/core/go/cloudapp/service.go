@@ -118,8 +118,8 @@ func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ss
 		clientID:    clientID,
 		ws:          ws,
 		ssrc:        ssrc,
-		videoStream: make(chan *rtp.Packet, 1),
-		audioStream: make(chan *rtp.Packet, 1),
+		videoStream: make(chan *rtp.Packet, 100),
+		audioStream: make(chan *rtp.Packet, 100),
 		cancel:      make(chan struct{}),
 		done:        make(chan struct{}),
 	}
