@@ -76,8 +76,8 @@ func NewWebRTC() *WebRTC {
 	w := &WebRTC{
 		ID: uuid.Must(uuid.NewV4()).String(),
 
-		ImageChannel: make(chan *rtp.Packet, 1),
-		AudioChannel: make(chan *rtp.Packet, 1),
+		ImageChannel: make(chan *rtp.Packet, 100),
+		AudioChannel: make(chan *rtp.Packet, 100),
 		InputChannel: make(chan []byte, 100),
 	}
 	return w
@@ -211,8 +211,6 @@ func (w *WebRTC) SetRemoteSDP(remoteSDP string) error {
 		return err
 	}
 
-	fmt.Println(answer)
-	fmt.Println("w", w)
 	fmt.Println("Wconnection", w.connection)
 	err = w.connection.SetRemoteDescription(answer)
 	if err != nil {
@@ -280,7 +278,6 @@ func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack 
 	// receive frame buffer
 	go func() {
 		for packet := range w.ImageChannel {
-			fmt.Println(packet)
 			if writeErr := vp8Track.WriteRTP(packet); writeErr != nil {
 				panic(writeErr)
 			}
