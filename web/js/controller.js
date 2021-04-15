@@ -149,7 +149,7 @@
     });
   });
 
-  document.addEventListener("mousemove", function (e) {
+  appScreen.addEventListener("mousemove", function (e) {
     boundRect = appScreen.getBoundingClientRect();
     event.pub(MOUSE_MOVE, {
       isLeft: e.button == 0 ? 1 : 0, // 1 is right button
