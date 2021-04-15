@@ -1,4 +1,4 @@
-**Decentralized, Self-hosted cloud gaming/cloud application service.**  
+**Decentralized, Self-hosted Cloud Gaming service on WebBrowser.**  
 **Video Demo**: https://youtu.be/eFR7fLy9z6E  
 **Technical Document**: https://github.com/giongto35/cloud-morph/wiki  
 **CloudRetro**: [https://github.com/giongto35/cloud-game](https://github.com/giongto35/cloud-game): Sister project, Cloud Gaming Service For Retro Games  
@@ -6,7 +6,7 @@
 ## Introduction
 
 CloudMorph is a decentralized, self-hosted cloud gaming/cloud application platform. Users can quickly spawn up a cloud gaming service with minimal configuration. By leveraging the ease of deployment, CloudMorph goal is to build a decentralized cloud application network with app providers and consumers.  
-CloudMorph has to cope with different technical challenges from OS to Cloud, such as Low-Latency Streaming, Video/Audio encoding pipeline and optimization, Windows application Virtualization in headless server, OS event simulation, NAT traversal, P2P network structurization, etc.
+CloudMorph copes with different technical challenges from OS to Cloud, such as Low-Latency Streaming, Video/Audio encoding pipeline and optimization, Windows application Virtualization in headless server, OS event simulation, NAT traversal, P2P network structurization, etc.  
 Unlike [CloudRetro](https://github.com/giongto35/cloud-game), a completed Cloud Gaming solution for Retro Game run on its dedicated cloud infrastructure, CloudMorph decentralized hosting works to users with any Windows Games/Applications by a generic and modularized solution.
 
 **Discord**: [Join Us](https://discord.gg/ux2rDqwu2W)
@@ -56,9 +56,9 @@ Switch applications using the sidebar on the left.
 ![screenshot](docs/img/CloudUniverse.png)
 
 1. When a Web Service starts, Application Container, named "CloudApp Core", is spawned. Inside the Container there are Application + Virtual Display/Audio + Windows Event Simulation Utility. Multiple Containers can be spawned on demand.
-2. Web Service will be in charge of P2P communication. When a user/client connects the service, the service will initialize a WebRTC connection between the client and service. This project uses [WebRTC Pion](https://github.com/pion/webrtc), which is a fantastic library for WebRTC in Golang.
+2. Web Service is in charge of Webapp interface, P2P communication. When a user/client connects the service, the service will initialize a WebRTC connection between the client and service. This project uses [WebRTC Pion](https://github.com/pion/webrtc), which is a fantastic library for WebRTC in Golang.
 3. Input captured from Client is sent to Web Service using WebRTC Data Channel (UDP).
-4. Web Service will send received input events to Virtual Machine over a socket.
+4. Web Service sends received input events to Virtual Machine over a socket.
 5. The utility (syncinput.exe) listens to the input events and simulates equivalent Windows OS events to Wine Application through WinAPI.
 6. Application screen/ Audio is captured in a Virtual Display Frame Buffer (XVFB)/ Virtual Audio (PulseAudio), which is later piped to FFMPEG.
 7. FFMPEG encodes the Video Stream to VPX RTP stream and Audio Stream to Opus stream.
@@ -92,7 +92,7 @@ Note: the wine application runs inside Docker. You can run it without docker by 
 First, we need an Ubuntu instance with a public network firewall (No firewall rule for P2P communication NAT traversal). There is `script/create_do.sh` to create a digital ocean instance.
 We prepare below in the same directory
 1. `config.yaml`: app config, the app configuration.
-2. `wine`: whole wine folder from `.wine`. If there is no wine folder, the deployment will use the default `.wine` from installation.
+2. `wine`: whole wine folder from `.wine`. If there is no wine folder, the deployment uses the default `.wine` from installation.
 3. `apps`: the folder contains the app we will deploy. It is later mapped to `winvn/apps` in the remote instances. For example, `DiabloII`. If your application is already inside the synced wine environment at 2, ex "Program Files", we can skip it. We need to configure `config.yaml`, apppath to point to the correct app path.
 4. `setup_remote.sh`: a copy of the script in `winvm/script` to deploy your application to server.
 
