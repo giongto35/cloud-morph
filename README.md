@@ -40,7 +40,7 @@ Switch applications using the sidebar on the left.
 - Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized to be extendable to different tech stacks. E.g Python, Java ...
 
 ## Getting Started
-- Run `setup_remote.sh 111.111.111.111` with ``111.111.111.111`` is your host. What you will get is a Notepad hosted on your remote machine. More details about deployment are below.
+- Run `setup_remote.sh 111.111.111.111` inside `./script`, ``111.111.111.111`` is the address of your host. What you will get is a Notepad hosted on your remote machine. More details are in Deployment section below.
 
 ## Design
 
