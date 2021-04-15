@@ -6,7 +6,7 @@
 ## Introduction
 
 CloudMorph is a decentralized, self-hosted cloud gaming/cloud application platform. Users can quickly spawn up a cloud gaming service with minimal configuration. By leveraging the ease of deployment, CloudMorph goal is to build a decentralized cloud application network with app providers and consumers.  
-CloudMorph has to cope with different technical challenges from OS to Cloud, such as Low-Latency Streaming, Windows application Virtualization in headless server, OS event simulation, Video/Audio encoding pipeline and optimization, NAT traversal, P2P network structurization, etc.
+CloudMorph has to cope with different technical challenges from OS to Cloud, such as Low-Latency Streaming, Video/Audio encoding pipeline and optimization, Windows application Virtualization in headless server, OS event simulation, NAT traversal, P2P network structurization, etc.
 Unlike [CloudRetro](https://github.com/giongto35/cloud-game), a completed Cloud Gaming solution for Retro Game run on its dedicated cloud infrastructure, CloudMorph decentralized hosting works to users with any Windows Games/Applications by a generic and modularized solution.
 
 **Discord**: [Join Us](https://discord.gg/ux2rDqwu2W)
@@ -25,16 +25,17 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 - [Cloud Diablo US](http://us.clouddiablo.com/) (Demo of Collaborative play Diablo running in US server).
 Switch applications using the sidebar on the left.
 
-## Target Audience
-##### For Consumers.
+## Usecases
+
+#### For Consumers.
 - Play any provided application directly from Browser without Installation.
 - i.e, clouddiablo.com is for playing Diablo on Browser collaboratively. When we have less time to finish a game, let's do it together?
 
-##### For Providers
+#### For Providers
 - Playable Ads: Instead of Video Teaser, Game/Application providers can let users interact with the application.
 - Discoverable: Any application that joined the network will be surfaced to users over CloudMorph channel.
 
-##### For Developers
+#### For Developers
 - Experience playing/hosting Cloud Gaming on their own.
 - Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized to be extendable to different tech stacks. E.g Python, Java ...
 
@@ -43,7 +44,7 @@ Switch applications using the sidebar on the left.
 
 ## Design
 
-##### Goal:
+#### Goal:
 1. **Cloud gaming Philosophy**: The application run in the remote cloud instance. Video/Audio is streamed to users in the most optimal way. User interaction needs to have the lowest latency.
 2. **Cross-platform compatibility**: The service is accessible in web-browser, the universal built-in that can fit multiple platforms like Desktop/Mobile. No console, plugin, external app, or devices are needed.
 3. **Deployment Simplicity**: There is no API/ interface integration required to set up the integration. One line command to finish the deployment.
@@ -67,8 +68,8 @@ Switch applications using the sidebar on the left.
 #### Decentralize
 ![screenshot](docs/img/Decentralize.png)
 
-- If the configuration in `config.yaml` includes `discoveryHost` attribute, application will be discoverable by everyone in the Discovery list in sidebar.
-- In this flow, Client will query the discovery host list of joinable host, then the client can pick any application in the discovery list.
+- Discovery service is a centralized service, backed by etcd. In this flow, Client periodically query this service to get list of joinable host and show them in sidebar.
+- For Provider, if the configuration in `config.yaml` includes `discoveryHost` attribute, application will be discoverable to user.
 
 ## Detailed Technology
 [wiki](https://github.com/giongto35/cloud-morph/wiki)
