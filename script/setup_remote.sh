@@ -19,8 +19,8 @@ if [ -d "wine" ]; then
     ssh root@$1 "docker run -v $RPATH:/rpath --volume winecfg:$RPATH/.wine syncwine bash -c 'cp -rf /rpath/wine/* /root/.wine'"
 fi
 
-# Run server. 
-ssh root@$1 "cd $RPATH/cloud-morph; pkill server; nohup ./server > /dev/null &> /dev/null &"
+# Run server without supervisor
+#ssh root@$1 "cd $RPATH/cloud-morph; pkill server; nohup ./server > /dev/null &> /dev/null &"
  #Run Server in supervisord
 ssh root@$1 "apt-get install -y supervisor | true"
 rsync ../../supervisord.conf root@$1:/etc/supervisor/conf.d
