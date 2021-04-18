@@ -61,9 +61,8 @@ Switch applications using the sidebar on the left.
 4. Web Service sends received input events to Virtual Machine over a socket.
 5. The utility (syncinput.exe) listens to the input events and simulates equivalent Windows OS events to Wine Application through WinAPI.
 6. Application screen/ Audio is captured in a Virtual Display Frame Buffer (XVFB)/ Virtual Audio (PulseAudio), which is later piped to FFMPEG.
-7. FFMPEG encodes the Video Stream to VPX RTP stream and Audio Stream to Opus stream.
-
-8. Overall, "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in Container with the interface declared at `core/go/cloudapp`.
+7. FFMPEG encodes the Video Stream to VPX RTP stream and Audio Stream to Opus stream.  
+8. Overall, "CloudApp Core" module receives **Input** as WebSocket event and **Output** as RTP stream. It is packaged in Container with the interface declared at `core/go/cloudapp`.  
 
 #### Decentralize
 ![screenshot](docs/img/Decentralize.png)
