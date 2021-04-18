@@ -1,13 +1,13 @@
 # Deploy to Remote server.
 
 RPATH=/root
-ssh root@$1 "cd $RPATH; rm -rf cloud-morph; git clone https://github.com/giongto35/cloud-morph.git"
+ssh root@$1 "cd $RPATH; git clone https://github.com/giongto35/cloud-morph.git; cd $RPATH/cloud-morph; git reset --hard; git pull;"
 rsync ./config.yaml root@$1:cloud-morph/
 ssh root@$1 "cd $RPATH/cloud-morph; ./setup.sh"
 
 if [ -d "apps" ]; then
     echo "SYNCING APPS"
-    rsync -r apps root@$1:$RPATH/cloud-morph/winvm/
+    rsync -r apps --exclude 'Save/*' root@$1:$RPATH/cloud-morph/winvm/
 fi
 
 if [ -d "wine" ]; then
