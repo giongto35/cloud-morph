@@ -2,7 +2,7 @@ path: /apps/DiabloII
 appFile: Game.exe
 windowTitle: Diablo
 hardwareKey: false
-appName: DiabloII-VN2
+appName: DiabloII
 pageTitle: "Diablo - A Cloud Morph Demo"
 appMode: collaborative
 discoveryHost: http://discovery.cloudmorph.io
