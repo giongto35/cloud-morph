@@ -102,7 +102,8 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	log.Println("Launched Audio stream listener")
 
 	// Maintain input stream from server to Virtual Machine over websocket
-	// Why Websocket: because normal IPC cannot communicate cross OS.
+	go c.healthCheckVM()
+	// NOTE: Why Websocket: because normal IPC cannot communicate cross OS.
 	go func() {
 		for {
 			// Polling Wine socket connection (input stream)
@@ -116,7 +117,6 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 			c.wineConn = conn
 			c.isReady = true
 			log.Println("Launched IPC with VM")
-			go c.healthCheckVM()
 		}
 	}()
 
@@ -203,13 +203,15 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	return done
 }
 
-// healthCheckVM to maintain connection
+// healthCheckVM to maintain connection with Virtual Machine
 func (c *ccImpl) healthCheckVM() {
 	log.Println("Starting health check")
 	for {
-		_, err := c.wineConn.Write([]byte{0})
-		if err != nil {
-			log.Println(err)
+		if c.wineConn != nil {
+			_, err := c.wineConn.Write([]byte{0})
+			if err != nil {
+				log.Println(err)
+			}
 		}
 		time.Sleep(2 * time.Second)
 	}
