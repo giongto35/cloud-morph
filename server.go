@@ -381,6 +381,9 @@ func (d *discoveryHandler) GetApps() ([]appDiscoveryMeta, error) {
 	if err != nil {
 		return []appDiscoveryMeta{}, err
 	}
+	defer func() {
+		rawResp.Body.Close()
+	}()
 
 	json.NewDecoder(rawResp.Body).Decode(&resp)
 
@@ -433,6 +436,9 @@ func (d *discoveryHandler) Register(meta appDiscoveryMeta) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to register app. Err: %s", err.Error())
 	}
+	defer func() {
+		resp.Body.Close()
+	}()
 	var appID string
 	err = json.NewDecoder(resp.Body).Decode(&appID)
 	if err != nil {
@@ -448,10 +454,11 @@ func (d *discoveryHandler) Remove(appID string) error {
 		return nil
 	}
 
-	_, err = d.httpClient.Post(d.discoveryHost+"/remove", "application/json", bytes.NewBuffer(reqBytes))
+	resp, err := d.httpClient.Post(d.discoveryHost+"/remove", "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
 		return nil
 	}
+	resp.Body.Close()
 
 	return err
 }
