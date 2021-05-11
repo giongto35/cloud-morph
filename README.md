@@ -86,6 +86,9 @@ Access to your local at
 
 Note: the wine application runs inside Docker. You can run it without docker by changing `run-wine.sh` to `run-wine-nodocker.sh` in `server.go` for easier debugging.
 
+### Explore and Contribute
+- [Wiki Deep Dive Into Codebase](https://github.com/giongto35/cloud-morph/wiki/Deep-Dive-Into-Codebase)
+
 ## Deployment
 
 First, we need an Ubuntu instance with a public network firewall (No firewall rule for P2P communication NAT traversal). There is `script/create_do.sh` to create a digital ocean instance.
