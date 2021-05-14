@@ -140,6 +140,7 @@ func (c *Client) Handle() {
 		defer func() {
 			if r := recover(); r != nil {
 				log.Println("Recovered. Maybe we :sent to Closed Channel", r)
+				wg.Done()
 			}
 		}()
 
@@ -161,6 +162,7 @@ func (c *Client) Handle() {
 		defer func() {
 			if r := recover(); r != nil {
 				log.Println("Recovered. Maybe we :sent to Closed Channel", r)
+				wg.Done()
 			}
 		}()
 

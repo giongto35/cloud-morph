@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -48,6 +50,8 @@ type server struct {
 }
 
 const appHostPrefix = "apphost_"
+
+var privateIPBlocks []*net.IPNet
 
 func (s *kvstorage) getValue(ctx context.Context, key string) ([]byte, error) {
 	resp, err := s.kv.Get(ctx, key)
@@ -151,6 +155,7 @@ func (s *server) isAlive(addr string) bool {
 		response, err := http.Get(fmt.Sprintf("http://%s/%s", addr, "echo"))
 		if err != nil {
 			log.Println(err)
+			time.Sleep(5 * time.Second)
 			continue
 		}
 		response.Body.Close()
@@ -158,7 +163,7 @@ func (s *server) isAlive(addr string) bool {
 		if response.StatusCode == http.StatusOK {
 			return true
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 
 	return false
@@ -199,15 +204,52 @@ func (s *server) refineAppsList() {
 	}
 }
 
+func initializePrivateIPBlocks() {
+	for _, cidr := range []string{
+		"127.0.0.0/8",    // IPv4 loopback
+		"10.0.0.0/8",     // RFC1918
+		"172.16.0.0/12",  // RFC1918
+		"192.168.0.0/16", // RFC1918
+		"169.254.0.0/16", // RFC3927 link-local
+		"::1/128",        // IPv6 loopback
+		"fe80::/10",      // IPv6 link-local
+		"fc00::/7",       // IPv6 unique local addr
+	} {
+		_, block, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(fmt.Errorf("parse error on %q: %v", cidr, err))
+		}
+		privateIPBlocks = append(privateIPBlocks, block)
+	}
+}
+
+func isPrivateIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+
+	for _, block := range privateIPBlocks {
+		if block.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *server) register(w http.ResponseWriter, r *http.Request) {
 	var h appDiscoveryMeta
 
-	log.Println("Received Register Request")
+	log.Println("Received Register Request", h)
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
 	err := json.NewDecoder(r.Body).Decode(&h)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	ipAddr := strings.Split(h.Addr, ":")[0]
+	if isPrivateIP(net.ParseIP(ipAddr)) {
+		log.Println("Skip Private IP", h.Addr)
 		return
 	}
 	appID, err := s.discovery.addApp(h)
@@ -271,11 +313,13 @@ func NewServer() server {
 
 	httpServer := &http.Server{
 		Addr:         addr,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 		Handler:      svmux,
 	}
+
+	initializePrivateIPBlocks()
 
 	discovery := NewDiscovery(NewStorage(etcdAddr))
 	server.httpServer = httpServer
