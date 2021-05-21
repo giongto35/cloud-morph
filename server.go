@@ -153,12 +153,23 @@ func (s *Server) updateClientApps(client *cws.Client, updatedApps []appDiscovery
 	}, nil)
 }
 
+func (s *Server) registerIfMissing(updatedApps []appDiscoveryMeta) {
+	for _, app := range updatedApps {
+		if app.Addr == s.appMeta.Addr {
+			return
+		}
+	}
+	log.Println("Server is not found in Discovery. Re-Register")
+	s.RegisterApp(s.appMeta)
+}
+
 func (s *Server) ListenAppListUpdate() {
 	for updatedApps := range s.AppListUpdate() {
 		log.Println("Get updated apps: ", updatedApps, s.wsClients)
 		for _, client := range s.wsClients {
 			s.updateClientApps(client, updatedApps)
 		}
+		s.registerIfMissing(updatedApps)
 	}
 }
 
