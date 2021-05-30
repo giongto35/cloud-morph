@@ -19,106 +19,10 @@
   const discoverydropdown = document.getElementById("discoverydropdown");
   const discovery = document.getElementById("discovery");
   const appTitle = document.getElementById("app-title");
-  const appScreen = document.getElementById("app-screen");
+  const appContainer = document.getElementById("app-container");
   let curAppID = 0;
 
-  var offerst;
   var appList = [];
-
-  const onConnectionReady = () => {
-    // start
-    start();
-  };
-
-  const start = () => {
-    if (!rtcp.isConnected()) {
-      log.error("App cannot load. Please refresh");
-      return;
-    }
-
-    if (!rtcp.isInputReady()) {
-      log.error("App is not ready yet. Please wait");
-      return;
-    }
-
-    log.info("[control] app start");
-
-    // TODO: Remove
-    // socket.start(gameList.getCurrentGame(), env.isMobileDevice(), room.getId());
-
-    // // end clear
-    // input.poll().enable();
-  };
-
-  const onKeyPress = (data) => {
-    rtcp.input(
-      JSON.stringify({
-        type: "KEYDOWN",
-        data: JSON.stringify({
-          keyCode: data.key,
-        }),
-      })
-    );
-  };
-
-  const onKeyRelease = (data) => {
-    rtcp.input(
-      JSON.stringify({
-        type: "KEYUP",
-        data: JSON.stringify({
-          keyCode: data.key,
-        }),
-      })
-    );
-  };
-
-  const onMouseDown = (data) => {
-    appScreen.muted = false;
-    rtcp.input(
-      JSON.stringify({
-        type: "MOUSEDOWN",
-        data: JSON.stringify(data),
-      })
-    );
-  };
-
-  const onMouseUp = (data) => {
-    rtcp.input(
-      JSON.stringify({
-        type: "MOUSEUP",
-        data: JSON.stringify(data),
-      })
-    );
-  };
-
-  const onMouseMove = (data) => {
-    rtcp.input(
-      JSON.stringify({
-        type: "MOUSEMOVE",
-        data: JSON.stringify(data),
-      })
-    );
-  };
-
-  document.addEventListener("keydown", (e) => {
-    if (
-      document.activeElement === username ||
-      document.activeElement === chatmessage
-    ) {
-      return;
-    }
-    event.pub(KEY_PRESSED, { key: e.keyCode });
-  });
-
-  document.addEventListener("keyup", (e) => {
-    if (
-      document.activeElement === username ||
-      document.activeElement === chatmessage
-    ) {
-      return;
-    }
-    event.pub(KEY_RELEASED, { key: e.keyCode });
-  });
 
   discoverydropdown.addEventListener("change", () => {
     app = appList[discoverydropdown.selectedIndex];
@@ -127,48 +31,15 @@
     updatePage(app);
   });
 
-  appScreen.addEventListener("mousedown", (e) => {
-    boundRect = appScreen.getBoundingClientRect();
-    event.pub(MOUSE_DOWN, {
-      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-      x: e.offsetX,
-      y: e.offsetY,
-      width: boundRect.width,
-      height: boundRect.height,
-    });
-  });
-
-  appScreen.addEventListener("mouseup", (e) => {
-    boundRect = appScreen.getBoundingClientRect();
-    event.pub(MOUSE_UP, {
-      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-      x: e.offsetX,
-      y: e.offsetY,
-      width: boundRect.width,
-      height: boundRect.height,
-    });
-  });
-
-  appScreen.addEventListener("mousemove", function (e) {
-    boundRect = appScreen.getBoundingClientRect();
-    event.pub(MOUSE_MOVE, {
-      isLeft: e.button == 0 ? 1 : 0, // 1 is right button
-      x: e.clientX - boundRect.left,
-      y: e.clientY - boundRect.top,
-      width: boundRect.width,
-      height: boundRect.height,
-    });
-  });
-
-  document.addEventListener(
-    "contextmenu",
-    function (e) {
-      if (isFullscreen) {
-        e.preventDefault();
-      }
-    },
-    false
-  );
+  //document.addEventListener(
+    //"contextmenu",
+    //function (e) {
+      //if (isFullscreen) {
+        //e.preventDefault();
+      //}
+    //},
+    //false
+  //);
 
   chatsubmit.addEventListener("click", (e) => {
     socket.send({
@@ -189,15 +60,15 @@
       appd.style.display = "flex";
       appd.style.flexDirection = "row";
       appd.style.flexGrow = 0;
-      appScreen.style.height = "99vh";
-      appScreen.style.width = `${(99.0 * 8) / 6}vh`; // maintain 800x600
+      appContainer.style.height = "99vh";
+      appContainer.style.width = `${(99.0 * 8) / 6}vh`; // maintain 800x600
     } else {
       discovery.style.display = "block";
       chatd.style.display = "flex";
       appd.style.display = "block";
-      appScreen.style.height = "85vh";
-      appScreen.style.width = `${(85 * 8) / 6}vh`; // maintain 800x600
-      appScreen.style.flexGrow = 1;
+      appContainer.style.height = "85vh";
+      appContainer.style.width = `${(85 * 8) / 6}vh`; // maintain 800x600
+      appContainer.style.flexGrow = 1;
     }
   });
 
@@ -291,23 +162,11 @@
   const updatePage = (app) => {
     chatd.style.visibility = app.has_chat;
     appTitle.innerText = app.page_title;
-    appScreen.style.height = "85vh";
-    appScreen.style.width = `${(85 * app.screen_width) / app.screen_height}vh`; // maintain 800x600
+    appContainer.style.height = "85vh";
+    appContainer.style.width = `${(85 * app.screen_width) / app.screen_height}vh`; // maintain 800x600
     numplayers.style.visibility = app.collaborative;
   };
 
-  event.sub(MEDIA_STREAM_INITIALIZED, (data) => {
-    rtcp.start(data.stunturn);
-  });
-  event.sub(MEDIA_STREAM_SDP_AVAILABLE, (data) =>
-    rtcp.setRemoteDescription(data.sdp, appScreen)
-  );
-  event.sub(MEDIA_STREAM_CANDIDATE_ADD, (data) =>
-    rtcp.addCandidate(data.candidate)
-  );
-  event.sub(MEDIA_STREAM_CANDIDATE_FLUSH, () => rtcp.flushCandidate());
-  event.sub(MEDIA_STREAM_READY, () => rtcp.start());
-  event.sub(CONNECTION_READY, onConnectionReady);
   event.sub(CHAT, (data) => appendChatMessage(data.chatrow));
   event.sub(NUM_PLAYER, ({ data }) => updateNumPlayers(data));
   event.sub(CLIENT_INIT, ({ data }) => {
@@ -316,11 +175,4 @@
   event.sub(UPDATE_APP_LIST, ({ data }) => {
     updateAppList(JSON.parse(data));
   });
-  // event.sub(CONNECTION_CLOSED, () => input.poll().disable());
-  event.sub(KEY_PRESSED, onKeyPress);
-  event.sub(KEY_RELEASED, onKeyRelease);
-  event.sub(MOUSE_MOVE, onMouseMove);
-  event.sub(MOUSE_DOWN, onMouseDown);
-  event.sub(MOUSE_UP, onMouseUp);
-  event.sub(KEY_STATE_UPDATED, (data) => rtcp.input(data));
 })($, document, event, env, socket);

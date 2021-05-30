@@ -205,16 +205,16 @@ func NewServer() *Server {
 			tmpl.Execute(w, nil)
 		},
 	)
-	//r.PathPrefix("/").HandlerFunc(
-	//func(w http.ResponseWriter, r *http.Request) {
-	//tmpl, err := template.ParseFiles(indexPage)
-	//if err != nil {
-	//log.Fatal(err)
-	//}
+	r.PathPrefix("/").HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			tmpl, err := template.ParseFiles(indexPage)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-	//tmpl.Execute(w, nil)
-	//},
-	//)
+			tmpl.Execute(w, nil)
+		},
+	)
 
 	svmux := &http.ServeMux{}
 	svmux.Handle("/", r)
