@@ -28,6 +28,7 @@ const configFilePath = "config.yaml"
 
 var curApp string = "Notepad"
 
+const embedPage string = "web/embed/embed.html"
 const indexPage string = "web/index.html"
 const addr string = ":8080"
 
@@ -194,9 +195,9 @@ func NewServer() *Server {
 		r.HandleFunc("/apps", server.GetAppsHandler)
 	}
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
-	r.PathPrefix("/").HandlerFunc(
+	r.HandleFunc("/embed",
 		func(w http.ResponseWriter, r *http.Request) {
-			tmpl, err := template.ParseFiles(indexPage)
+			tmpl, err := template.ParseFiles(embedPage)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -204,6 +205,16 @@ func NewServer() *Server {
 			tmpl.Execute(w, nil)
 		},
 	)
+	//r.PathPrefix("/").HandlerFunc(
+	//func(w http.ResponseWriter, r *http.Request) {
+	//tmpl, err := template.ParseFiles(indexPage)
+	//if err != nil {
+	//log.Fatal(err)
+	//}
+
+	//tmpl.Execute(w, nil)
+	//},
+	//)
 
 	svmux := &http.ServeMux{}
 	svmux.Handle("/", r)
