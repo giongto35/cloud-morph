@@ -259,7 +259,6 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-
 	}
 	if !s.isValidIP(h.Addr) {
 		return
