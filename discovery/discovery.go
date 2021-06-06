@@ -46,6 +46,7 @@ type appDiscovery struct {
 
 type server struct {
 	httpServer *http.Server
+	httpClient *http.Client // For http get
 	discovery  *appDiscovery
 }
 
@@ -150,6 +151,18 @@ func (d *appDiscovery) getApps() []appDiscoveryMeta {
 	return apps
 }
 
+func (s *server) isValidIP(addr string) bool {
+	ipAddr := strings.Split(addr, ":")[0]
+	if isPrivateIP(net.ParseIP(ipAddr)) {
+		log.Println("Skip Private IP", addr)
+		return false
+	}
+	if !s.isAlive(addr) {
+		return false
+	}
+	return true
+}
+
 func (s *server) isAlive(addr string) bool {
 	for i := 1; i < 5; i++ {
 		response, err := http.Get(fmt.Sprintf("http://%s/%s", addr, "echo"))
@@ -166,6 +179,19 @@ func (s *server) isAlive(addr string) bool {
 		time.Sleep(5 * time.Second)
 	}
 
+	return false
+}
+
+func isPrivateIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+
+	for _, block := range privateIPBlocks {
+		if block.Contains(ip) {
+			return true
+		}
+	}
 	return false
 }
 
@@ -191,7 +217,7 @@ func (s *server) refineAppsList() {
 
 		// Remove dead services
 		for _, app := range apps {
-			if !s.isAlive(app.Addr) {
+			if !s.isValidIP(app.Addr) {
 				log.Println("Removed Dead service ", app)
 				err := s.discovery.removeApp(app.ID)
 				if err != nil {
@@ -223,19 +249,6 @@ func initializePrivateIPBlocks() {
 	}
 }
 
-func isPrivateIP(ip net.IP) bool {
-	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
-		return true
-	}
-
-	for _, block := range privateIPBlocks {
-		if block.Contains(ip) {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *server) register(w http.ResponseWriter, r *http.Request) {
 	var h appDiscoveryMeta
 
@@ -246,10 +259,9 @@ func (s *server) register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+
 	}
-	ipAddr := strings.Split(h.Addr, ":")[0]
-	if isPrivateIP(net.ParseIP(ipAddr)) {
-		log.Println("Skip Private IP", h.Addr)
+	if !s.isValidIP(h.Addr) {
 		return
 	}
 	appID, err := s.discovery.addApp(h)
@@ -322,8 +334,11 @@ func NewServer() server {
 	initializePrivateIPBlocks()
 
 	discovery := NewDiscovery(NewStorage(etcdAddr))
-	server.httpServer = httpServer
 	server.discovery = discovery
+	server.httpServer = httpServer
+	server.httpClient = &http.Client{
+		Timeout: 3 * time.Second,
+	}
 	go server.refineAppsList()
 
 	return server
