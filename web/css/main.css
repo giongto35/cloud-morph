@@ -1,3 +1,12 @@
+html, body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
 #app-body {
   /* position: fixed; */
   overflow: hidden;
@@ -5,6 +14,7 @@
   height: 100%;
   width: 100%;
   justify-content: space-between;
+  flex-grow: 1;
 }
 
 #app {
@@ -12,8 +22,8 @@
 }
 
 #app-container {
-  height: 85vh;
-  width: 113.33vh;
+  height: 100%;
+  width: 100%;
   border-radius: 5px 5px 5px 5px;
   background-color: #102a43;
 
@@ -30,23 +40,26 @@
 }
 
 #discovery {
-  width: 33.33%;
-  max-height: 85vh;
-  flex-grow: 1;
+  /*width: 15%;*/
+  /*max-height: 85vh;*/
+  flex-grow: 0;
   margin-right: 5px;
 }
 
 #app-meta {
   display: block;
+  /*position: fixed;*/
+  /*bottom: 0;*/
+  flex-grow: 0;
   align-items: center;
 }
 
 #chat {
   margin-left: 5px;
-  width: 33.33%;
+  width: 15%;
   display: flex;
   flex-direction: column;
-  flex-grow: 1;
+  flex-grow: 0;
 }
 
 #discoverydropdown {
