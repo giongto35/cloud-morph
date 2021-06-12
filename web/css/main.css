@@ -41,14 +41,12 @@ body {
 
 #discovery {
   width: 12%;
-  /*max-height: 85vh;*/
   flex-grow: 0;
   margin-right: 5px;
 }
 
 #app-meta {
   display: block;
-  /*position: fixed;*/
   padding-bottom: 10px;
   flex-grow: 0;
   align-items: center;
