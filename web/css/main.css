@@ -40,7 +40,7 @@ body {
 }
 
 #discovery {
-  /*width: 15%;*/
+  width: 12%;
   /*max-height: 85vh;*/
   flex-grow: 0;
   margin-right: 5px;
@@ -56,7 +56,7 @@ body {
 
 #chat {
   margin-left: 5px;
-  width: 15%;
+  width: 25%;
   display: flex;
   flex-direction: column;
   flex-grow: 0;
