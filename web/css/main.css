@@ -49,9 +49,10 @@ body {
 #app-meta {
   display: block;
   /*position: fixed;*/
-  /*bottom: 0;*/
+  padding-bottom: 10px;
   flex-grow: 0;
   align-items: center;
+  flex-shrink: 1;
 }
 
 #chat {

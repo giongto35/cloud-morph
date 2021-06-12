@@ -13,6 +13,7 @@
   const message = document.getElementById("chatmessage");
   const fullscreen = document.getElementById("fullscreen");
   const appBody = document.getElementById("app-body");
+  const appMeta = document.getElementById("app-meta");
   const appd = document.getElementById("app");
   const chatd = document.getElementById("chat");
   const numplayers = document.getElementById("numplayers");
@@ -56,19 +57,31 @@
     if (isFullscreen) {
       chatd.style.display = "none";
       discovery.style.display = "none";
+      appMeta.style.height = 0;
       appBody.style.justifyContent = "center";
       appd.style.display = "flex";
       appd.style.flexDirection = "row";
       appd.style.flexGrow = 0;
       appContainer.style.height = "99vh";
       appContainer.style.width = `${(99.0 * 8) / 6}vh`; // maintain 800x600
+      fullscreen.style.position = "absolute";
+      fullscreen.style.left = "0px";
+      fullscreen.style.top = "0px";
+      fullscreen.style.display = "block";
     } else {
       discovery.style.display = "block";
       chatd.style.display = "flex";
       appd.style.display = "block";
-      appContainer.style.height = "85vh";
-      appContainer.style.width = `${(85 * 8) / 6}vh`; // maintain 800x600
+      appMeta.style.display = "block";
+      appd.style.flexGrow = 1;
+      appContainer.style.height = "100%";
+      appContainer.style.width = "100%";
       appContainer.style.flexGrow = 1;
+      appMeta.style.height = "auto";
+      fullscreen.style.left = "auto";
+      fullscreen.style.top = "auto";
+      fullscreen.style.position = "static";
+      fullscreen.style.display = "inline-block";
     }
   });
 
