@@ -298,7 +298,7 @@ void *thwndupdate(void *args)
         hwnd = getWindowByTitle(winTitle);
         if (hwnd != oldhwnd)
         {
-            formatWindow(hwnd);
+            //formatWindow(hwnd);
             cout << "Updated HWND: " << hwnd << endl;
             oldhwnd = hwnd;
         }
@@ -356,7 +356,7 @@ int main(int argc, char *argv[])
          << "height " << screenHeight << endl;
     cout << "Docker host" << dockerHost << endl;
 
-    formatWindow(hwnd);
+    //formatWindow(hwnd);
 
     // setup socket watcher. TODO: How to check if a socket pipe is broken?
     done = false;

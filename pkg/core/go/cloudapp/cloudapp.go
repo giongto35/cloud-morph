@@ -176,9 +176,9 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	}
 	params = append(params, []string{strconv.Itoa(cfg.ScreenWidth), strconv.Itoa(cfg.ScreenHeight)}...)
 	if *cfg.IsWindowMode {
-		params = append(params, "-w")
+		params = append(params, "-w -force-d3d9")
 	} else {
-		params = append(params, "")
+		params = append(params, "-force-d3d9")
 	}
 
 	runApp(params)
