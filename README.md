@@ -11,6 +11,9 @@ Unlike [CloudRetro](https://github.com/giongto35/cloud-game), a completed Cloud 
 
 **Discord**: [Join Us](https://discord.gg/ux2rDqwu2W)
 
+## Changelog
+- 19/6/2021: Modularize Frontend as Widget. All parts are independent
+
 ## Demo
 
 Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
@@ -24,6 +27,9 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 - [Cloud Diablo SG](http://clouddiablo.com/) (Demo of Collaborative play Diablo running on Singapore server using CloudMorph).
 - [Cloud Diablo US](http://us.clouddiablo.com/) (Demo of Collaborative play Diablo running in US server).
 Switch applications using the sidebar on the left.
+
+## Changelog
+- 
 
 ## Usecases
 
@@ -117,5 +123,4 @@ After that, we run `setup_remote` from inside the folder:
 - Multiplex application sessions. Currently, only collaborative mode is supported, which serves all application sessions from the same single instance.
 - Performance optimization.
 - Web Mobile controller support. Mouse click is already simulated.
-- Packaging frontend as a plugin that can be imported into any Webpage.
 
