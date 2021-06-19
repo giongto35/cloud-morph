@@ -28,18 +28,18 @@
   discoverydropdown.addEventListener("change", () => {
     app = appList[discoverydropdown.selectedIndex];
     curAppID = app.id;
-    socket.connect("http", app.addr);
+    socket.connect("http", `${app.addr}/ws`);
     updatePage(app);
   });
 
   //document.addEventListener(
-    //"contextmenu",
-    //function (e) {
-      //if (isFullscreen) {
-        //e.preventDefault();
-      //}
-    //},
-    //false
+  //"contextmenu",
+  //function (e) {
+  //if (isFullscreen) {
+  //e.preventDefault();
+  //}
+  //},
+  //false
   //);
 
   chatsubmit.addEventListener("click", (e) => {
@@ -173,18 +173,18 @@
   }
 
   const updatePage = (app) => {
-    debugger;
     chatd.style.visibility = app.has_chat;
     appTitle.innerText = app.page_title;
     appContainer.style.height = "85vh";
-    appContainer.style.width = `${(85 * app.screen_width) / app.screen_height}vh`; // maintain 800x600
+    appContainer.style.width = `${
+      (85 * app.screen_width) / app.screen_height
+    }vh`; // maintain 800x600
     numplayers.style.visibility = app.collaborative;
   };
 
   event.sub(CHAT, (data) => appendChatMessage(data.chatrow));
   event.sub(NUM_PLAYER, ({ data }) => updateNumPlayers(data));
   event.sub(CLIENT_INIT, ({ data }) => {
-      debugger;
     initApps(JSON.parse(data));
   });
   event.sub(UPDATE_APP_LIST, ({ data }) => {

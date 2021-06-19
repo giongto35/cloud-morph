@@ -30,7 +30,7 @@ var curApp string = "Notepad"
 
 const embedPage string = "web/embed/embed.html"
 const indexPage string = "web/index.html"
-const addr string = ":8080"
+const addr string = ":8081"
 
 var chatEventTypes []string = []string{"CHAT"}
 var appEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
@@ -48,10 +48,10 @@ type Server struct {
 	appID            string
 	httpServer       *http.Server
 	wsClients        map[string]*cws.Client
-	capp             *cloudapp.Service
 	chat             *textchat.TextChat
 	discoveryHandler *discoveryHandler
 	appMeta          appDiscoveryMeta
+	cappServer       *cloudapp.Server
 }
 
 type discoveryHandler struct {
@@ -110,8 +110,6 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	log.Println("Initialized Chat")
 	// TODO: Update packet
 	// Add websocket client to app service
-	serviceClient := s.capp.AddClient(clientID, wsClient)
-	serviceClient.Route(s.capp.GetSSRC())
 	log.Println("Initialized ServiceClient")
 
 	s.initClientData(wsClient)
@@ -120,7 +118,6 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 		log.Println("Closing connection")
 		chatClient.Close()
 		browserClient.Close()
-		s.capp.RemoveClient(clientID)
 		log.Println("Closed connection")
 	}(wsClient)
 }
@@ -188,7 +185,7 @@ func NewServer() *Server {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/ws", server.WS)
+	r.HandleFunc("/wscloudmorph", server.WS)
 	r.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 	})
@@ -227,11 +224,16 @@ func NewServer() *Server {
 		IdleTimeout:  120 * time.Second,
 		Handler:      svmux,
 	}
-	server.httpServer = httpServer
 	log.Println("Spawn server")
+	server.httpServer = httpServer
 
-	// Launch App VM
-	server.capp = cloudapp.NewCloudService(cfg)
+	// Spawn a separated server running CloudApp
+	log.Println("Spawn cloudapp server")
+	cappServer := cloudapp.NewServer(cfg)
+	server.cappServer = cappServer
+	cappServer.Handle()
+	go cappServer.ListenAndServe()
+
 	server.chat = textchat.NewTextChat()
 	appMeta := appDiscoveryMeta{
 		Addr:         cfg.InstanceAddr,
@@ -265,8 +267,6 @@ func (o *Server) Shutdown() {
 }
 
 func (o *Server) Handle() {
-	// Spawn CloudGaming Handle
-	go o.capp.Handle()
 	// Spawn Chat Handle
 	go o.chat.Handle()
 }
