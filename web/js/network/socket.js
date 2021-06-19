@@ -34,6 +34,7 @@ const socket = (() => {
     // const address = `${location.protocol !== 'https:' ? 'ws' : 'wss'}://${location.host}/ws`;
     const address = `${protocol !== "https:" ? "ws" : "wss"}://${host}/ws`;
     console.info(`[ws] connecting to ${address}`);
+    debugger;
     conn = new WebSocket(address);
 
     // Clear old roomID

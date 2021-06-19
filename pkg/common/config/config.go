@@ -31,6 +31,18 @@ type Config struct {
 	StunTurn string `yaml:"stunturn"` // Optional, Default: Google STUN
 }
 
+// TODO: sync with discovery.go
+type AppDiscoveryMeta struct {
+	ID           string `json:"id"`
+	AppName      string `json:"app_name"`
+	Addr         string `json:"addr"`
+	AppMode      string `json:"app_mode"`
+	HasChat      bool   `json:"has_chat"`
+	PageTitle    string `json:"page_title"`
+	ScreenWidth  int    `json:"screen_width"`
+	ScreenHeight int    `json:"screen_height"`
+}
+
 func ReadConfig(path string) (Config, error) {
 	cfgyml, err := ioutil.ReadFile(path)
 	if err != nil {

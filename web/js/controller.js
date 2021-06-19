@@ -173,6 +173,7 @@
   }
 
   const updatePage = (app) => {
+    debugger;
     chatd.style.visibility = app.has_chat;
     appTitle.innerText = app.page_title;
     appContainer.style.height = "85vh";
@@ -183,6 +184,7 @@
   event.sub(CHAT, (data) => appendChatMessage(data.chatrow));
   event.sub(NUM_PLAYER, ({ data }) => updateNumPlayers(data));
   event.sub(CLIENT_INIT, ({ data }) => {
+      debugger;
     initApps(JSON.parse(data));
   });
   event.sub(UPDATE_APP_LIST, ({ data }) => {

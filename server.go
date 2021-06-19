@@ -129,7 +129,7 @@ func (s *Server) initClientData(client *cws.Client) {
 	s.chat.SendChatHistory(client.GetID())
 	apps, err := s.GetApps()
 	if err != nil {
-		return
+		apps = []appDiscoveryMeta{}
 	}
 	data := initData{
 		CurAppID: s.appID,
@@ -140,6 +140,7 @@ func (s *Server) initClientData(client *cws.Client) {
 	if err != nil {
 		return
 	}
+	fmt.Println("Send Client INIT")
 	client.Send(cws.WSPacket{
 		Type: "INIT",
 		Data: string(jsonData),
