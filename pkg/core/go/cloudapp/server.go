@@ -35,12 +35,19 @@ type Server struct {
 }
 
 func NewServer(cfg config.Config) *Server {
+	r := mux.NewRouter()
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
+
+	svmux := &http.ServeMux{}
+	svmux.Handle("/", r)
+
+	return NewServerWithHTTPServerMux(cfg, r, svmux)
+}
+
+func NewServerWithHTTPServerMux(cfg config.Config, r *mux.Router, svmux *http.ServeMux) *Server {
 	server := &Server{}
 
-	r := mux.NewRouter()
 	r.HandleFunc("/ws", server.WS)
-	fmt.Println(http.FileServer(http.Dir("./web")))
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
 	r.HandleFunc("/embed",
 		func(w http.ResponseWriter, r *http.Request) {
 			tmpl, err := template.ParseFiles(embedPage)
@@ -51,9 +58,7 @@ func NewServer(cfg config.Config) *Server {
 			tmpl.Execute(w, nil)
 		},
 	)
-
-	svmux := &http.ServeMux{}
-	svmux.Handle("/", r)
+	fmt.Println("handler", r)
 
 	httpServer := &http.Server{
 		Addr:         addr,
@@ -107,8 +112,6 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	// Create websocket Client
 	wsClient := cws.NewClient(c)
 	clientID := wsClient.GetID()
-	// Add websocket client to chat service
-	log.Println("Initialized Chat")
 	// TODO: Update packet
 	// Add websocket client to app service
 	serviceClient := s.capp.AddClient(clientID, wsClient)

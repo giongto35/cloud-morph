@@ -30,7 +30,7 @@ var curApp string = "Notepad"
 
 const embedPage string = "web/embed/embed.html"
 const indexPage string = "web/index.html"
-const addr string = ":8081"
+const addr string = ":8080"
 
 var chatEventTypes []string = []string{"CHAT"}
 var appEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
@@ -102,11 +102,12 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 
 	// Create websocket Client
 	wsClient := cws.NewClient(c)
-	clientID := wsClient.GetID()
+	// clientID := wsClient.GetID()
 	s.wsClients[wsClient.GetID()] = wsClient
 	// Add websocket client to chat service
-	chatClient := s.chat.AddClient(clientID, wsClient)
-	chatClient.Route()
+	// DEPRECATED because we use external chat
+	// chatClient := s.chat.AddClient(clientID, wsClient)
+	// chatClient.Route()
 	log.Println("Initialized Chat")
 	// TODO: Update packet
 	// Add websocket client to app service
@@ -116,7 +117,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	go func(browserClient *cws.Client) {
 		browserClient.Listen()
 		log.Println("Closing connection")
-		chatClient.Close()
+		// chatClient.Close()
 		browserClient.Close()
 		log.Println("Closed connection")
 	}(wsClient)
@@ -203,6 +204,14 @@ func NewServer() *Server {
 			tmpl.Execute(w, nil)
 		},
 	)
+	svmux := &http.ServeMux{}
+
+	// Spawn a separated server running CloudApp
+	log.Println("Spawn cloudapp server")
+	cappServer := cloudapp.NewServerWithHTTPServerMux(cfg, r, svmux)
+	server.cappServer = cappServer
+	cappServer.Handle()
+
 	r.PathPrefix("/").HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			tmpl, err := template.ParseFiles(indexPage)
@@ -214,8 +223,8 @@ func NewServer() *Server {
 		},
 	)
 
-	svmux := &http.ServeMux{}
 	svmux.Handle("/", r)
+	// go cappServer.ListenAndServe()
 
 	httpServer := &http.Server{
 		Addr:         addr,
@@ -224,15 +233,7 @@ func NewServer() *Server {
 		IdleTimeout:  120 * time.Second,
 		Handler:      svmux,
 	}
-	log.Println("Spawn server")
 	server.httpServer = httpServer
-
-	// Spawn a separated server running CloudApp
-	log.Println("Spawn cloudapp server")
-	cappServer := cloudapp.NewServer(cfg)
-	server.cappServer = cappServer
-	cappServer.Handle()
-	go cappServer.ListenAndServe()
 
 	server.chat = textchat.NewTextChat()
 	appMeta := appDiscoveryMeta{
@@ -244,6 +245,7 @@ func NewServer() *Server {
 		ScreenWidth:  cfg.ScreenWidth,
 		ScreenHeight: cfg.ScreenHeight,
 	}
+	fmt.Println("appMeta", appMeta)
 
 	appID, err := server.RegisterApp(appMeta)
 	if err != nil {

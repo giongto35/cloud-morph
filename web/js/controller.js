@@ -42,15 +42,15 @@
   //false
   //);
 
-  chatsubmit.addEventListener("click", (e) => {
-    socket.send({
-      type: "CHAT",
-      data: JSON.stringify({
-        user: username.value,
-        message: chatmessage.value,
-      }),
-    });
-  });
+  // chatsubmit.addEventListener("click", (e) => {
+  //   socket.send({
+  //     type: "CHAT",
+  //     data: JSON.stringify({
+  //       user: username.value,
+  //       message: chatmessage.value,
+  //     }),
+  //   });
+  // });
 
   fullscreen.addEventListener("click", (e) => {
     isFullscreen = !isFullscreen;
@@ -173,7 +173,7 @@
   }
 
   const updatePage = (app) => {
-    chatd.style.visibility = app.has_chat;
+    chatd.style.display = app.has_chat ? "visible" : "hidden";
     appTitle.innerText = app.page_title;
     appContainer.style.height = "85vh";
     appContainer.style.width = `${
