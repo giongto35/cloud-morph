@@ -29,10 +29,10 @@ const socket = (() => {
   let conn;
   let curPacketId = "";
 
-  const connect = (protocol, host) => {
+  const connect = (protocol, addr) => {
     // const params = new URLSearchParams({room_id: roomId, zone: zone}).toString()
     // const address = `${location.protocol !== 'https:' ? 'ws' : 'wss'}://${location.host}/ws`;
-    const address = `${protocol !== "https:" ? "ws" : "wss"}://${host}/ws`;
+    const address = `${protocol !== "https:" ? "ws" : "wss"}://${addr}`;
     console.info(`[ws] connecting to ${address}`);
     conn = new WebSocket(address);
 

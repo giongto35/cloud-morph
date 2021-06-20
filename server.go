@@ -28,6 +28,7 @@ const configFilePath = "config.yaml"
 
 var curApp string = "Notepad"
 
+const embedPage string = "web/embed/embed.html"
 const indexPage string = "web/index.html"
 const addr string = ":8080"
 
@@ -47,10 +48,10 @@ type Server struct {
 	appID            string
 	httpServer       *http.Server
 	wsClients        map[string]*cws.Client
-	capp             *cloudapp.Service
 	chat             *textchat.TextChat
 	discoveryHandler *discoveryHandler
 	appMeta          appDiscoveryMeta
+	cappServer       *cloudapp.Server
 }
 
 type discoveryHandler struct {
@@ -101,25 +102,23 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 
 	// Create websocket Client
 	wsClient := cws.NewClient(c)
-	clientID := wsClient.GetID()
+	// clientID := wsClient.GetID()
 	s.wsClients[wsClient.GetID()] = wsClient
 	// Add websocket client to chat service
-	chatClient := s.chat.AddClient(clientID, wsClient)
-	chatClient.Route()
+	// DEPRECATED because we use external chat
+	// chatClient := s.chat.AddClient(clientID, wsClient)
+	// chatClient.Route()
 	log.Println("Initialized Chat")
 	// TODO: Update packet
 	// Add websocket client to app service
-	serviceClient := s.capp.AddClient(clientID, wsClient)
-	serviceClient.Route(s.capp.GetSSRC())
 	log.Println("Initialized ServiceClient")
 
 	s.initClientData(wsClient)
 	go func(browserClient *cws.Client) {
 		browserClient.Listen()
 		log.Println("Closing connection")
-		chatClient.Close()
+		// chatClient.Close()
 		browserClient.Close()
-		s.capp.RemoveClient(clientID)
 		log.Println("Closed connection")
 	}(wsClient)
 }
@@ -128,7 +127,7 @@ func (s *Server) initClientData(client *cws.Client) {
 	s.chat.SendChatHistory(client.GetID())
 	apps, err := s.GetApps()
 	if err != nil {
-		return
+		apps = []appDiscoveryMeta{}
 	}
 	data := initData{
 		CurAppID: s.appID,
@@ -139,6 +138,7 @@ func (s *Server) initClientData(client *cws.Client) {
 	if err != nil {
 		return
 	}
+	fmt.Println("Send Client INIT")
 	client.Send(cws.WSPacket{
 		Type: "INIT",
 		Data: string(jsonData),
@@ -186,7 +186,7 @@ func NewServer() *Server {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/ws", server.WS)
+	r.HandleFunc("/wscloudmorph", server.WS)
 	r.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 	})
@@ -194,6 +194,24 @@ func NewServer() *Server {
 		r.HandleFunc("/apps", server.GetAppsHandler)
 	}
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./web"))))
+	r.HandleFunc("/embed",
+		func(w http.ResponseWriter, r *http.Request) {
+			tmpl, err := template.ParseFiles(embedPage)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			tmpl.Execute(w, nil)
+		},
+	)
+	svmux := &http.ServeMux{}
+
+	// Spawn a separated server running CloudApp
+	log.Println("Spawn cloudapp server")
+	cappServer := cloudapp.NewServerWithHTTPServerMux(cfg, r, svmux)
+	server.cappServer = cappServer
+	cappServer.Handle()
+
 	r.PathPrefix("/").HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			tmpl, err := template.ParseFiles(indexPage)
@@ -205,8 +223,8 @@ func NewServer() *Server {
 		},
 	)
 
-	svmux := &http.ServeMux{}
 	svmux.Handle("/", r)
+	// go cappServer.ListenAndServe()
 
 	httpServer := &http.Server{
 		Addr:         addr,
@@ -216,10 +234,7 @@ func NewServer() *Server {
 		Handler:      svmux,
 	}
 	server.httpServer = httpServer
-	log.Println("Spawn server")
 
-	// Launch App VM
-	server.capp = cloudapp.NewCloudService(cfg)
 	server.chat = textchat.NewTextChat()
 	appMeta := appDiscoveryMeta{
 		Addr:         cfg.InstanceAddr,
@@ -230,6 +245,7 @@ func NewServer() *Server {
 		ScreenWidth:  cfg.ScreenWidth,
 		ScreenHeight: cfg.ScreenHeight,
 	}
+	fmt.Println("appMeta", appMeta)
 
 	appID, err := server.RegisterApp(appMeta)
 	if err != nil {
@@ -253,8 +269,6 @@ func (o *Server) Shutdown() {
 }
 
 func (o *Server) Handle() {
-	// Spawn CloudGaming Handle
-	go o.capp.Handle()
 	// Spawn Chat Handle
 	go o.chat.Handle()
 }

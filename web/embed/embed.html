@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <style type="text/css">
+    html { margin:0; height: auto; }
+  </style>
+
+<head>
+  <title id="app-title">Cloud Morph Demo</title>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <link href="/static/css/main.css" rel="stylesheet" />
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZZ8L95MM0V"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-ZZ8L95MM0V');
+  </script>
+</head>
+
+<body>
+  <style type="text/css">
+    body { margin:0; height: auto; }
+  </style>
+
+  <video id="app-screen" oncontextmenu="return false;" muted playinfullscreen="false" poster="/static/img/loading.gif" playsinline
+    onloadstart="this.volume=0.5" autoplay width="100%" height="100%"></video>
+  <script src="/static/js/log.js"></script>
+  <script src="/static/js/env.js"></script>
+  <script src="/static/js/event/event.js"></script>
+  <script src="/static/js/network/socket.js"></script>
+  <script src="/static/js/network/rtcp.js"></script>
+  <script src="/static/js/appcontroller.js"></script>
+  <script src="/static/js/init.js"></script>
+</body>
+
+</html>
+

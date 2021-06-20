@@ -1,3 +1,3 @@
 log.setLevel("log.level", "debug");
 
-socket.connect(location.protocol, location.host);
+socket.connect(location.protocol, `${location.host}/ws`);

@@ -82,6 +82,7 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		panic(err)
 	}
 
+	fmt.Println(cfg)
 	c.launchAppVM(curVideoRTPPort, curAudioRTPPort, cfg)
 	log.Println("Launched application VM")
 
