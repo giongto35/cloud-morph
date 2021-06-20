@@ -28,9 +28,6 @@ Video Demo: https://www.youtube.com/watch?v=fkOpOQ-HwFY
 - [Cloud Diablo US](http://us.clouddiablo.com/) (Demo of Collaborative play Diablo running in US server).
 Switch applications using the sidebar on the left.
 
-## Changelog
-- 
-
 ## Usecases
 
 #### For Consumers.
