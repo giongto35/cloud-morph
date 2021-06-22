@@ -2,6 +2,11 @@
 cd winvm
 docker build -t syncwine .
 docker rm -f appvm
+
+# Sync local wine
+#docker run -v ~/.wine:/rpath/wine --volume winecfg:/root/.wine syncwine bash -c 'cp -rf /rpath/wine/* /root/.wine'
+#docker run -v ~/.wine:/rpath --volume winecfg:/root/.wine syncwine bash -c 'bash -c'
+
 if [ $(uname -s) == "Darwin" ]
 then
     echo "Spawn container on Mac"
