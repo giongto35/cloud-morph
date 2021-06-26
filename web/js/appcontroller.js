@@ -11,7 +11,11 @@
   const appd = document.getElementById("app");
   const appTitle = document.getElementById("app-title");
   const appScreen = document.getElementById("app-screen");
-
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+  const isMuted = urlParams.get('muted');
+  const isPaused = urlParams.get('paused');
+    
   var offerst;
 
   const onConnectionReady = () => {
@@ -30,6 +34,11 @@
     }
 
     log.info("[control] app start");
+
+    if (isPaused) {
+      setTimeout(()=>{appScreen.pause()}, 3000);
+      ;
+    }
 
     // TODO: Remove
     // socket.start(gameList.getCurrentGame(), env.isMobileDevice(), room.getId());
@@ -61,7 +70,7 @@
   };
 
   const onMouseDown = (data) => {
-    appScreen.muted = false;
+    appScreen.muted = isMuted ?? false;
     rtcp.input(
       JSON.stringify({
         type: "MOUSEDOWN",
