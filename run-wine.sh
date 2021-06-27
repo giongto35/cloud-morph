@@ -17,6 +17,9 @@ then
     --env "wineoptions=$7" \
     --env "dockerhost=host.docker.internal" \
     --env "DISPLAY=:99" \
+    #--env="DISPLAY" \
+    --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+    --volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
     --volume "winecfg:/root/.wine" syncwine supervisord
 else 
     echo "Spawn container on Linux"
@@ -33,5 +36,7 @@ else
     --env "wineoptions=$7" \
     --env "dockerhost=127.0.0.1" \
     --env "DISPLAY=:99" \
+    --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+    --volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
     --volume "winecfg:/root/.wine" syncwine supervisord
 fi
