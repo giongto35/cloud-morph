@@ -10,25 +10,46 @@ docker rm -f appvm
 if [ $(uname -s) == "Darwin" ]
 then
     echo "Spawn container on Mac"
-    docker run -d --privileged --rm --name "appvm" \
+    xhost +local:root
+    #docker run -d --privileged --rm --name "appvm" \
+    #--mount type=bind,source="$(pwd)"/apps,target=/apps \
+    #--mount type=bind,source="$(pwd)"/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf  \
+    #--env "apppath=$1" \
+    #--env "appfile=$2" \
+    #--env "appname=$3" \
+    #--env "hwkey=$4" \
+    #--env "screenwidth=$5" \
+    #--env "screenheight=$6" \
+    #--env "wineoptions=$7" \
+    #--env "vglrun=$8" \
+    #--env "dockerhost=host.docker.internal" \
+    #--env "DISPLAY=:99" \
+    #--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+    #--volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
+    #--volume "winecfg:/root/.wine" syncwine supervisord
+#else 
+    #echo "Spawn container on Linux"
+
+    nvidia-docker run -t -d --privileged --rm --name "appvm" \
     --mount type=bind,source="$(pwd)"/apps,target=/apps \
     --mount type=bind,source="$(pwd)"/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf  \
-    --env "apppath=$1" \
-    --env "appfile=$2" \
-    --env "appname=$3" \
-    --env "hwkey=$4" \
-    --env "screenwidth=$5" \
-    --env "screenheight=$6" \
-    --env "wineoptions=$7" \
-    --env "dockerhost=host.docker.internal" \
+    --network=host \
+    --env "apppath=/" \
+    --env "appfile=C:/7554/7554.exe" \
+    --env "appname=7554" \
+    --env "hwkey=game" \
+    --env "screenwidth=800" \
+    --env "screenheight=600" \
+    --env "wineoptions=-w" \
+    --env "vglrun=vglrun" \
+    --env "dockerhost=127.0.0.1" \
     --env "DISPLAY=:99" \
-    #--env="DISPLAY" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
     --volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
     --volume "winecfg:/root/.wine" syncwine supervisord
-else 
-    echo "Spawn container on Linux"
-    docker run -t -d --privileged --rm --name "appvm" \
+    xhost -local:root # resetting permissions
+
+    nvdia-docker run -t -d --privileged --rm --name "appvm" \
     --mount type=bind,source="$(pwd)"/apps,target=/apps \
     --mount type=bind,source="$(pwd)"/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf  \
     --network=host \
@@ -39,9 +60,12 @@ else
     --env "screenwidth=$5" \
     --env "screenheight=$6" \
     --env "wineoptions=$7" \
+    --env "vglrun=$8" \
     --env "dockerhost=127.0.0.1" \
     --env "DISPLAY=:99" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
     --volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
     --volume "winecfg:/root/.wine" syncwine supervisord
 fi
+
+xhost -local:root # resetting permissions
