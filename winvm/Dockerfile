@@ -1,7 +1,9 @@
 #FROM golang:1.14
 #FROM ubuntu:18.04
-FROM ubuntu:20.04
-#FROM debian:10-slim
+FROM nvidia/cudagl:11.3.1-base-ubuntu20.04
+ENV DEBIAN_FRONTEND=noninteractive 
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,utility,video
 
 RUN apt update
 RUN apt-get update -y
