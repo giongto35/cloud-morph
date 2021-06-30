@@ -29,6 +29,8 @@ RUN winetricks d3dx9_43
 #RUN winetricks --force -q dotnet48
 
 ENV VIRTUALGL_VERSION 2.5.2
+#RUN nohup Xvfb :99 &
+ENV DISPLAY=:99
 # Download gecko and mono installers
 COPY download_gecko_and_mono.sh /root/download_gecko_and_mono.sh
 RUN chmod +x /root/download_gecko_and_mono.sh \
@@ -54,4 +56,5 @@ COPY ./default.pa /etc/pulse/
 # Compile syncinput.exe
 RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o /winevm/syncinput.exe -lws2_32 -lpthread -static
 
+RUN DISPLAY=:99 /opt/VirtualGL/bin/vglserver_config -config +s +f -t
 COPY ./supervisord.conf /etc/supervisor/conf.d/

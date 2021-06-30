@@ -10,7 +10,7 @@ docker rm -f appvm
 if [ $(uname -s) == "Darwin" ]
 then
     echo "Spawn container on Mac"
-    docker run -d --privileged --rm --name "appvm" \
+    docker run -d --privileged --name "appvm" \
     --mount type=bind,source="$(pwd)"/apps,target=/apps \
     --mount type=bind,source="$(pwd)"/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf  \
     --env "apppath=$1" \
@@ -29,10 +29,26 @@ then
 else 
     echo "Spawn container on Linux"
 
-    #xhost +local:root
+    XAUTH=/tmp/.docker.xauth
+    if [ ! -f $XAUTH ]
+    then
+        xauth_list=$(xauth nlist :0 | sed -e 's/^..../ffff/')
+        if [ ! -z "$xauth_list" ]
+        then
+            echo $xauth_list | xauth -f $XAUTH nmerge -
+        else
+            touch $XAUTH
+        fi
+        chmod a+r $XAUTH
+    fi
+
+    xhost +local:root
     nvidia-docker run -t -d --privileged --rm --name "appvm" \
     --runtime=nvidia \
-    -e XAUTHORITY -e NVIDIA_DRIVER_CAPABILITIES=all \
+    --env NVIDIA_DRIVER_CAPABILITIES=all \
+    --env="XAUTHORITY=$XAUTH" \
+    --volume="$XAUTH:$XAUTH" \
+    --env="QT_X11_NO_MITSHM=1" \
     --mount type=bind,source="$(pwd)"/apps,target=/apps \
     --mount type=bind,source="$(pwd)"/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf  \
     --network=host \
@@ -45,7 +61,7 @@ else
     --env "wineoptions=$7" \
     --env "vglrun=$8" \
     --env "dockerhost=127.0.0.1" \
-    --env "DISPLAY=$DISPLAY" \
+    --env "DISPLAY=:99" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
     --volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
     --volume "winecfg:/root/.wine" syncwine supervisord

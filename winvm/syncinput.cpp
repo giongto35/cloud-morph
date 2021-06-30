@@ -86,7 +86,6 @@ void getDesktopResolution(int &width, int &height)
 HWND getWindowByTitle(char *pattern)
 {
     HWND hwnd = 0;
-    return 0;
 
     do
     {
