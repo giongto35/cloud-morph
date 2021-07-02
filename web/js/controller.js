@@ -28,7 +28,8 @@
   discoverydropdown.addEventListener("change", () => {
     app = appList[discoverydropdown.selectedIndex];
     curAppID = app.id;
-    socket.connect("http", `${app.addr}/ws`);
+      socket.connect("http", `${app.addr}/wscloudmorph`);
+      appContainer.setAttribute("src", `${location.protocol}//${app.addr}/embed`);
     updatePage(app);
   });
 
