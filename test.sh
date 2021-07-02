@@ -24,6 +24,7 @@ nvidia-docker run -it --privileged --rm --name "apptest" \
 --env "vglrun=vglrun" \
 --env "dockerhost=127.0.0.1" \
 --env "DISPLAY=:99" \
+--env NVIDIA_DISABLE_REQUIRE=1 \
 --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
 --volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
 --volume "winecfg:/root/.wine" syncwine vglrun glxinfo | grep vendor
