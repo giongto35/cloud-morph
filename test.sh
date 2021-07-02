@@ -26,7 +26,7 @@ nvidia-docker run -it --privileged --rm --name "apptest" \
 --env "DISPLAY=:99" \
 --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
 --volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
---volume "winecfg:/root/.wine" vglrun syncwine glxinfo | grep vendor
+--volume "winecfg:/root/.wine" syncwine vglrun glxinfo | grep vendor
 #xhost -local:root # resetting permissions
 #--mount type=bind,source="$(pwd)"/apps,target=/apps \
 #--mount type=bind,source="$(pwd)"/supervisord.conf,target=/etc/supervisor/conf.d/supervisord.conf  \
