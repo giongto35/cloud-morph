@@ -1,7 +1,9 @@
 #FROM golang:1.14
 #FROM ubuntu:18.04
-FROM ubuntu:20.04
-#FROM debian:10-slim
+FROM nvidia/cudagl:11.3.1-base-ubuntu20.04
+ENV DEBIAN_FRONTEND=noninteractive 
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,graphics,utility,video
 
 RUN apt update
 RUN apt-get update -y
@@ -26,10 +28,24 @@ RUN winetricks d3dx9_43
 # uncomment it for lutris game
 #RUN winetricks --force -q dotnet48
 
+ENV VIRTUALGL_VERSION 2.5.2
 # Download gecko and mono installers
 COPY download_gecko_and_mono.sh /root/download_gecko_and_mono.sh
 RUN chmod +x /root/download_gecko_and_mono.sh \
     && /root/download_gecko_and_mono.sh "$(dpkg -s wine-stable | grep "^Version:\s" | awk '{print $2}' | sed -E 's/~.*$//')"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglu1-mesa-dev mesa-utils curl ca-certificates xterm && \
+    curl -sSL https://downloads.sourceforge.net/project/virtualgl/"${VIRTUALGL_VERSION}"/virtualgl_"${VIRTUALGL_VERSION}"_amd64.deb -o virtualgl_"${VIRTUALGL_VERSION}"_amd64.deb && \
+    dpkg -i virtualgl_*_amd64.deb && \
+    /opt/VirtualGL/bin/vglserver_config -config +s +f -t && \
+    rm virtualgl_*_amd64.deb && \
+    apt-get clean && \
+    apt-get remove -y curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+LABEL com.nvidia.volumes.needed="nvidia_driver"
+ENV PATH /usr/local/nvidia/bin:/opt/VirtualGL/bin:${PATH}
+ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64:${LD_LIBRARY_PATH}/lists/*
 
 RUN mkdir -p /winevm
 WORKDIR /winevm

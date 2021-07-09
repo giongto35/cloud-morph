@@ -181,6 +181,12 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	} else {
 		params = append(params, "")
 	}
+	if cfg.GPUAcc {
+		fmt.Println("using vgl run")
+		params = append(params, "vglrun ")
+	} else {
+		params = append(params, "")
+	}
 
 	runApp(params)
 	// update flag

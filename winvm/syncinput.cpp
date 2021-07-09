@@ -85,7 +85,7 @@ void getDesktopResolution(int &width, int &height)
 
 HWND getWindowByTitle(char *pattern)
 {
-    HWND hwnd = NULL;
+    HWND hwnd = 0;
 
     do
     {
@@ -263,8 +263,12 @@ Mouse parseMousePayload(string stPos)
     return Mouse{isLeft, state, x, y, w, h};
 }
 
-void formatWindow(HWND hwnd)
+void formatWindow(HWND hwnd, bool isWindowedMode)
 {
+    // deprecated, should run with window mode only
+    if (!isWindowedMode) {
+        return;
+    }
     SetWindowPos(hwnd, NULL, 0, 0, 800, 600, 0);
     SetWindowLong(hwnd, GWL_STYLE, 0);
     cout << "Window formated" << endl;
@@ -298,7 +302,7 @@ void *thwndupdate(void *args)
         hwnd = getWindowByTitle(winTitle);
         if (hwnd != oldhwnd)
         {
-            formatWindow(hwnd);
+            formatWindow(hwnd, false);
             cout << "Updated HWND: " << hwnd << endl;
             oldhwnd = hwnd;
         }
@@ -339,6 +343,7 @@ int main(int argc, char *argv[])
     {
         if (strcmp(argv[2], "game") == 0)
         {
+            cout << "Running DX Game" << endl;
             isDxGame = true;
         }
     }
@@ -356,7 +361,7 @@ int main(int argc, char *argv[])
          << "height " << screenHeight << endl;
     cout << "Docker host" << dockerHost << endl;
 
-    formatWindow(hwnd);
+    formatWindow(hwnd, false);
 
     // setup socket watcher. TODO: How to check if a socket pipe is broken?
     done = false;
