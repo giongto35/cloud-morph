@@ -23,6 +23,7 @@ then
     --env "vglrun=$8" \
     --env "dockerhost=host.docker.internal" \
     --env "DISPLAY=:99" \
+    --env "VGL_DISPLAY=:1" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
     --volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
     --volume "winecfg:/root/.wine" syncwine supervisord
@@ -62,6 +63,7 @@ else
     --env "vglrun=$8" \
     --env "dockerhost=127.0.0.1" \
     --env "DISPLAY=:99" \
+    --env "VGL_DISPLAY=:1" \
     --env NVIDIA_DISABLE_REQUIRE=1 \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
     --volume="/usr/lib/x86_64-linux-gnu/libXv.so.1:/usr/lib/x86_64-linux-gnu/libXv.so.1" \
