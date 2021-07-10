@@ -10,8 +10,8 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/common/config"
@@ -92,14 +92,14 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	c.videoListener = videoListener
 	c.ssrc = listenerssrc
 	log.Println("Setup Audio Listener")
-	audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
-	c.audioListener = audioListener
-	c.ssrc = audiolistenerssrc
+	// audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
+	// c.audioListener = audioListener
+	// c.ssrc = audiolistenerssrc
 	log.Println("Done Listener")
 
 	c.listenVideoStream()
 	log.Println("Launched Video stream listener")
-	c.listenAudioStream()
+	// c.listenAudioStream()
 	log.Println("Launched Audio stream listener")
 
 	// Maintain input stream from server to Virtual Machine over websocket
@@ -138,7 +138,17 @@ func (c *ccImpl) GetSSRC() uint32 {
 
 func runApp(params []string) {
 	log.Println("params: ", params)
-	cmd := exec.Command("./run-wine.sh", params...)
+
+	var cmd *exec.Cmd
+	params = append([]string{"/C", "run-app.bat"}, params...)
+	if runtime.GOOS == "windows" {
+		log.Println("You are running on Windows")
+		cmd = exec.Command("cmd", params...)
+	} else {
+		log.Println("You are running on Linux")
+		cmd = exec.Command("./run-wine.sh", params...)
+	}
+
 	cmd.Env = os.Environ()
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -162,8 +172,6 @@ func runApp(params []string) {
 // done to forcefully stop all processes
 func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg config.Config) chan struct{} {
 	var cmd *exec.Cmd
-	var streamCmd *exec.Cmd
-
 	var params []string
 
 	// Setup wine params and run
@@ -191,14 +199,8 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	// clean up func
 	go func() {
 		<-done
-		err := streamCmd.Process.Kill()
-		log.Println("Kill streamcmd: ", err)
-
-		err = cmd.Process.Kill()
+		cmd.Process.Kill()
 		log.Println("Kill app: ", err)
-
-		log.Println("killing", streamCmd.Process.Pid)
-		syscall.Kill(streamCmd.Process.Pid, syscall.SIGKILL)
 	}()
 
 	return done

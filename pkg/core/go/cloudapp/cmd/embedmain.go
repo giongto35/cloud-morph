@@ -48,8 +48,11 @@ func main() {
 	}
 	// TODO: Make the communication over websocket
 	http.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("./assets"))))
+	fmt.Println("000000000000000")
 	server := cloudapp.NewServer(cfg)
+	fmt.Println("1111111111111111")
 	server.Handle()
+	fmt.Println("2222222222222222")
 
 	go func() {
 		err := server.ListenAndServe()
