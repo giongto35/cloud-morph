@@ -16,6 +16,7 @@ type Config struct {
 	// To help WinAPI search the app
 	WindowTitle  string `yaml:"windowTitle"`
 	HWKey        bool   `yaml:"hardwareKey"`
+	GPUAcc       bool   `yaml:"gpuAccelerated"`
 	AppMode      string `yaml:"appMode"`
 	AppName      string `yaml:"appName"`
 	ScreenWidth  int    `yaml:"screenWidth"`
