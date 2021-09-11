@@ -55,7 +55,6 @@ Switch applications using the sidebar on the left.
 - If your run is succesful, there will be a Docker running in background. Inside Docker there are 5 apps is running and their logs are suffix with \_err \_out
 ![screenshot](docs/img/debug.png)
 
-
 ## Design
 
 #### Goal:
