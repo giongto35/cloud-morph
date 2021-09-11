@@ -1,0 +1,8 @@
+path: /apps/nfh/bin # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
+appFile: Game.exe # File Name of the app in the directory
+windowTitle: Neighbours # Window Title: not to show, it's the substring of title to help specify the running program in OS
+pageTitle: "Notepad - A Cloud Morph Demo" # Page Title: To display on webpage
+appName: Neighbours # App name: to show in discovery
+appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
+isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
+hasChat: true # Turn on chat
