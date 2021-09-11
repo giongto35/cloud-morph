@@ -44,7 +44,17 @@ Switch applications using the sidebar on the left.
 - Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized to be extendable to different tech stacks. E.g Python, Java ...
 
 ## Getting Started
-- Run `setup_remote.sh 111.111.111.111` inside `./script`, ``111.111.111.111`` is the address of your host. What you will get is a Notepad hosted on your remote machine. More details are in Deployment section below.
+### Running localy
+1. Install Dependecies: Docker/Go. Or just `setup.sh` 
+2. `go run server.go`
+
+### Running remotely
+- Run `setup_remote.sh 111.111.111.111` inside `./script`, ``111.111.111.111`` is the address of your host. What you will get your application hosted on your remote machine. More details are in Deployment section below.
+
+### Debug in case you need
+- If your run is succesful, there will be a Docker running in background. Inside Docker there are 5 apps is running and their logs are suffix with \_err \_out
+![screenshot](docs/img/debug.png)
+
 
 ## Design
 

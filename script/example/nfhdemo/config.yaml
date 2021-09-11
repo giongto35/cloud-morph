@@ -12,7 +12,7 @@
 # discoveryHost: http://discovery.cloudmorph.io # Optional: to be discoverable if you plug-in to the discovery server
 # instanceAddr: clouddiablo.com # Address of a cloud service instance, discovery can find
 #
-path: /apps/nfhdemo/bin # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
+path: /apps/nfh/bin # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
 appFile: Game.exe # File Name of the app in the directory
 windowTitle: Neighbours # Window Title: not to show, it's the substring of title to help specify the running program in OS
 pageTitle: "Notepad - A Cloud Morph Demo" # Page Title: To display on webpage
