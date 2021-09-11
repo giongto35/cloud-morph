@@ -105,11 +105,13 @@ Note: the wine application runs inside Docker. You can run it without docker by 
 ## Deployment
 
 First, we need an Ubuntu instance with a public network firewall (No firewall rule for P2P communication NAT traversal). You can get a VPS from any provider (like AWS, DigitalOcean)
-We prepare below in the same directory
+We prepare below in the same directory  
+
 *Required*:
 1. `config.yaml`: app config, the app configuration.
 2. `apps`: the folder contains the app we will deploy. It is later mapped to `winvn/apps` in the remote instances. For example, `DiabloII`. If your application is already inside the synced wine environment at 2, ex "Program Files", we can skip it. We need to configure `config.yaml`, apppath to point to the correct app path.
-3. `setup_remote.sh`: a copy of the script in `winvm/script` to deploy your application to server.
+3. `setup_remote.sh`: a copy of the script in `winvm/script` to deploy your application to server.  
+
 *Optional*
 4. `wine`: whole wine folder from `.wine`. If there is no wine folder, the deployment uses the default `.wine` from installation.
 
