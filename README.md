@@ -1,6 +1,7 @@
 **Decentralized, Self-hosted Cloud Gaming service on WebBrowser.**  
 **Video Demo**: https://youtu.be/eFR7fLy9z6E  
 **Technical Document**: https://github.com/giongto35/cloud-morph/wiki  
+**Landing Page**: https://cloudmorph.io  
 **CloudRetro**: [https://github.com/giongto35/cloud-game](https://github.com/giongto35/cloud-game): Sister project, Cloud Gaming Service For Retro Games  
 
 ## Introduction
@@ -43,7 +44,16 @@ Switch applications using the sidebar on the left.
 - Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized to be extendable to different tech stacks. E.g Python, Java ...
 
 ## Getting Started
-- Run `setup_remote.sh 111.111.111.111` inside `./script`, ``111.111.111.111`` is the address of your host. What you will get is a Notepad hosted on your remote machine. More details are in Deployment section below.
+### Running localy
+1. Install Dependecies: Docker/Go. Or just `setup.sh` 
+2. `go run server.go`
+
+### Running remotely
+- Run `setup_remote.sh 111.111.111.111` inside `./script`, ``111.111.111.111`` is the address of your host. What you will get your application hosted on your remote machine. More details are in Deployment section below.
+
+### Debug in case you need
+- If your run is succesful, there will be a Docker running in background. Inside Docker there are 5 apps is running and their logs are suffix with \_err \_out
+![screenshot](docs/img/debug.png)
 
 ## Design
 
@@ -94,12 +104,16 @@ Note: the wine application runs inside Docker. You can run it without docker by 
 
 ## Deployment
 
-First, we need an Ubuntu instance with a public network firewall (No firewall rule for P2P communication NAT traversal). There is `script/create_do.sh` to create a digital ocean instance.
-We prepare below in the same directory
+First, we need an Ubuntu instance with a public network firewall (No firewall rule for P2P communication NAT traversal). You can get a VPS from any provider (like AWS, DigitalOcean)
+We prepare below in the same directory  
+
+*Required*:  
 1. `config.yaml`: app config, the app configuration.
-2. `wine`: whole wine folder from `.wine`. If there is no wine folder, the deployment uses the default `.wine` from installation.
-3. `apps`: the folder contains the app we will deploy. It is later mapped to `winvn/apps` in the remote instances. For example, `DiabloII`. If your application is already inside the synced wine environment at 2, ex "Program Files", we can skip it. We need to configure `config.yaml`, apppath to point to the correct app path.
-4. `setup_remote.sh`: a copy of the script in `winvm/script` to deploy your application to server.
+2. `apps`: the folder contains the app we will deploy. It is later mapped to `winvn/apps` in the remote instances. For example, `DiabloII`. If your application is already inside the synced wine environment at 2, ex "Program Files", we can skip it. We need to configure `config.yaml`, apppath to point to the correct app path.
+3. `setup_remote.sh`: a copy of the script in `winvm/script` to deploy your application to server.  
+
+*Optional*:  
+4. `wine`: whole wine folder from `.wine`. If there is no wine folder, the deployment uses the default `.wine` from installation.
 
 After that, we run `setup_remote` from inside the folder:
 - `setup_remote.sh $ip`. Ex: `./setup_remote.sh 159.89.146.77`  
@@ -109,7 +123,7 @@ After that, we run `setup_remote` from inside the folder:
 - `script/example` contains example applications configuration. Note: `/apps` is left empty due to copyright.
 
 **Deployment with Lutris**
-- Lutris eases the installation of a game on Linux. **The recommended flow is to install game with Lutris and copy produced wine environment to Cloud Morph**.
+- Lutris eases the installation of a game on Linux. **The recommended flow is to install game with Lutris and copy produced wine environment in .wine folder to Cloud Morph**.
 
 ## Road Map - Request for Help
 

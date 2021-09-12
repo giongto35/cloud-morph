@@ -1,0 +1,8 @@
+[DEFAULT]
+BASEURL=http://www.jowood.com/de/register/?lang=de&gamenr=109
+[DOC#5#7#4#6]
+BASEURL=http://www.jowood.com/register/index.php?lang=de&gamenr=109
+ORIGURL=../../register/index.php?lang=DE
+[InternetShortcut]
+URL=http://register.jowood.com/?gamenr=121
+Modified=7081D6CB0BCEC2012E
