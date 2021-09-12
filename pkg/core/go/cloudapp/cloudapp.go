@@ -199,6 +199,7 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	// clean up func
 	go func() {
 		<-done
+		err := cmd.Process.Kill()
 		cmd.Process.Kill()
 		log.Println("Kill app: ", err)
 	}()
