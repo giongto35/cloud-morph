@@ -1,4 +1,5 @@
-path: /apps/nfhdemo/bin # Directory to the app. NOTE: It's the path in winvm
+path: apps/winmine # Directory to the app. NOTE: It's the path in winvm
+# path: /apps/nfhdemo/bin # Directory to the app. NOTE: It's the path in winvm
 appFile: Game.exe # File Name of the app in the directory
 windowTitle: Neighbours # Window Title: not to show, it's the substring of title to help specify the running program in OS
 pageTitle: "Neighbours from Hell Game Demo" # Page Title: To display on webpage
