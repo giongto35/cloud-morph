@@ -91,16 +91,16 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	videoListener, listenerssrc := c.newLocalStreamListener(curVideoRTPPort)
 	c.videoListener = videoListener
 	c.ssrc = listenerssrc
-	log.Println("Setup Audio Listener")
-	audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
-	c.audioListener = audioListener
-	c.ssrc = audiolistenerssrc
+	// log.Println("Setup Audio Listener")
+	// audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
+	// c.audioListener = audioListener
+	// c.ssrc = audiolistenerssrc
 	log.Println("Done Listener")
 
 	c.listenVideoStream()
 	log.Println("Launched Video stream listener")
-	c.listenAudioStream()
-	log.Println("Launched Audio stream listener")
+	// c.listenAudioStream()
+	// log.Println("Launched Audio stream listener")
 
 	// Maintain input stream from server to Virtual Machine over websocket
 	go c.healthCheckVM()
@@ -140,10 +140,11 @@ func runApp(params []string) {
 	log.Println("params: ", params)
 
 	var cmd *exec.Cmd
-	params = append([]string{"/C", "run-app.bat"}, params...)
+	params = append([]string{"-ExecutionPolicy", "Bypass", "-F", "run-app.ps1"}, params...)
+
 	if runtime.GOOS == "windows" {
 		log.Println("You are running on Windows")
-		cmd = exec.Command("cmd", params...)
+		cmd = exec.Command("powershell", params...)
 	} else {
 		log.Println("You are running on Linux")
 		cmd = exec.Command("./run-wine.sh", params...)
