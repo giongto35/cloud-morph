@@ -15,6 +15,8 @@ bool done;
 HWND hwnd;
 char *winTitle;
 char dockerHost[20];
+char isMac[20];
+char isWindows[20];
 
 const byte MOUSE_MOVE = 0;
 const byte MOUSE_DOWN = 1;
@@ -33,12 +35,13 @@ int clientConnect()
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
-    if (strcmp(dockerHost, "host.docker.internal") == 0)
+    if (isMac)
     {
+        // Mac doesn't have host mode in docker, hence need to get local docker address
         char ip[100];
         struct hostent *he;
         struct in_addr **addr_list;
-        if ((he = gethostbyname(dockerHost)) == NULL)
+        if ((he = gethostbyname("host.docker.internal")) == NULL)
         {
             //gethostbyname failed
             printf("gethostbyname failed : %d", WSAGetLastError());
@@ -56,12 +59,15 @@ int clientConnect()
         cout << "ip from hostname: " << ip << endl;
         addr.sin_addr.s_addr = inet_addr(ip);
     }
-    else
+    else if (isWindows)
     {
         addr.sin_addr.s_addr = inet_addr("localhost");
+    }
+    else
+    {
         // addr.sin_addr.s_addr = inet_addr("127.0.0.1");
         // cout << "using any local" << endl;
-        // addr.sin_addr.s_addr = INADDR_ANY;
+        addr.sin_addr.s_addr = INADDR_ANY;
     }
 
     cout << "Connecting to server!" << endl;
@@ -333,6 +339,8 @@ int main(int argc, char *argv[])
 {
     winTitle = (char *)"Notepad";
     bool isDxGame = false;
+    bool isMac = false;
+    bool isWindows = false;
     if (argc > 1)
     {
         winTitle = argv[1];
@@ -346,7 +354,15 @@ int main(int argc, char *argv[])
     }
     if (argc > 3)
     {
-        strcpy(dockerHost, argv[3]);
+        if (strcmp(argv[2], "mac") == 0)
+        {
+            isMac = true;
+        }
+        else
+        {
+            isWindows = true;
+        }
+        // strcpy(dockerHost, argv[3]);
     }
 
     server = clientConnect();

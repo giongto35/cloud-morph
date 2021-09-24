@@ -33,6 +33,14 @@ type CloudAppClient interface {
 	GetSSRC() uint32
 }
 
+type osTypeEnum int
+
+const (
+	Linux osTypeEnum = iota
+	Mac
+	Windows
+)
+
 type ccImpl struct {
 	isReady       bool
 	videoListener *net.UDPConn
@@ -41,6 +49,7 @@ type ccImpl struct {
 	audioStream   chan *rtp.Packet
 	appEvents     chan Packet
 	wineConn      *net.TCPConn
+	osType        osTypeEnum
 	screenWidth   float32
 	screenHeight  float32
 	ssrc          uint32
@@ -72,6 +81,13 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		appEvents:   appEvents,
 	}
 
+	switch runtime.GOOS {
+	case "windows":
+		c.osType = Windows
+	default:
+		c.osType = Linux
+	}
+
 	la, err := net.ResolveTCPAddr("tcp4", ":9090")
 	if err != nil {
 		panic(err)
@@ -91,16 +107,20 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	videoListener, listenerssrc := c.newLocalStreamListener(curVideoRTPPort)
 	c.videoListener = videoListener
 	c.ssrc = listenerssrc
-	// log.Println("Setup Audio Listener")
-	// audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
-	// c.audioListener = audioListener
-	// c.ssrc = audiolistenerssrc
+	if c.osType != Windows {
+		log.Println("Setup Audio Listener")
+		audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
+		c.audioListener = audioListener
+		c.ssrc = audiolistenerssrc
+	}
 	log.Println("Done Listener")
 
 	c.listenVideoStream()
 	log.Println("Launched Video stream listener")
-	// c.listenAudioStream()
-	// log.Println("Launched Audio stream listener")
+	if c.osType != Windows {
+		c.listenAudioStream()
+		log.Println("Launched Audio stream listener")
+	}
 
 	// Maintain input stream from server to Virtual Machine over websocket
 	go c.healthCheckVM()
@@ -137,14 +157,13 @@ func (c *ccImpl) GetSSRC() uint32 {
 	return c.ssrc
 }
 
-func runApp(params []string) {
+func (c *ccImpl) runApp(params []string) {
 	log.Println("params: ", params)
 
 	var cmd *exec.Cmd
-	params = append([]string{"-ExecutionPolicy", "Bypass", "-F", "run-app.ps1"}, params...)
-
-	if runtime.GOOS == "windows" {
+	if c.osType == Windows {
 		log.Println("You are running on Windows")
+		params = append([]string{"-ExecutionPolicy", "Bypass", "-F", "run-app.ps1"}, params...)
 		cmd = exec.Command("powershell", params...)
 	} else {
 		log.Println("You are running on Linux")
@@ -191,8 +210,13 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	} else {
 		params = append(params, "")
 	}
+	if c.osType == Windows {
+		params = append(params, "windows")
+	} else {
+		params = append(params, "")
+	}
 
-	runApp(params)
+	c.runApp(params)
 	// update flag
 	c.screenWidth = float32(cfg.ScreenWidth)
 	c.screenHeight = float32(cfg.ScreenHeight)
