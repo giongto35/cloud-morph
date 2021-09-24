@@ -107,6 +107,7 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	// NOTE: Why Websocket: because normal IPC cannot communicate cross OS.
 	go func() {
 		for {
+			log.Println("Waiting syncinput to connect")
 			// Polling Wine socket connection (input stream)
 			conn, err := ln.AcceptTCP()
 			log.Println("Accepted a TCP connection")

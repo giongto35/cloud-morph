@@ -35,22 +35,22 @@ int clientConnect()
     addr.sin_port = htons(9090);
     if (strcmp(dockerHost, "host.docker.internal") == 0)
     {
-	char ip[100];
-	struct hostent *he;
-	struct in_addr **addr_list;
-	if ( (he = gethostbyname( dockerHost ) ) == NULL) 
-	{
-		//gethostbyname failed
-		printf("gethostbyname failed : %d" , WSAGetLastError());
-		return 1;
-	}
-	//Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
-	addr_list = (struct in_addr **) he->h_addr_list;
-	for(int i = 0; addr_list[i] != NULL; i++) 
-	{
-		//Return the first one;
-		strcpy(ip , inet_ntoa(*addr_list[i]) );
-	}
+        char ip[100];
+        struct hostent *he;
+        struct in_addr **addr_list;
+        if ((he = gethostbyname(dockerHost)) == NULL)
+        {
+            //gethostbyname failed
+            printf("gethostbyname failed : %d", WSAGetLastError());
+            return 1;
+        }
+        //Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
+        addr_list = (struct in_addr **)he->h_addr_list;
+        for (int i = 0; addr_list[i] != NULL; i++)
+        {
+            //Return the first one;
+            strcpy(ip, inet_ntoa(*addr_list[i]));
+        }
 
         cout << "using host docker internal" << endl;
         cout << "ip from hostname: " << ip << endl;
@@ -58,8 +58,10 @@ int clientConnect()
     }
     else
     {
-        cout << "using any local" << endl;
-        addr.sin_addr.s_addr = INADDR_ANY;
+        addr.sin_addr.s_addr = inet_addr("localhost");
+        // addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        // cout << "using any local" << endl;
+        // addr.sin_addr.s_addr = INADDR_ANY;
     }
 
     cout << "Connecting to server!" << endl;
@@ -344,7 +346,7 @@ int main(int argc, char *argv[])
     }
     if (argc > 3)
     {
-         strcpy(dockerHost, argv[3]);
+        strcpy(dockerHost, argv[3]);
     }
 
     server = clientConnect();
@@ -382,8 +384,9 @@ int main(int argc, char *argv[])
         if ((recv_size = recv(server, buf, 1024, 0)) == SOCKET_ERROR)
         {
             puts("recv failed");
-            continue;
+            Sleep(1000);
         }
+
         char *buffer = new char[recv_size];
         memcpy(buffer, buf, recv_size);
         if (recv_size == 1)
