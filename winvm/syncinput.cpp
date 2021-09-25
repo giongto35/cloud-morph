@@ -271,11 +271,9 @@ Mouse parseMousePayload(string stPos)
 
 void formatWindow(HWND hwnd)
 {
-    cout << 5 << endl;
     SetWindowPos(hwnd, NULL, 0, 0, 800, 600, 0);
     SetWindowLong(hwnd, GWL_STYLE, 0);
     cout << "Window formated" << endl;
-    cout << 6 << endl;
 }
 
 void *thealthcheck(void *args)
@@ -333,7 +331,6 @@ void processEvent(string ev, bool isDxGame)
         float y = mouse.y;
         sendMouseDown(mouse.isLeft, mouse.state, x, y);
     }
-    cout << 2 << endl;
 }
 
 int main(int argc, char *argv[])
@@ -358,12 +355,13 @@ int main(int argc, char *argv[])
         if (strcmp(argv[3], "mac") == 0)
         {
             isMac = true;
+            cout << "Running syncinput on Mac";
         }
         else if (strcmp(argv[3], "windows") == 0)
         {
             isWindows = true;
+            cout << "Running syncinput on Windows";
         }
-        // strcpy(dockerHost, argv[3]);
     }
 
     server = clientConnect();

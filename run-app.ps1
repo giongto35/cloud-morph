@@ -1,5 +1,6 @@
 $path = $args[0]
 $appfile = $args[1]
+$os = $args[7]
 # Split-Path $outputPath -leaf
 
 taskkill /FI "ImageName eq $appfile" /F
@@ -13,6 +14,4 @@ Start-Process ffmpeg -PassThru -ArgumentList "-f gdigrab -framerate 30 -i title=
 lleep 2
 x86_64-w64-mingw32-g++ .\winvm\syncinput.cpp -o .\winvm\syncinput.exe -lws2_32 -lpthread -static
 
-Start-Process winvm/syncinput.exe -PassThru -ArgumentList $title
-
-echo "Done"
+Start-Process winvm/syncinput.exe -PassThru -ArgumentList "$title", ".", "$os"

@@ -162,8 +162,8 @@ func (c *ccImpl) runApp(params []string) {
 
 	var cmd *exec.Cmd
 	if c.osType == Windows {
-		log.Println("You are running on Windows")
 		params = append([]string{"-ExecutionPolicy", "Bypass", "-F", "run-app.ps1"}, params...)
+		log.Println("You are running on Windows", params)
 		cmd = exec.Command("powershell", params...)
 	} else {
 		log.Println("You are running on Linux")
@@ -186,7 +186,7 @@ func (c *ccImpl) runApp(params []string) {
 			log.Println(string(line))
 		}
 	}()
-	log.Println("execed run-client.sh")
+	log.Println("Done running script")
 	cmd.Wait()
 }
 
