@@ -358,7 +358,7 @@ int main(int argc, char *argv[])
         {
             isMac = true;
         }
-        else
+        else if (strcmp(argv[2], "mac") == 0)
         {
             isWindows = true;
         }
