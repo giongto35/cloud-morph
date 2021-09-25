@@ -61,12 +61,10 @@ int clientConnect()
     }
     else if (isWindows)
     {
-        addr.sin_addr.s_addr = inet_addr("localhost");
+        addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     }
     else
     {
-        // addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-        // cout << "using any local" << endl;
         addr.sin_addr.s_addr = INADDR_ANY;
     }
 
@@ -273,9 +271,11 @@ Mouse parseMousePayload(string stPos)
 
 void formatWindow(HWND hwnd)
 {
+    cout << 5 << endl;
     SetWindowPos(hwnd, NULL, 0, 0, 800, 600, 0);
     SetWindowLong(hwnd, GWL_STYLE, 0);
     cout << "Window formated" << endl;
+    cout << 6 << endl;
 }
 
 void *thealthcheck(void *args)
@@ -291,7 +291,7 @@ void *thealthcheck(void *args)
             // socket is died
             cout << "Broken pipe" << endl;
             done = true;
-            return NULL;
+            // return NULL;
         }
         Sleep(2000);
     }
@@ -333,6 +333,7 @@ void processEvent(string ev, bool isDxGame)
         float y = mouse.y;
         sendMouseDown(mouse.isLeft, mouse.state, x, y);
     }
+    cout << 2 << endl;
 }
 
 int main(int argc, char *argv[])
@@ -354,11 +355,11 @@ int main(int argc, char *argv[])
     }
     if (argc > 3)
     {
-        if (strcmp(argv[2], "mac") == 0)
+        if (strcmp(argv[3], "mac") == 0)
         {
             isMac = true;
         }
-        else if (strcmp(argv[2], "mac") == 0)
+        else if (strcmp(argv[3], "windows") == 0)
         {
             isWindows = true;
         }
@@ -401,6 +402,7 @@ int main(int argc, char *argv[])
         {
             puts("recv failed");
             Sleep(1000);
+            continue;
         }
 
         char *buffer = new char[recv_size];
