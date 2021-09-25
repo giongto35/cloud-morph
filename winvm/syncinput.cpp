@@ -15,8 +15,8 @@ bool done;
 HWND hwnd;
 char *winTitle;
 char dockerHost[20];
-char isMac[20];
-char isWindows[20];
+bool isMac;
+bool isWindows;
 
 const byte MOUSE_MOVE = 0;
 const byte MOUSE_DOWN = 1;
@@ -339,8 +339,8 @@ int main(int argc, char *argv[])
 {
     winTitle = (char *)"Notepad";
     bool isDxGame = false;
-    bool isMac = false;
-    bool isWindows = false;
+    isMac = false;
+    isWindows = false;
     if (argc > 1)
     {
         winTitle = argv[1];
