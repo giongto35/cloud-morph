@@ -13,6 +13,7 @@ Unlike [CloudRetro](https://github.com/giongto35/cloud-game), a completed Cloud 
 **Discord**: [Join Us](https://discord.gg/ux2rDqwu2W)
 
 ## Changelog
+- 26/9/2021: Able to run in Windows/ Mac
 - 19/6/2021: Modularize Frontend as Widget. All parts are independent
 
 ## Demo
@@ -133,5 +134,5 @@ After that, we run `setup_remote` from inside the folder:
 - GPU acceleration. - Integrate with FFMPEG job. 
 - Multiplex application sessions. Currently, only collaborative mode is supported, which serves all application sessions from the same single instance.
 - Performance optimization.
-- Web Mobile controller support. Mouse click is already simulated.
+- Web Mobile controller support. Only mouse click is simulated.
 
