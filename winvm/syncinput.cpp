@@ -15,6 +15,8 @@ bool done;
 HWND hwnd;
 char *winTitle;
 char dockerHost[20];
+bool isMac;
+bool isWindows;
 
 const byte MOUSE_MOVE = 0;
 const byte MOUSE_DOWN = 1;
@@ -33,32 +35,36 @@ int clientConnect()
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
-    if (strcmp(dockerHost, "host.docker.internal") == 0)
+    if (isMac)
     {
-	char ip[100];
-	struct hostent *he;
-	struct in_addr **addr_list;
-	if ( (he = gethostbyname( dockerHost ) ) == NULL) 
-	{
-		//gethostbyname failed
-		printf("gethostbyname failed : %d" , WSAGetLastError());
-		return 1;
-	}
-	//Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
-	addr_list = (struct in_addr **) he->h_addr_list;
-	for(int i = 0; addr_list[i] != NULL; i++) 
-	{
-		//Return the first one;
-		strcpy(ip , inet_ntoa(*addr_list[i]) );
-	}
+        // Mac doesn't have host mode in docker, hence need to get local docker address
+        char ip[100];
+        struct hostent *he;
+        struct in_addr **addr_list;
+        if ((he = gethostbyname("host.docker.internal")) == NULL)
+        {
+            //gethostbyname failed
+            printf("gethostbyname failed : %d", WSAGetLastError());
+            return 1;
+        }
+        //Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
+        addr_list = (struct in_addr **)he->h_addr_list;
+        for (int i = 0; addr_list[i] != NULL; i++)
+        {
+            //Return the first one;
+            strcpy(ip, inet_ntoa(*addr_list[i]));
+        }
 
         cout << "using host docker internal" << endl;
         cout << "ip from hostname: " << ip << endl;
         addr.sin_addr.s_addr = inet_addr(ip);
     }
+    else if (isWindows)
+    {
+        addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    }
     else
     {
-        cout << "using any local" << endl;
         addr.sin_addr.s_addr = INADDR_ANY;
     }
 
@@ -331,6 +337,8 @@ int main(int argc, char *argv[])
 {
     winTitle = (char *)"Notepad";
     bool isDxGame = false;
+    isMac = false;
+    isWindows = false;
     if (argc > 1)
     {
         winTitle = argv[1];
@@ -344,7 +352,16 @@ int main(int argc, char *argv[])
     }
     if (argc > 3)
     {
-         strcpy(dockerHost, argv[3]);
+        if (strcmp(argv[3], "mac") == 0)
+        {
+            isMac = true;
+            cout << "Running syncinput on Mac";
+        }
+        else if (strcmp(argv[3], "windows") == 0)
+        {
+            isWindows = true;
+            cout << "Running syncinput on Windows";
+        }
     }
 
     server = clientConnect();
@@ -382,8 +399,10 @@ int main(int argc, char *argv[])
         if ((recv_size = recv(server, buf, 1024, 0)) == SOCKET_ERROR)
         {
             puts("recv failed");
+            Sleep(1000);
             continue;
         }
+
         char *buffer = new char[recv_size];
         memcpy(buffer, buf, recv_size);
         if (recv_size == 1)

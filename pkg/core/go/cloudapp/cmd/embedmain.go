@@ -23,7 +23,7 @@ func monitor() {
 	}
 	log.Println("Starting monitoring server at", srv.Addr)
 
-	pprofPath := fmt.Sprintf("/debug/pprof")
+	pprofPath := "/debug/pprof"
 	log.Println("Profiling is enabled at", srv.Addr+pprofPath)
 	monitoringServerMux.Handle(pprofPath+"/", http.HandlerFunc(pprof.Index))
 	monitoringServerMux.Handle(pprofPath+"/cmdline", http.HandlerFunc(pprof.Cmdline))

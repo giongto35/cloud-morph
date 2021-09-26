@@ -10,19 +10,14 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/cws"
 	"github.com/pion/rtp"
 )
-
-type InputEvent struct {
-	inputType    bool
-	inputPayload []byte
-}
 
 type CloudAppClient interface {
 	VideoStream() chan *rtp.Packet
@@ -33,6 +28,14 @@ type CloudAppClient interface {
 	GetSSRC() uint32
 }
 
+type osTypeEnum int
+
+const (
+	Linux osTypeEnum = iota
+	Mac
+	Windows
+)
+
 type ccImpl struct {
 	isReady       bool
 	videoListener *net.UDPConn
@@ -41,10 +44,10 @@ type ccImpl struct {
 	audioStream   chan *rtp.Packet
 	appEvents     chan Packet
 	wineConn      *net.TCPConn
+	osType        osTypeEnum
 	screenWidth   float32
 	screenHeight  float32
 	ssrc          uint32
-	payloadType   uint8
 }
 
 // Packet represents a packet in cloudapp
@@ -72,6 +75,13 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		appEvents:   appEvents,
 	}
 
+	switch runtime.GOOS {
+	case "windows":
+		c.osType = Windows
+	default:
+		c.osType = Linux
+	}
+
 	la, err := net.ResolveTCPAddr("tcp4", ":9090")
 	if err != nil {
 		panic(err)
@@ -91,22 +101,29 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	videoListener, listenerssrc := c.newLocalStreamListener(curVideoRTPPort)
 	c.videoListener = videoListener
 	c.ssrc = listenerssrc
-	log.Println("Setup Audio Listener")
-	audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
-	c.audioListener = audioListener
-	c.ssrc = audiolistenerssrc
+	if c.osType != Windows {
+		// Don't spawn Audio in Windows
+		log.Println("Setup Audio Listener")
+		audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
+		c.audioListener = audioListener
+		c.ssrc = audiolistenerssrc
+	}
 	log.Println("Done Listener")
 
 	c.listenVideoStream()
 	log.Println("Launched Video stream listener")
-	c.listenAudioStream()
-	log.Println("Launched Audio stream listener")
+	if c.osType != Windows {
+		// Don't spawn Audio in Windows
+		c.listenAudioStream()
+		log.Println("Launched Audio stream listener")
+	}
 
 	// Maintain input stream from server to Virtual Machine over websocket
 	go c.healthCheckVM()
 	// NOTE: Why Websocket: because normal IPC cannot communicate cross OS.
 	go func() {
 		for {
+			log.Println("Waiting syncinput to connect")
 			// Polling Wine socket connection (input stream)
 			conn, err := ln.AcceptTCP()
 			log.Println("Accepted a TCP connection")
@@ -136,9 +153,19 @@ func (c *ccImpl) GetSSRC() uint32 {
 	return c.ssrc
 }
 
-func runApp(params []string) {
+func (c *ccImpl) runApp(params []string) {
 	log.Println("params: ", params)
-	cmd := exec.Command("./run-wine.sh", params...)
+
+	var cmd *exec.Cmd
+	if c.osType == Windows {
+		params = append([]string{"-ExecutionPolicy", "Bypass", "-F", "run-app.ps1"}, params...)
+		log.Println("You are running on Windows", params)
+		cmd = exec.Command("powershell", params...)
+	} else {
+		log.Println("You are running on Linux")
+		cmd = exec.Command("./run-wine.sh", params...)
+	}
+
 	cmd.Env = os.Environ()
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -155,15 +182,13 @@ func runApp(params []string) {
 			log.Println(string(line))
 		}
 	}()
-	log.Println("execed run-client.sh")
+	log.Println("Done running script")
 	cmd.Wait()
 }
 
 // done to forcefully stop all processes
 func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg config.Config) chan struct{} {
 	var cmd *exec.Cmd
-	var streamCmd *exec.Cmd
-
 	var params []string
 
 	// Setup wine params and run
@@ -181,8 +206,13 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	} else {
 		params = append(params, "")
 	}
+	if c.osType == Windows {
+		params = append(params, "windows")
+	} else {
+		params = append(params, "")
+	}
 
-	runApp(params)
+	c.runApp(params)
 	// update flag
 	c.screenWidth = float32(cfg.ScreenWidth)
 	c.screenHeight = float32(cfg.ScreenHeight)
@@ -191,14 +221,9 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	// clean up func
 	go func() {
 		<-done
-		err := streamCmd.Process.Kill()
-		log.Println("Kill streamcmd: ", err)
-
-		err = cmd.Process.Kill()
+		err := cmd.Process.Kill()
+		cmd.Process.Kill()
 		log.Println("Kill app: ", err)
-
-		log.Println("killing", streamCmd.Process.Pid)
-		syscall.Kill(streamCmd.Process.Pid, syscall.SIGKILL)
 	}()
 
 	return done
