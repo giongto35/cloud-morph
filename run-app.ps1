@@ -1,6 +1,7 @@
 $path = $args[0]
 $appfile = $args[1]
 # Split-Path $outputPath -leaf
+echo "running winvm/$path/$appfile"
 
 taskkill /FI "ImageName eq $appfile" /F
 taskkill /FI "ImageName eq ffmpeg.exe" /F

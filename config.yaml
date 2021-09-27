@@ -1,6 +1,6 @@
 #Simpler run with Notepad
-path: /apps/ # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
-appFile: Notepad.exe # File Name of the app in the directory
+path: apps/winmine # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
+appFile: Minesweeper.exe # File Name of the app in the directory
 windowTitle: Notepad # Window Title: not to show, it's the substring of title to help specify the running program in OS
 pageTitle: "Notepad - A Cloud Morph Demo" # Page Title: To display on webpage
 appName: Notepad # App name: to show in discovery
