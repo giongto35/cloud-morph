@@ -19,11 +19,6 @@ import (
 	"github.com/pion/rtp"
 )
 
-type InputEvent struct {
-	inputType    bool
-	inputPayload []byte
-}
-
 type CloudAppClient interface {
 	VideoStream() chan *rtp.Packet
 	AudioStream() chan *rtp.Packet
@@ -53,7 +48,6 @@ type ccImpl struct {
 	screenWidth   float32
 	screenHeight  float32
 	ssrc          uint32
-	payloadType   uint8
 }
 
 // Packet represents a packet in cloudapp
@@ -108,6 +102,7 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	c.videoListener = videoListener
 	c.ssrc = listenerssrc
 	if c.osType != Windows {
+		// Don't spawn Audio in Windows
 		log.Println("Setup Audio Listener")
 		audioListener, audiolistenerssrc := c.newLocalStreamListener(curAudioRTPPort)
 		c.audioListener = audioListener
@@ -118,6 +113,7 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	c.listenVideoStream()
 	log.Println("Launched Video stream listener")
 	if c.osType != Windows {
+		// Don't spawn Audio in Windows
 		c.listenAudioStream()
 		log.Println("Launched Audio stream listener")
 	}

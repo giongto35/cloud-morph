@@ -1,24 +1,24 @@
-path: apps/winmine # Directory to the app. NOTE: It's the path in winvm
-# path: /apps/nfhdemo/bin # Directory to the app. NOTE: It's the path in winvm
-appFile: Minesweeper.exe # File Name of the app in the directory
-windowTitle: Minesweeper # Window Title: not to show, it's the substring of title to help specify the running program in OS
-pageTitle: "Neighbours from Hell Game Demo" # Page Title: To display on webpage
-appName: "Neighbours-from-Hell" # App name: to show in discovery
-appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
-isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
-hasChat: true # Turn on chat
-# hardwareKey: false # Some game using DirectX needs hardward key. Turn this flag on to receive the input
-# screenWidth: 480 # Optional: Default to be: 800
-# screenHeight: 320 # Optional: Default to be: 600
-# isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
-# discoveryHost: http://discovery.cloudmorph.io # Optional: to be discoverable if you plug-in to the discovery server
-# instanceAddr: clouddiablo.com # Address of a cloud service instance, discovery can find
-
 #Simpler run with Notepad
-#path: /apps/ # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
-#appFile: Notepad.exe # File Name of the app in the directory
-#windowTitle: Notepad # Window Title: not to show, it's the substring of title to help specify the running program in OS
-#pageTitle: "Notepad - A Cloud Morph Demo" # Page Title: To display on webpage
-#appName: Notepad # App name: to show in discovery
-#appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
-#hasChat: true # Turn on chat
+path: /apps/ # Directory to the app. NOTE: It's the path in docker. EX: /apps/Diablo II
+appFile: Notepad.exe # File Name of the app in the directory
+windowTitle: Notepad # Window Title: not to show, it's the substring of title to help specify the running program in OS
+pageTitle: "Notepad - A Cloud Morph Demo" # Page Title: To display on webpage
+appName: Notepad # App name: to show in discovery
+appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
+hasChat: true # Turn on chat
+
+#Need to specify path
+# path: /apps/nfhdemo/bin # Directory to the app. NOTE: It's the path in winvm
+# appFile: Game.exe # File Name of the app in the directory
+# windowTitle: Neighbours # Window Title: not to show, it's the substring of title to help specify the running program in OS
+# pageTitle: "Neighbours from Hell Game Demo" # Page Title: To display on webpage
+# appName: "Neighbours-from-Hell" # App name: to show in discovery
+# appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
+# isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
+# hasChat: true # Turn on chat
+# hardwareKey: false # Some game using DirectX needs hardward key. Turn this flag on to receive the input
+# # screenWidth: 480 # Optional: Default to be: 800
+# # screenHeight: 320 # Optional: Default to be: 600
+# # isWindowMode: false # Optional: Default to be true. Full screen Windowed or Fullscreen. Up to app
+# # discoveryHost: http://discovery.cloudmorph.io # Optional: to be discoverable if you plug-in to the discovery server
+# # instanceAddr: clouddiablo.com # Address of a cloud service instance, discovery can find

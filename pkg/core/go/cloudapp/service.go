@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/giongto35/cloud-morph/pkg/addon/textchat"
 	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/cws"
 	"github.com/giongto35/cloud-morph/pkg/core/go/cloudapp/webrtc"
@@ -22,17 +21,12 @@ const (
 	OnDemandMode = "ondemand"
 )
 
-var appEventTypes []string = []string{"MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
-
-// var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
-var isStarted bool
-
 type Service struct {
 	clients        map[string]*Client
 	appModeHandler *appModeHandler
 	ccApp          CloudAppClient
 	config         config.Config
-	chat           *textchat.TextChat
+	// chat           *textchat.TextChat Not using own chat
 	// communicate with cloud app
 	appEvents chan Packet
 }

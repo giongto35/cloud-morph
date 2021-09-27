@@ -289,7 +289,7 @@ void *thealthcheck(void *args)
             // socket is died
             cout << "Broken pipe" << endl;
             done = true;
-            // return NULL;
+            return NULL;
         }
         Sleep(2000);
     }
