@@ -158,7 +158,8 @@ func (c *ccImpl) runApp(params []string) {
 
 	var cmd *exec.Cmd
 	if c.osType == Windows {
-		params = append([]string{"-ExecutionPolicy", "Bypass", "-F", "run-app.ps1"}, params...)
+		// params = append([]string{"-ExecutionPolicy", "Bypass", "-F", "run-app.ps1"}, params...)
+		params = append([]string{"-ExecutionPolicy", "Bypass", "-F", "run-sandbox.ps1"}, params...)
 		log.Println("You are running on Windows", params)
 		cmd = exec.Command("powershell", params...)
 	} else {
