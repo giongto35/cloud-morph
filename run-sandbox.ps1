@@ -9,7 +9,7 @@ $template = @'
         </MappedFolder>
     </MappedFolders>
     <LogonCommand>
-        <Command>C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -ExecutionPolicy Bypass -F C:\Users\cloud-morph\run-app.ps1 {0} {1} sandbox</Command>
+        <Command>C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -ExecutionPolicy Bypass -F C:\Users\cloud-morph\run-app.ps1 {0} {1} sandbox {3}</Command>
     </LogonCommand>
 </Configuration>
 '@
@@ -19,7 +19,10 @@ $template = @'
 # 7z e winvm/pkg/ffmpeg.7z  winvm/pkg/
 
 # Create Sandbox Config
-$template -f $args[0], $args[1], "$PWD"  | Out-File -FilePath .\run-sandbox.wsb
+
+$localEthernetIP = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias ethernet).IPAddress
+# pass variables in orders to template
+$template -f $args[0], $args[1], "$PWD", $localEthernetIP  | Out-File -FilePath .\run-sandbox.wsb
 # Run Sandbox
 .\run-sandbox.wsb
 # <Command>C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -executionpolicy unrestricted -command "start powershell \"cd C:\Users\cloud-morph; run-app.ps1 {0} {1}\""</Command>

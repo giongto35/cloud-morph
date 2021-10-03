@@ -1,6 +1,7 @@
 $path = $args[0]
 $appfile = $args[1]
 $isSandbox = $args[2]
+$hostIP = $args[3]
 # Split-Path $outputPath -leaf
 echo "running $PSScriptRoot/winvm/$path/$appfile"
 
@@ -12,8 +13,7 @@ sleep 2
 $title = ((Get-Process -Id $app.id).mainWindowTitle)
 sleep 2
 if ($isSandbox -eq "sandbox") {
-    $localEthernetIP = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias ethernet).IPAddress
-    Start-Process $PSScriptRoot/winvm/pkg/ffmpeg.exe -PassThru -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -pix_fmt yuv420p -vf scale=1280:-2 -c:v libvpx -f rtp rtp://$localEthernetIP`:5004"
+    Start-Process $PSScriptRoot/winvm/pkg/ffmpeg.exe -PassThru -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -pix_fmt yuv420p -vf scale=1280:-2 -c:v libvpx -f rtp rtp://$hostIP`:5004"
 }
 else {
     Start-Process ffmpeg -PassThru -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -pix_fmt yuv420p -vf scale=1280:-2 -c:v libvpx -f rtp rtp://127.0.0.1:5004"
