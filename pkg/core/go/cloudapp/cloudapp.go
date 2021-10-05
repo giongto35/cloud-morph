@@ -1,9 +1,9 @@
-// Package cloudapp is an individual cloud application
 package cloudapp
 
 import (
 	"bufio"
 	"container/ring"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,10 +12,10 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
-	"time"
 
 	"github.com/giongto35/cloud-morph/pkg/common/config"
 	"github.com/giongto35/cloud-morph/pkg/common/cws"
+	"github.com/giongto35/cloud-morph/pkg/shim"
 	"github.com/pion/rtp"
 )
 
@@ -37,17 +37,16 @@ const (
 )
 
 type ccImpl struct {
-	isReady       bool
 	videoListener *net.UDPConn
 	audioListener *net.UDPConn
 	videoStream   chan *rtp.Packet
 	audioStream   chan *rtp.Packet
 	appEvents     chan Packet
-	wineConn      *net.TCPConn
 	osType        osTypeEnum
 	screenWidth   float32
 	screenHeight  float32
 	ssrc          uint32
+	shim          shim.Server
 }
 
 // Packet represents a packet in cloudapp
@@ -82,16 +81,6 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		c.osType = Linux
 	}
 
-	la, err := net.ResolveTCPAddr("tcp4", ":9090")
-	if err != nil {
-		panic(err)
-	}
-	log.Println("listening wine at port 9090")
-	ln, err := net.ListenTCP("tcp", la)
-	if err != nil {
-		panic(err)
-	}
-
 	fmt.Println(cfg)
 	c.launchAppVM(curVideoRTPPort, curAudioRTPPort, cfg)
 	log.Println("Launched application VM")
@@ -118,25 +107,8 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		log.Println("Launched Audio stream listener")
 	}
 
-	// Maintain input stream from server to Virtual Machine over websocket
-	go c.healthCheckVM()
-	// NOTE: Why Websocket: because normal IPC cannot communicate cross OS.
-	go func() {
-		for {
-			log.Println("Waiting syncinput to connect")
-			// Polling Wine socket connection (input stream)
-			conn, err := ln.AcceptTCP()
-			log.Println("Accepted a TCP connection")
-			if err != nil {
-				log.Println("err: ", err)
-			}
-			conn.SetKeepAlive(true)
-			conn.SetKeepAlivePeriod(10 * time.Second)
-			c.wineConn = conn
-			c.isReady = true
-			log.Println("Launched IPC with VM")
-		}
-	}()
+	c.shim = shim.Server{}
+	go c.shim.Start(context.Background())
 
 	return c
 }
@@ -173,13 +145,9 @@ func (c *ccImpl) runApp(params []string) {
 	}
 	cmd.Start()
 	go func() {
-		buf := bufio.NewReader(stdout) // Notice that this is not in a loop
-		for {
-			line, _, _ := buf.ReadLine()
-			if string(line) == "" {
-				continue
-			}
-			log.Println(string(line))
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			log.Printf(scanner.Text())
 		}
 	}()
 	log.Println("Done running script")
@@ -227,20 +195,6 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	}()
 
 	return done
-}
-
-// healthCheckVM to maintain connection with Virtual Machine
-func (c *ccImpl) healthCheckVM() {
-	log.Println("Starting health check")
-	for {
-		if c.wineConn != nil {
-			_, err := c.wineConn.Write([]byte{0})
-			if err != nil {
-				log.Println(err)
-			}
-		}
-		time.Sleep(2 * time.Second)
-	}
 }
 
 func (c *ccImpl) Handle() {
@@ -325,7 +279,6 @@ func (c *ccImpl) listenAudioStream() {
 
 // Listen to videostream, output to videoStream channel
 func (c *ccImpl) listenVideoStream() {
-
 	// Broadcast video stream
 	go func() {
 		defer func() {
@@ -362,63 +315,45 @@ func (c *ccImpl) listenVideoStream() {
 			c.videoStream <- packet
 		}
 	}()
-
 }
 
 func (c *ccImpl) SendInput(packet Packet) {
-	switch packet.Type {
-	case eventKeyUp:
-		c.simulateKey(packet.Data, 0)
-	case eventKeyDown:
-		c.simulateKey(packet.Data, 1)
-	case eventMouseMove:
-		c.simulateMouseEvent(packet.Data, 0)
-	case eventMouseDown:
-		c.simulateMouseEvent(packet.Data, 1)
-	case eventMouseUp:
-		c.simulateMouseEvent(packet.Data, 2)
-	}
-}
-
-func (c *ccImpl) simulateKey(jsonPayload string, keyState byte) {
-	if !c.isReady {
+	if !c.shim.IsReady() {
 		return
 	}
 
-	log.Println("KeyDown event", jsonPayload)
-	type keydownPayload struct {
-		KeyCode int `json:keycode`
+	switch packet.Type {
+	case eventKeyUp:
+		c.simulateKey(packet.Data, shim.KeyEventUp)
+	case eventKeyDown:
+		c.simulateKey(packet.Data, shim.KeyEventDown)
+	case eventMouseMove:
+		c.simulateMouseEvent(packet.Data, shim.MouseEventMove)
+	case eventMouseDown:
+		c.simulateMouseEvent(packet.Data, shim.MouseEventDown)
+	case eventMouseUp:
+		c.simulateMouseEvent(packet.Data, shim.MouseEventUp)
 	}
-	p := &keydownPayload{}
+}
+
+func (c *ccImpl) simulateKey(jsonPayload string, event shim.KeyEvent) {
+	log.Println("KeyDown event", jsonPayload)
+
+	p := &shim.KeyPayload{}
 	json.Unmarshal([]byte(jsonPayload), &p)
 
-	vmKeyMsg := fmt.Sprintf("K%d,%b|", p.KeyCode, keyState)
-	b, err := c.wineConn.Write([]byte(vmKeyMsg))
-	log.Printf("%+v\n", c.wineConn)
-	log.Println("Sended key: ", b, err)
+	b, err := c.shim.Write(shim.ToKey(p.KeyCode, event))
+	log.Println("Key sent: ", b, err)
 }
 
 // simulateMouseEvent handles mouse down event and send it to Virtual Machine over TCP port
-func (c *ccImpl) simulateMouseEvent(jsonPayload string, mouseState int) {
-	if !c.isReady {
-		return
-	}
-
-	type mousePayload struct {
-		IsLeft byte    `json:isLeft`
-		X      float32 `json:x`
-		Y      float32 `json:y`
-		Width  float32 `json:width`
-		Height float32 `json:height`
-	}
-	p := &mousePayload{}
+func (c *ccImpl) simulateMouseEvent(jsonPayload string, event shim.MouseEvent) {
+	p := &shim.MousePayload{}
 	json.Unmarshal([]byte(jsonPayload), &p)
 	p.X = p.X * c.screenWidth / p.Width
 	p.Y = p.Y * c.screenHeight / p.Height
 
-	// Mouse is in format of comma separated "12.4,52.3"
-	vmMouseMsg := fmt.Sprintf("M%d,%d,%f,%f,%f,%f|", p.IsLeft, mouseState, p.X, p.Y, p.Width, p.Height)
-	_, err := c.wineConn.Write([]byte(vmMouseMsg))
+	_, err := c.shim.Write(shim.ToMouse(p.IsLeft, event, p.X, p.Y, p.Width, p.Height))
 	if err != nil {
 		fmt.Println("Err: ", err)
 	}
