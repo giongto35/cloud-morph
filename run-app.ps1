@@ -21,4 +21,4 @@ else {
 sleep 2
 # x86_64-w64-mingw32-g++ $PSScriptRoot\winvm\syncinput.cpp -o $PSScriptRoot\winvm\syncinput.exe -lws2_32 -lpthread -static
 
-Start-Process $PSScriptRoot/winvm/syncinput.exe -PassThru -ArgumentList "$title", ".", "windows"
+Start-Process $PSScriptRoot/winvm/syncinput.exe -PassThru -ArgumentList "$title", ".", "windows", $hostIP
