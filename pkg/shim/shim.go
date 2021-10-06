@@ -51,8 +51,11 @@ func FocusWindow(hWnd syscall.Handle) {
 	//SendKeyEvent(uintptr(hWnd), KeyPayload{KeyCode: 113}, KeyEventDown, false)
 }
 
-// sendKeyEvent
-// isDx use hardware keys, it's a special case.
+func FormatWindow(hWnd syscall.Handle) {
+	SetWindowPos(hWnd, 0, 0, 0, 800, 600, 0)
+	SetWindowLong(hWnd, GWL_STYLE, 0)
+}
+
 func SendKeyEvent(hWnd uintptr, payload KeyPayload, event KeyEvent, isDx bool) {
 	log.Printf("Sending key %v", payload)
 

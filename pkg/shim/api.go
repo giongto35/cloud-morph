@@ -73,7 +73,7 @@ func FromKey(data string) (key KeyPayload, event KeyEvent, err error) {
 //   M1,0,429.522430,276.350586,691.000000,801.156250
 // where:
 //   M -- event constant prefix
-//   1 --
+//   1 -- left button ???
 //   0 -- mouse state: 0 -- move, 1 -- pressed, 2 -- released
 //   429.522430 -- x coordinate of the cursor
 //   276.350586 -- y coordinate of the cursor

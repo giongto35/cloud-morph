@@ -143,13 +143,23 @@ func (c *ccImpl) runApp(params []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cmd.Start()
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			log.Printf(scanner.Text())
 		}
 	}()
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			log.Printf(scanner.Text())
+		}
+	}()
+	cmd.Start()
 	log.Println("Done running script")
 	cmd.Wait()
 }

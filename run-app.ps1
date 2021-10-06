@@ -1,7 +1,7 @@
 $path = $args[0]
 $appfile = $args[1]
-$os = $args[7]
 # Split-Path $outputPath -leaf
+echo "running winvm/$path/$appfile"
 
 taskkill /FI "ImageName eq $appfile" /F
 taskkill /FI "ImageName eq ffmpeg.exe" /F
@@ -21,7 +21,7 @@ $ffmpegParams = -join @(
 # Start-Process ffmpeg -PassThru -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -pix_fmt yuv420p -vf scale=1280:-2 -c:v libvpx -f rtp rtp://127.0.0.2:5004"
 # sleep 2
 Start-Process ffmpeg -PassThru -ArgumentList "$ffmpegParams"
-lleep 2
-x86_64-w64-mingw32-g++ .\winvm\syncinput.cpp -o .\winvm\syncinput.exe -lws2_32 -lpthread -static
+# sleep 2
+# x86_64-w64-mingw32-g++ .\winvm\syncinput.cpp -o .\winvm\syncinput.exe -lws2_32 -lpthread -static
 
-Start-Process winvm/syncinput.exe -PassThru -ArgumentList "$title", ".", "$os"
+# Start-Process winvm/syncinput.exe -PassThru -ArgumentList "$title", ".", "$os"

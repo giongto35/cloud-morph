@@ -94,6 +94,26 @@ type RECT struct {
 	Left, Top, Right, Bottom int32
 }
 
+// GetWindowLong
+const (
+	// GWL_EXSTYLE sets a new extended window style.
+	GWL_EXSTYLE = -20
+	// GWL_HINSTANCE sets a new application instance handle.
+	GWL_HINSTANCE = -6
+	// GWL_ID sets a new identifier of the child window.
+	// The window cannot be a top-level window.
+	GWL_ID = -12
+	// GWL_STYLE sets a new window style.
+	GWL_STYLE = -16
+	// GWL_USERDATA sets the user data associated with the window.
+	// This data is intended for use by the application that created the window.
+	// Its value is initially zero.
+	GWL_USERDATA = -21
+	// GWL_WNDPROC sets a new address for the window procedure.
+	// You cannot change this attribute if the window does not belong to the same process as the calling thread.
+	GWL_WNDPROC = -4
+)
+
 // user32.dll
 var (
 	user32              *windows.LazyDLL
@@ -106,6 +126,8 @@ var (
 	sendInput           *windows.LazyProc
 	setActiveWindow     *windows.LazyProc
 	setForegroundWindow *windows.LazyProc
+	setWindowPos        *windows.LazyProc
+	setWindowLong       *windows.LazyProc
 )
 
 func init() {
@@ -119,6 +141,8 @@ func init() {
 	sendInput = user32.NewProc("SendInput")
 	setActiveWindow = user32.NewProc("SetActiveWindow")
 	setForegroundWindow = user32.NewProc("SetForegroundWindow")
+	setWindowPos = user32.NewProc("SetWindowPos")
+	setWindowLong = user32.NewProc("SetWindowLongW")
 }
 
 func FreeLibs() error {
@@ -223,6 +247,34 @@ func SetActiveWindow(hWnd syscall.Handle) (rez syscall.Handle, err error) {
 func SetForegroundWindow(hWnd syscall.Handle) bool {
 	r, _, _ := syscall.Syscall(setForegroundWindow.Addr(), 1, uintptr(hWnd), 0, 0)
 	return r != 0
+}
+
+// SetWindowPos changes the size, position, and Z order of a child, pop-up, or top-level window.
+// These windows are ordered according to their appearance on the screen.
+// The topmost window receives the highest rank and is the first window in the Z order.
+//
+// See: https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos
+func SetWindowPos(hWnd syscall.Handle, hWndInsertAfter syscall.Handle, x, y, width, height int32, flags uint32) bool {
+	r, _, _ := syscall.Syscall9(setWindowPos.Addr(), 7,
+		uintptr(hWnd),
+		uintptr(hWndInsertAfter),
+		uintptr(x),
+		uintptr(y),
+		uintptr(width),
+		uintptr(height),
+		uintptr(flags),
+		0,
+		0)
+	return r != 0
+}
+
+// SetWindowLong Changes an attribute of the specified window.
+// The function also sets the 32-bit (long) value at the specified offset into the extra window memory.
+//
+// See: https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowlongw
+func SetWindowLong(hWnd syscall.Handle, index, value int32) int32 {
+	r, _, _ := syscall.Syscall(setWindowLong.Addr(), 3, uintptr(hWnd), uintptr(index), uintptr(value))
+	return int32(r)
 }
 
 // GetSystemMetrics retrieves the specified system metric or system configuration setting.
