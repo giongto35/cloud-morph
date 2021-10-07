@@ -28,7 +28,8 @@ type Config struct {
 	HasChat   bool   `yaml:"hasChat"`
 	PageTitle string `yaml:"pageTitle"`
 	// WebRTC config
-	StunTurn string `yaml:"stunturn"` // Optional, Default: Google STUN
+	StunTurn   string `yaml:"stunturn"` // Optional, Default: Google STUN
+	VideoCodec string `yaml:"videoCodec" default:"vpx"`
 }
 
 // TODO: sync with discovery.go

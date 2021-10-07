@@ -81,7 +81,7 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 		c.osType = Linux
 	}
 
-	fmt.Println(cfg)
+	fmt.Printf("%+v", cfg)
 	c.launchAppVM(curVideoRTPPort, curAudioRTPPort, cfg)
 	log.Println("Launched application VM")
 
@@ -169,25 +169,25 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	var cmd *exec.Cmd
 	var params []string
 
-	// Setup wine params and run
-	log.Println("execing run-wine.sh")
-	// TODO: refactor to key value
 	params = []string{cfg.Path, cfg.AppFile, cfg.WindowTitle}
-	if cfg.HWKey {
-		params = append(params, "game")
-	} else {
-		params = append(params, "")
-	}
-	params = append(params, []string{strconv.Itoa(cfg.ScreenWidth), strconv.Itoa(cfg.ScreenHeight)}...)
-	if *cfg.IsWindowMode {
-		params = append(params, "-w")
-	} else {
-		params = append(params, "")
-	}
 	if c.osType == Windows {
-		params = append(params, "windows")
+		log.Printf("executing run-app.ps1")
+		params = append(params, "-vcodec ", cfg.VideoCodec)
 	} else {
-		params = append(params, "")
+		// Setup wine params and run
+		log.Println("execing run-wine.sh")
+		// TODO: refactor to key value
+		if cfg.HWKey {
+			params = append(params, "game")
+		} else {
+			params = append(params, "")
+		}
+		params = append(params, []string{strconv.Itoa(cfg.ScreenWidth), strconv.Itoa(cfg.ScreenHeight)}...)
+		if *cfg.IsWindowMode {
+			params = append(params, "-w")
+		} else {
+			params = append(params, "")
+		}
 	}
 
 	c.runApp(params)
