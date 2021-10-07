@@ -1,6 +1,8 @@
 # named params
 param ($path,$appfile,$tit,$vcodec)
 
+$os = 'windows'
+
 # Split-Path $outputPath -leaf
 echo "running winvm/$path/$appfile"
 
@@ -24,9 +26,15 @@ $ffmpegParams = -join @(
 echo "encoding params: "$ffmpegParams
 
 Start-Process ffmpeg -PassThru -ArgumentList "$ffmpegParams"
+sleep 2
+
+# shim build/running
+$env:CGO_ENABLED = 0
+go build -o ./ ./cmd/shim/shim.go
+sleep 2
 
 # Start-Process ffmpeg -PassThru -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -pix_fmt yuv420p -vf scale=1280:-2 -c:v libvpx -f rtp rtp://127.0.0.2:5004"
 # sleep 2
 # x86_64-w64-mingw32-g++ .\winvm\syncinput.cpp -o .\winvm\syncinput.exe -lws2_32 -lpthread -static
 
-# Start-Process winvm/syncinput.exe -PassThru -ArgumentList "$title", ".", "$os"
+Start-Process ./shim.exe -PassThru -ArgumentList "$title", ".", "$os"
