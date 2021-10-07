@@ -39,16 +39,13 @@ func FindWindow(title string) (syscall.Handle, error) {
 }
 
 func FocusWindow(hWnd syscall.Handle) {
-	//_, err := SetActiveWindow(hWnd)
-	//if err != nil {
-	//	log.Printf("active window fail, %v", err)
-	//}
-	//win.ShowWindow(win.HWND(hWnd), win.SW_RESTORE)
-	//win.SetFocus(win.HWND(hWnd))
-	//win.BringWindowToTop(win.HWND(hWnd))
-	SetForegroundWindow(hWnd)
+	//_, _ = SetActiveWindow(hWnd)
+	//ShowWindow(hWnd, SW_RESTORE)
+	//SetFocus(hWnd)
+	//BringWindowToTop(hWnd)
 
-	//SendKeyEvent(uintptr(hWnd), KeyPayload{KeyCode: 113}, KeyEventDown, false)
+	// works better
+	SetForegroundWindow(hWnd)
 }
 
 func FormatWindow(hWnd syscall.Handle) {
@@ -57,16 +54,12 @@ func FormatWindow(hWnd syscall.Handle) {
 }
 
 func SendKeyEvent(hWnd uintptr, payload KeyPayload, event KeyEvent, isDx bool) {
-	log.Printf("Sending key %v", payload)
-
 	FocusWindow(syscall.Handle(hWnd))
 
 	input := KEYBD_INPUT{Type: INPUT_KEYBOARD}
-
 	key := payload.KeyCode
-
 	if isDx {
-		if key == VK_UP || key == VK_DOWN || key == VK_LEFT || key == VK_RIGHT {
+		if key >= VK_LEFT && key <= VK_DOWN {
 			input.Ki.DwFlags = KEYEVENTF_EXTENDEDKEY
 			log.Printf(" after %v", key)
 		}

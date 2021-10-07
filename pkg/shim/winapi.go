@@ -114,9 +114,49 @@ const (
 	GWL_WNDPROC = -4
 )
 
+// ShowWindow
+const (
+	// SW_HIDE hides the window and activates another window.
+	SW_HIDE = 0
+	// SW_SHOWNORMAL activates and displays a window. If the window is minimized or maximized,
+	// the system restores it to its original size and position.
+	// An application should specify this flag when displaying the window for the first time.
+	SW_SHOWNORMAL = 1
+	SW_NORMAL     = 1
+	// Activates the window and displays it as a minimized window.
+	SW_SHOWMINIMIZED = 2
+	// SW_SHOWMAXIMIZED activates the window and displays it as a maximized window.
+	SW_SHOWMAXIMIZED = 3
+	SW_MAXIMIZE      = 3
+	// SW_SHOWNOACTIVATE displays a window in its most recent size and position.
+	// This value is similar to SW_SHOWNORMAL, except that the window is not activated.
+	SW_SHOWNOACTIVATE = 4
+	// SW_SHOW activates the window and displays it in its current size and position.
+	SW_SHOW = 5
+	// SW_MINIMIZE minimizes the specified window and activates the next top-level window in the Z order.
+	SW_MINIMIZE = 6
+	// SW_SHOWMINNOACTIVE displays the window as a minimized window. This value is similar to SW_SHOWMINIMIZED,
+	// except the window is not activated.
+	SW_SHOWMINNOACTIVE = 7
+	// SW_SHOWNA displays the window in its current size and position. This value is similar to SW_SHOW,
+	// except that the window is not activated.
+	SW_SHOWNA = 8
+	// SW_RESTORE activates and displays the window. If the window is minimized or maximized,
+	// the system restores it to its original size and position.
+	// An application should specify this flag when restoring a minimized window.
+	SW_RESTORE = 9
+	// SW_SHOWDEFAULT sets the show state based on the SW_ value specified in the STARTUPINFO structure
+	// passed to the CreateProcess function by the program that started the application.
+	SW_SHOWDEFAULT = 10
+	// SW_FORCEMINIMIZE minimizes a window, even if the thread that owns the window is not responding.
+	// This flag should only be used when minimizing windows from a different thread.
+	SW_FORCEMINIMIZE = 11
+)
+
 // user32.dll
 var (
 	user32              *windows.LazyDLL
+	bringWindowToTop    *windows.LazyProc
 	enumWindows         *windows.LazyProc
 	getDesktopWindow    *windows.LazyProc
 	getSystemMetrics    *windows.LazyProc
@@ -128,10 +168,13 @@ var (
 	setForegroundWindow *windows.LazyProc
 	setWindowPos        *windows.LazyProc
 	setWindowLong       *windows.LazyProc
+	showWindow          *windows.LazyProc
+	setFocus            *windows.LazyProc
 )
 
 func init() {
 	user32 = windows.NewLazySystemDLL("user32.dll")
+	bringWindowToTop = user32.NewProc("BringWindowToTop")
 	enumWindows = user32.NewProc("EnumWindows")
 	getDesktopWindow = user32.NewProc("GetDesktopWindow")
 	getSystemMetrics = user32.NewProc("GetSystemMetrics")
@@ -143,10 +186,22 @@ func init() {
 	setForegroundWindow = user32.NewProc("SetForegroundWindow")
 	setWindowPos = user32.NewProc("SetWindowPos")
 	setWindowLong = user32.NewProc("SetWindowLongW")
+	showWindow = user32.NewProc("ShowWindow")
+	setFocus = user32.NewProc("SetFocus")
 }
 
 func FreeLibs() error {
 	return syscall.FreeLibrary(syscall.Handle(user32.Handle()))
+}
+
+// BringWindowToTop brings the specified window to the top of the Z order.
+// If the window is a top-level window, it is activated.
+// If the window is a child window, the top-level parent window associated with the child window is activated.
+//
+// See: https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-bringwindowtotop
+func BringWindowToTop(hWnd syscall.Handle) bool {
+	r, _, _ := syscall.Syscall(bringWindowToTop.Addr(), 1, uintptr(hWnd), 0, 0)
+	return r != 0
 }
 
 // EnumWindows enumerates all top-level windows on the screen by passing the handle to each window,
@@ -275,6 +330,23 @@ func SetWindowPos(hWnd syscall.Handle, hWndInsertAfter syscall.Handle, x, y, wid
 func SetWindowLong(hWnd syscall.Handle, index, value int32) int32 {
 	r, _, _ := syscall.Syscall(setWindowLong.Addr(), 3, uintptr(hWnd), uintptr(index), uintptr(value))
 	return int32(r)
+}
+
+// ShowWindow sets the specified window's show state.
+//
+// See: https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
+func ShowWindow(hWnd syscall.Handle, nCmdShow int32) bool {
+	r, _, _ := syscall.Syscall(showWindow.Addr(), 2, uintptr(hWnd), uintptr(nCmdShow), 0)
+	return r != 0
+}
+
+// SetFocus sets the keyboard focus to the specified window.
+// The window must be attached to the calling thread's message queue.
+//
+// See: https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setfocus
+func SetFocus(hWnd syscall.Handle) syscall.Handle {
+	r, _, _ := syscall.Syscall(setFocus.Addr(), 1, uintptr(hWnd), 0, 0)
+	return syscall.Handle(r)
 }
 
 // GetSystemMetrics retrieves the specified system metric or system configuration setting.
