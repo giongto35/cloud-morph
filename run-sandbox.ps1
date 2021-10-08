@@ -13,7 +13,8 @@ $template = @'
     </LogonCommand>
 </Configuration>
 '@
-# Init Sandbox mount dir
+
+# To install Virtual Box Image. Copy FFMPEG to VM
 # mkdir winvm/pkg
 # Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z" -OutFile winvm/pkg/ffmpeg.7z
 # 7z e winvm/pkg/ffmpeg.7z  winvm/pkg/
