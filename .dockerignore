@@ -1,3 +1,10 @@
+.idea/
+.vscode/
+docs/
+.gitignore
+LICENSE
+README.md
+
 **/apps*
 backup.tar
 
