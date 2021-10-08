@@ -86,7 +86,7 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	if err != nil {
 		panic(err)
 	}
-	log.Println("listening wine at port 9090")
+	log.Println("listening syncinput at port 9090")
 	ln, err := net.ListenTCP("tcp", la)
 	if err != nil {
 		panic(err)
