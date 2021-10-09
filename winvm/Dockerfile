@@ -31,11 +31,11 @@ COPY download_gecko_and_mono.sh /root/download_gecko_and_mono.sh
 RUN chmod +x /root/download_gecko_and_mono.sh \
     && /root/download_gecko_and_mono.sh "$(dpkg -s wine-stable | grep "^Version:\s" | awk '{print $2}' | sed -E 's/~.*$//')"
 
-RUN mkdir -p /winevm
-WORKDIR /winevm
+RUN mkdir -p /winvm
+WORKDIR /winvm
 COPY ./ ./
 COPY ./default.pa /etc/pulse/
 # Compile syncinput.exe
-RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o /winevm/syncinput.exe -lws2_32 -lpthread -static
+RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o /winvm/syncinput.exe -lws2_32 -lpthread -static
 
 COPY ./supervisord.conf /etc/supervisor/conf.d/
