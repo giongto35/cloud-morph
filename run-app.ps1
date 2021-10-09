@@ -18,7 +18,7 @@ $title = ((Get-Process -Id $app.id).mainWindowTitle)
 sleep 2
 # x86_64-w64-mingw32-g++ $PSScriptRoot\winvm\syncinput.cpp -o $PSScriptRoot\winvm\syncinput.exe -lws2_32 -lpthread -static
 if ($isSandbox -eq "sandbox") {
-    Start-Process $PSScriptRoot/winvm/pkg/ffmpeg/ffmpeg.exe -PassThru -WindowStyle Minimized -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -pix_fmt yuv420p -vf scale=1280:-2 -tune zerolatency -c:v libx264 -f rtp rtp://$hostIP`:5004"
+    Start-Process $PSScriptRoot/winvm/pkg/ffmpeg/ffmpeg.exe -PassThru -NoNewWindow -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -pix_fmt yuv420p -vf scale=1280:-2 -tune zerolatency -c:v libx264 -f rtp rtp://$hostIP`:5004"
 }
 else {
     Start-Process ffmpeg -PassThru -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -vf scale=1280:-2 -tune zerolatency -c:v libx264 -f rtp rtp://127.0.0.1:5004"
@@ -30,5 +30,5 @@ sleep 2
 # $syncinput.Start()
 
 while ($true) {
-    Start-Process -Wait $PSScriptRoot/winvm/syncinput.exe -PassThru -WindowStyle Minimized -ArgumentList "$title", ".", "windows", $hostIP
+    Start-Process -Wait $PSScriptRoot/winvm/syncinput.exe -PassThru -NoNewWindow -ArgumentList "$title", ".", "windows", $hostIP
 }
