@@ -47,7 +47,7 @@ Switch applications using the sidebar on the left.
 ## Getting Started
 ### Windows (WIP)
 #### Running in Sandbox (Recommended)
-1. Using setupsandbox.ps1 to download and install necessary packages (FFMPEG) in sandbox image (`winvm/pkg`)
+1. Using `setup-sandbox.ps1` to download and install necessary packages (FFMPEG) in sandbox image (`winvm/pkg`)
 2. `go run server.go`
 
 #### Running without Sandbox
