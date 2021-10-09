@@ -215,7 +215,7 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	if c.osType == Windows {
 		params = append(params, cfg.Path)
 	} else {
-		params = append(params, "/winvm/"+cfg.Path) // Path in docker container after mount
+		params = append(params, "/"+cfg.Path) // Path in docker container after mount is at root
 	}
 	params = append(params, []string{cfg.AppFile, cfg.WindowTitle}...)
 	if cfg.HWKey {
