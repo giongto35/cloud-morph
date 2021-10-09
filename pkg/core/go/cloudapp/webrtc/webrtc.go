@@ -273,12 +273,12 @@ func (w *WebRTC) IsConnected() bool {
 	return w.isConnected
 }
 
-func (w *WebRTC) startStreaming(vp8Track *webrtc.TrackLocalStaticRTP, opusTrack *webrtc.TrackLocalStaticRTP) {
+func (w *WebRTC) startStreaming(videoTrack *webrtc.TrackLocalStaticRTP, opusTrack *webrtc.TrackLocalStaticRTP) {
 	log.Println("Start streaming")
 	// receive frame buffer
 	go func() {
 		for packet := range w.ImageChannel {
-			if writeErr := vp8Track.WriteRTP(packet); writeErr != nil {
+			if writeErr := videoTrack.WriteRTP(packet); writeErr != nil {
 				panic(writeErr)
 			}
 		}
