@@ -15,6 +15,7 @@ bool done;
 HWND hwnd;
 char *winTitle;
 char dockerHost[20];
+string hardcodeIP;
 bool isMac;
 bool isWindows;
 
@@ -61,7 +62,15 @@ int clientConnect()
     }
     else if (isWindows)
     {
-        addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        if (hardcodeIP != "")
+        {
+            cout << "Running with hardcode IP" << hardcodeIP << endl;
+            addr.sin_addr.s_addr = inet_addr(hardcodeIP.c_str());
+        }
+        else
+        {
+            addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        }
     }
     else
     {
@@ -98,13 +107,13 @@ HWND getWindowByTitle(char *pattern)
         hwnd = FindWindowEx(NULL, hwnd, NULL, NULL);
         DWORD dwPID = 0;
         GetWindowThreadProcessId(hwnd, &dwPID);
-        cout << "Searching" << hwnd << endl;
+        cout << "Scanning" << hwnd << endl;
         int len = GetWindowTextLength(hwnd) + 1;
 
         char title[len];
         GetWindowText(hwnd, title, len);
         string st(title);
-        cout << "len " << len << " Title : " << st << endl;
+        cout << "Title : " << st << endl;
 
         if (st.find(pattern) != string::npos)
         {
@@ -272,7 +281,7 @@ Mouse parseMousePayload(string stPos)
 void formatWindow(HWND hwnd)
 {
     SetWindowPos(hwnd, NULL, 0, 0, 800, 600, 0);
-    SetWindowLong(hwnd, GWL_STYLE, 0);
+    // SetWindowLong(hwnd, GWL_STYLE, 0);
     cout << "Window formated" << endl;
 }
 
@@ -363,6 +372,10 @@ int main(int argc, char *argv[])
             cout << "Running syncinput on Windows";
         }
     }
+    if (argc > 4)
+    {
+        hardcodeIP = argv[4];
+    }
 
     server = clientConnect();
 
@@ -371,7 +384,8 @@ int main(int argc, char *argv[])
     getDesktopResolution(screenWidth, screenHeight);
     cout << "width " << screenWidth << " "
          << "height " << screenHeight << endl;
-    cout << "Docker host" << dockerHost << endl;
+    cout << "isMac " << isMac << "isWindows " << isWindows << endl;
+    cout << "harcode IP " << hardcodeIP << endl;
 
     formatWindow(hwnd);
 

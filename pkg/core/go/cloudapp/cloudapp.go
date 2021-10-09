@@ -86,7 +86,7 @@ func NewCloudAppClient(cfg config.Config, appEvents chan Packet) *ccImpl {
 	if err != nil {
 		panic(err)
 	}
-	log.Println("listening wine at port 9090")
+	log.Println("listening syncinput at port 9090")
 	ln, err := net.ListenTCP("tcp", la)
 	if err != nil {
 		panic(err)
@@ -153,18 +153,11 @@ func (c *ccImpl) GetSSRC() uint32 {
 	return c.ssrc
 }
 
-func (c *ccImpl) runApp(params []string) {
+func (c *ccImpl) runApp(execCmd string, params []string) chan struct{} {
 	log.Println("params: ", params)
 
 	var cmd *exec.Cmd
-	if c.osType == Windows {
-		params = append([]string{"-ExecutionPolicy", "Bypass", "-F", "run-app.ps1"}, params...)
-		log.Println("You are running on Windows", params)
-		cmd = exec.Command("powershell", params...)
-	} else {
-		log.Println("You are running on Linux")
-		cmd = exec.Command("./run-wine.sh", params...)
-	}
+	cmd = exec.Command(execCmd, params...)
 
 	cmd.Env = os.Environ()
 	stdout, err := cmd.StdoutPipe()
@@ -184,17 +177,47 @@ func (c *ccImpl) runApp(params []string) {
 	}()
 	log.Println("Done running script")
 	cmd.Wait()
+
+	done := make(chan struct{})
+	// clean up func
+	go func() {
+		<-done
+		err := cmd.Process.Kill()
+		cmd.Process.Kill()
+		log.Println("Kill app: ", err)
+	}()
+	return done
 }
 
 // done to forcefully stop all processes
 func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg config.Config) chan struct{} {
-	var cmd *exec.Cmd
+	var execCmd string
 	var params []string
 
 	// Setup wine params and run
 	log.Println("execing run-wine.sh")
 	// TODO: refactor to key value
-	params = []string{cfg.Path, cfg.AppFile, cfg.WindowTitle}
+	// Add Exec command based on platform
+	if c.osType == Windows {
+		log.Println("You are running on Windows")
+		execCmd = "powershell"
+		params = append(params, []string{"-ExecutionPolicy", "Bypass", "-F"}...)
+		if cfg.IsVirtualized {
+			params = append(params, "run-sandbox.ps1")
+		} else {
+			params = append(params, "run-app.ps1")
+		}
+	} else {
+		log.Println("You are running on Linux")
+		execCmd = "./run-wine.sh"
+	}
+	// Add params
+	if c.osType == Windows {
+		params = append(params, cfg.Path)
+	} else {
+		params = append(params, "/"+cfg.Path) // Path in docker container after mount is at root
+	}
+	params = append(params, []string{cfg.AppFile, cfg.WindowTitle}...)
 	if cfg.HWKey {
 		params = append(params, "game")
 	} else {
@@ -211,22 +234,10 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	} else {
 		params = append(params, "")
 	}
-
-	c.runApp(params)
-	// update flag
 	c.screenWidth = float32(cfg.ScreenWidth)
 	c.screenHeight = float32(cfg.ScreenHeight)
 
-	done := make(chan struct{})
-	// clean up func
-	go func() {
-		<-done
-		err := cmd.Process.Kill()
-		cmd.Process.Kill()
-		log.Println("Kill app: ", err)
-	}()
-
-	return done
+	return c.runApp(execCmd, params)
 }
 
 // healthCheckVM to maintain connection with Virtual Machine

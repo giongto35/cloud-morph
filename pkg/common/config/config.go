@@ -18,8 +18,8 @@ type Config struct {
 	HWKey        bool   `yaml:"hardwareKey"`
 	AppMode      string `yaml:"appMode"`
 	AppName      string `yaml:"appName"`
-	ScreenWidth  int    `yaml:"screenWidth"`
-	ScreenHeight int    `yaml:"screenHeight"`
+	ScreenWidth  int    `yaml:"screenWidth"`  // Default: 800
+	ScreenHeight int    `yaml:"screenHeight"` // Default: 600
 	IsWindowMode *bool  `yaml:"isWindowMode"`
 	// Discovery service
 	DiscoveryHost string `yaml:"discoveryHost"`
@@ -28,7 +28,9 @@ type Config struct {
 	HasChat   bool   `yaml:"hasChat"`
 	PageTitle string `yaml:"pageTitle"`
 	// WebRTC config
-	StunTurn string `yaml:"stunturn"` // Optional, Default: Google STUN
+	StunTurn string `yaml:"stunturn"` // Default: Google STUN
+	// Virtualization mode: To use in Windows. Linux is already fully virtualized with Docker+Wine
+	IsVirtualized bool `yaml:"virtualize"`
 }
 
 // TODO: sync with discovery.go
