@@ -212,7 +212,12 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 		execCmd = "./run-wine.sh"
 	}
 	// Add params
-	params = append(params, []string{cfg.Path, cfg.AppFile, cfg.WindowTitle}...)
+	if c.osType == Windows {
+		params = append(params, cfg.Path)
+	} else {
+		params = append(params, "/winvm/"+cfg.Path) // Path in docker container after mount
+	}
+	params = append(params, []string{cfg.AppFile, cfg.WindowTitle}...)
 	if cfg.HWKey {
 		params = append(params, "game")
 	} else {

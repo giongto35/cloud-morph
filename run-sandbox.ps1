@@ -15,17 +15,14 @@ $template = @'
 '@
 
 # To install Virtual Box Image. Copy FFMPEG to VM
-# mkdir winvm/pkg
-# Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z" -OutFile winvm/pkg/ffmpeg.7z
-# 7z e winvm/pkg/ffmpeg.7z  winvm/pkg/
 
 # Create Sandbox Config
 
 $localEthernetIP = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias ethernet).IPAddress
 # pass variables in orders to template
 $template -f $args[0], $args[1], "$PWD", $localEthernetIP  | Out-File -FilePath .\run-sandbox.wsb
-x86_64-w64-mingw32-g++ $PSScriptRoot\winvm\syncinput.cpp -o $PSScriptRoot\winvm\syncinput.exe -lws2_32 -lpthread -static
+# x86_64-w64-mingw32-g++ $PSScriptRoot\winvm\syncinput.cpp -o $PSScriptRoot\winvm\syncinput.exe -lws2_32 -lpthread -static
+
+powershell -ExecutionPolicy Bypass -F "setup-sandbox.ps1"
 # Run Sandbox
 .\run-sandbox.wsb
-# <Command>C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -executionpolicy unrestricted -command "start powershell \"cd C:\Users\cloud-morph; run-app.ps1 {0} {1}\""</Command>
-# <Command>powershell -ExecutionPolicy Bypass -F "cd C:\Users\cloud-morph; run-app.ps1 {0} {1}"</Command>

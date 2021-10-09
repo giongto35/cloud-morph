@@ -45,14 +45,26 @@ Switch applications using the sidebar on the left.
 - Plugable Cloud gaming module: The cloud gaming core is packaged and virtualized to be extendable to different tech stacks. E.g Python, Java ...
 
 ## Getting Started
-### Running localy
+### Windows (WIP)
+#### Running in Sandbox (Recommended)
+1. Using setupsandbox.ps1 to download and install necessary packages (FFMPEG) in sandbox image (`winvm/pkg`)
+2. `go run server.go`
+
+#### Running without Sandbox
+Without Sandbox, environment is not isolated, so mouse + keyboard simulation will target your main mouse + keyboard. If you play on the same machine, so you will experience your mouse is moving away.
+
+1. Install globally dependencies: FFMPEG. Doesn't need to put in sandbox folder as 1
+1. `go run server.go`
+
+### Mac/Ubuntu
+#### Running locally
 1. Install Dependecies: Docker/Go. Or just `setup.sh` 
 2. `go run server.go`
 
-### Running remotely
+#### Running remotely
 - Run `setup_remote.sh 111.111.111.111` inside `./script`, ``111.111.111.111`` is the address of your host. What you will get your application hosted on your remote machine. More details are in Deployment section below.
 
-### Debug in case you need
+#### Debug in case you need
 - If your run is succesful, there will be a Docker running in background. Inside Docker there are 5 apps is running and their logs are suffix with \_err \_out
 ![screenshot](docs/img/debug.png)
 
