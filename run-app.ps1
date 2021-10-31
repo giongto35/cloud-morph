@@ -29,7 +29,7 @@ if ($isSandbox -eq "sandbox") {
     # $syncinput.Start()
 }
 else {
-    Start-Process ffmpeg -PassThru -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -vf scale=1280:-2 -tune zerolatency -c:v libx264 -f rtp rtp://127.0.0.1:5004"
+    Start-Process ffmpeg -PassThru -ArgumentList "-f gdigrab -framerate 30 -i title=`"$title`" -pix_fmt yuv420p -vf scale=1280:-2 -tune zerolatency -c:v libx264 -f rtp rtp://127.0.0.1:5004"
     sleep 2
     Start-Process -PassThru $PSScriptRoot/winvm/syncinput.exe -ArgumentList "$title", ".", "windows"
 }
