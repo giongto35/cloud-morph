@@ -221,7 +221,7 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	if cfg.HWKey {
 		params = append(params, "game")
 	} else {
-		params = append(params, "")
+		params = append(params, "app")
 	}
 	params = append(params, []string{strconv.Itoa(cfg.ScreenWidth), strconv.Itoa(cfg.ScreenHeight)}...)
 	if *cfg.IsWindowMode {
