@@ -164,19 +164,33 @@ func (c *ccImpl) runApp(execCmd string, params []string) chan struct{} {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cmd.Start()
 	go func() {
-		buf := bufio.NewReader(stdout) // Notice that this is not in a loop
-		for {
-			line, _, _ := buf.ReadLine()
-			if string(line) == "" {
-				continue
-			}
-			log.Println(string(line))
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			log.Printf(scanner.Text())
 		}
 	}()
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			log.Printf(scanner.Text())
+		}
+	}()
+	err = cmd.Start()
+	if err != nil {
+		log.Printf("err: cmd fail, %v", err)
+		return nil
+	}
 	log.Println("Done running script")
-	cmd.Wait()
+	err = cmd.Wait()
+	if err != nil {
+		log.Printf("err: cmd fail, %v", err)
+		return nil
+	}
 
 	done := make(chan struct{})
 	// clean up func
