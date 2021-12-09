@@ -45,6 +45,7 @@ type Client struct {
 	done chan struct{}
 	// TODO: Get rid of ssrc
 	ssrc uint32
+	vCodec string
 }
 
 type AppHost struct {
@@ -85,7 +86,7 @@ func (c *Client) Heartbeat() {
 }
 
 func (s *Service) AddClient(clientID string, ws *cws.Client) *Client {
-	client := NewServiceClient(clientID, ws, s.appEvents, s.ccApp.GetSSRC(), s.config.StunTurn)
+	client := NewServiceClient(clientID, ws, s.appEvents, s.ccApp.GetSSRC(), s.config.StunTurn, s.config.VideoCodec
 	s.clients[clientID] = client
 	return client
 }
@@ -100,7 +101,7 @@ func (s *Service) RemoveClient(clientID string) {
 	}
 }
 
-func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ssrc uint32, stunturn string) *Client {
+func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ssrc uint32, stunturn string, vCodec string) *Client {
 	// The 1st packet
 	ws.Send(cws.WSPacket{
 		Type: "init",
@@ -116,6 +117,7 @@ func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ss
 		audioStream: make(chan *rtp.Packet, 100),
 		cancel:      make(chan struct{}),
 		done:        make(chan struct{}),
+		vCodec:      vCodec,
 	}
 }
 
@@ -218,6 +220,7 @@ func (c *Client) Route(ssrc uint32) {
 				}, nil)
 			},
 			ssrc,
+			c.vCodec,
 		)
 
 		if err != nil {
