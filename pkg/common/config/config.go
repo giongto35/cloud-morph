@@ -29,6 +29,7 @@ type Config struct {
 	PageTitle string `yaml:"pageTitle"`
 	// WebRTC config
 	StunTurn string `yaml:"stunturn"` // Default: Google STUN
+	VideoCodec string `yaml:"videoCodec"`
 	// Virtualization mode: To use in Windows. Linux is already fully virtualized with Docker+Wine
 	IsVirtualized bool `yaml:"virtualize"`
 }
