@@ -86,7 +86,7 @@ func (c *Client) Heartbeat() {
 }
 
 func (s *Service) AddClient(clientID string, ws *cws.Client) *Client {
-	client := NewServiceClient(clientID, ws, s.appEvents, s.ccApp.GetSSRC(), s.config.StunTurn, s.config.VideoCodec
+	client := NewServiceClient(clientID, ws, s.appEvents, s.ccApp.GetSSRC(), s.config.StunTurn, s.config.VideoCodec)
 	s.clients[clientID] = client
 	return client
 }
