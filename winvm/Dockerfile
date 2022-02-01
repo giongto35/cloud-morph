@@ -13,7 +13,9 @@ RUN apt-get install --no-install-recommends --assume-yes wget software-propertie
 RUN dpkg --add-architecture i386
 RUN wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add -
 RUN add-apt-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ bionic main' 
-RUN add-apt-repository ppa:cybermax-dexter/sdl2-backport
+
+
+RUN add-apt-repository -y  ppa:cybermax-dexter/sdl2-backport
 
 RUN aptitude install -y winehq-stable
 
@@ -28,8 +30,9 @@ RUN winetricks d3dx9_43
 
 # Download gecko and mono installers
 COPY download_gecko_and_mono.sh /root/download_gecko_and_mono.sh
-RUN chmod +x /root/download_gecko_and_mono.sh \
-    && /root/download_gecko_and_mono.sh "$(dpkg -s wine-stable | grep "^Version:\s" | awk '{print $2}' | sed -E 's/~.*$//')"
+
+RUN  sed 's/\r//' /root/download_gecko_and_mono.sh > /root/download_gecko_and_mono_.sh && chmod +x /root/download_gecko_and_mono_.sh \
+    && /root/download_gecko_and_mono_.sh "$(dpkg -s winehq-stable | grep "^Version:\s" | awk '{print $2}' | sed -E 's/~.*$//')"
 
 RUN mkdir -p /winvm
 WORKDIR /winvm
