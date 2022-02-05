@@ -5,7 +5,7 @@ windowTitle: spider # Window Title: not to show, it's the substring of title to 
 pageTitle: "Spider" # Page Title: To display on webpage
 appName: Spider # App name: to show in discovery
 appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
-hasChat: true # Turn on chat
+hasChat: false # Toggle chat
 virtualize: false # For Windows, Run in VM (Sandbox) if true. Linux is already fully virtualized with Docker+Wine.
 videoCodec: h264 # h264 / vpx (vp8)
 

@@ -3,18 +3,8 @@
 
 <head>
   <title id="app-title">Cloud Morph Demo</title>
-
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <link href="/static/css/main.css" rel="stylesheet" />
-  <!-- Global site tag (gtag.js) - Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZZ8L95MM0V"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-ZZ8L95MM0V');
-  </script>
 </head>
 
 <body>
@@ -28,7 +18,9 @@
         <iframe id="app-container" src="/static/embed/embed.html" frameBorder="0" overflow="hidden"></iframe>
     </div>
     <div id="chat">
+      {{if .HasChat}}
       <script id="cid0020000291329386573" data-cfasync="false" async src="//st.chatango.com/js/gz/emb.js" style="width: 100%;height: 100%;">{"handle":"cloudmorph","arch":"js","styles":{"b":100,"c":"000000","d":"000000","l":"FFFFFF","m":"FFFFFF","p":"10","r":100,"ab":false,"usricon":0,"surl":0,"cnrs":"0.16","fwtickm":1}}</script>
+      {{end}}
     </div>
   </div>
   <div id="app-meta">
@@ -48,6 +40,15 @@
   <!--<script src="/static/js/network/rtcp.js"></script>-->
   <script src="/static/js/controller.js"></script>
   <script src="/static/js/initcloudmorph.js"></script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZZ8L95MM0V"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-ZZ8L95MM0V');
+  </script>
 </body>
 
 </html>

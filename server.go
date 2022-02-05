@@ -26,15 +26,15 @@ var upgrader = websocket.Upgrader{}
 
 const configFilePath = "config.yaml"
 
-var curApp string = "Notepad"
+var curApp = "Notepad"
 
 const embedPage string = "web/embed/embed.html"
 const indexPage string = "web/index.html"
 const addr string = ":8080"
 
-var chatEventTypes []string = []string{"CHAT"}
-var appEventTypes []string = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
-var dscvEventTypes []string = []string{"SELECTHOST"}
+var chatEventTypes = []string{"CHAT"}
+var appEventTypes = []string{"OFFER", "ANSWER", "MOUSEDOWN", "MOUSEUP", "MOUSEMOVE", "KEYDOWN", "KEYUP"}
+var dscvEventTypes = []string{"SELECTHOST"}
 
 // TODO: multiplex clientID
 var clientID string
@@ -218,8 +218,9 @@ func NewServer() *Server {
 			if err != nil {
 				log.Fatal(err)
 			}
-
-			tmpl.Execute(w, nil)
+			if err := tmpl.Execute(w, cfg); err != nil {
+				log.Fatal(err)
+			}
 		},
 	)
 
