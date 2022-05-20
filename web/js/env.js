@@ -1,35 +1,4 @@
 const env = (() => {
-    // UI
-    const doc = $(document);
-    const gameBoy = $('#gamebody');
-    const ghRibbon = $('#ribbon');
-
-    let isLayoutSwitched = false;
-
-    // Window rerender / rotate screen if needed
-    const fixScreenLayout = () => {
-        let targetWidth = Math.round(doc.width() * 0.9 / 2) * 2,
-            targetHeight = Math.round(doc.height() * 0.9 / 2) * 2;
-
-        // mobile == full screen
-        if (env.getOs() === 'android') {
-            targetWidth = doc.width();
-            targetHeight = doc.height();
-        }
-
-        // Should have maximum box for desktop?
-        // targetWidth = 800; targetHeight = 600; // test on desktop
-
-        let st = isLayoutSwitched ? 'rotate(90deg)' : '';
-        ghRibbon.css({
-            'bottom': isLayoutSwitched ? 0 : '',
-            'top': isLayoutSwitched ? '' : 0,
-            'transform': st,
-            '-webkit-transform': st,
-            '-moz-transform': st
-        })
-    };
-
     const getOS = () => {
         // linux? ios?
         let OSName = 'unknown';
@@ -102,8 +71,6 @@ const env = (() => {
         display: () => ({
             isPortrait: isPortrait,
             toggleFullscreen: toggleFullscreen,
-            fixScreenLayout: fixScreenLayout,
-            isLayoutSwitched: isLayoutSwitched
         })
     }
-})($, document, log, navigator, screen, window);
+})(document, log, navigator, screen, window);

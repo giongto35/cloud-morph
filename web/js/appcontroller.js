@@ -177,4 +177,4 @@
   event.sub(MOUSE_DOWN, onMouseDown);
   event.sub(MOUSE_UP, onMouseUp);
   event.sub(KEY_STATE_UPDATED, (data) => rtcp.input(data));
-})($, document, event, env);
+})(document, event, env);

@@ -120,4 +120,4 @@ const socket = (() => {
     connect: connect,
     // quit: quit,
   };
-})($, event, log);
+})(event, log);

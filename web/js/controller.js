@@ -191,4 +191,4 @@
   event.sub(UPDATE_APP_LIST, ({ data }) => {
     updateAppList(JSON.parse(data));
   });
-})($, document, event, env, socket);
+})(document, event, env, socket);
