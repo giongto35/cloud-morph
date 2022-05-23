@@ -44,10 +44,7 @@ const rtcp = (() => {
       mediaStream.addTrack(event.track);
     };
 
-    socket.send({
-      type: "initwebrtc",
-      data: JSON.stringify({ is_mobile: env.isMobileDevice() }),
-    });
+    socket.send({type: "initwebrtc"});
   };
 
   const ice = (() => {
