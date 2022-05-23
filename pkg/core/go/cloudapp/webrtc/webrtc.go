@@ -84,7 +84,7 @@ func NewWebRTC() *WebRTC {
 }
 
 // StartClient start webrtc
-func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32, vCodec string) (string, error) {
+func (w *WebRTC) StartClient(iceCB OnIceCallback, ssrc uint32, vCodec string) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)
@@ -105,7 +105,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32, vC
 	if err != nil {
 		return "", err
 	}
-	
+
 	// get a codec
 	var codec string
 	switch vCodec {
@@ -116,7 +116,7 @@ func (w *WebRTC) StartClient(isMobile bool, iceCB OnIceCallback, ssrc uint32, vC
 	default:
 		codec = webrtc.MimeTypeVP8
 	}
-	
+
 	// add video track
 	videoTrack, err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: codec}, "video", "pion")
 

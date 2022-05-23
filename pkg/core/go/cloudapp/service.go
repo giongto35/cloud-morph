@@ -44,7 +44,7 @@ type Client struct {
 	// done to notify if the client is done clean up
 	done chan struct{}
 	// TODO: Get rid of ssrc
-	ssrc uint32
+	ssrc   uint32
 	vCodec string
 }
 
@@ -200,17 +200,8 @@ func (c *Client) Route(ssrc uint32) {
 		log.Println("Received a request to createOffer from browser", req)
 
 		c.rtcConn = webrtc.NewWebRTC()
-		var initPacket struct {
-			IsMobile bool `json:"is_mobile"`
-		}
-		err := json.Unmarshal([]byte(req.Data), &initPacket)
-		if err != nil {
-			log.Println("Error: Cannot decode json:", err)
-			return cws.EmptyPacket
-		}
 
 		localSession, err := c.rtcConn.StartClient(
-			initPacket.IsMobile,
 			func(candidate string) {
 				// send back candidate string to browser
 				c.ws.Send(cws.WSPacket{
@@ -228,10 +219,7 @@ func (c *Client) Route(ssrc uint32) {
 			return cws.EmptyPacket
 		}
 
-		return cws.WSPacket{
-			Type: "offer",
-			Data: localSession,
-		}
+		return cws.WSPacket{Type: "offer", Data: localSession}
 	})
 
 	c.ws.Receive(
