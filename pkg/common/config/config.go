@@ -28,10 +28,12 @@ type Config struct {
 	HasChat   bool   `yaml:"hasChat"`
 	PageTitle string `yaml:"pageTitle"`
 	// WebRTC config
-	StunTurn string `yaml:"stunturn"` // Default: Google STUN
+	StunTurn   string `yaml:"stunturn"` // Default: Google STUN
 	VideoCodec string `yaml:"videoCodec"`
 	// Virtualization mode: To use in Windows. Linux is already fully virtualized with Docker+Wine
 	IsVirtualized bool `yaml:"virtualize"`
+	// Optional 1:1 NAT mapping
+	NatMap string `yaml:"natMap"`
 }
 
 // TODO: sync with discovery.go

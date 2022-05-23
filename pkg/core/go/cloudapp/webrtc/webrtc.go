@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/pion/interceptor"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 )
@@ -20,13 +21,6 @@ const audioChannels = 2
 const audioMS = 20
 const audioFrame = audioRate * audioMS / 1000 * audioChannels
 
-// InputDataPair represents input in input data channel
-// type InputDataPair struct {
-// 	data int
-// 	time time.Time
-// }
-
-// WebRTC connection
 type WebRTC struct {
 	ID string
 
@@ -84,7 +78,7 @@ func NewWebRTC() *WebRTC {
 }
 
 // StartClient start webrtc
-func (w *WebRTC) StartClient(iceCB OnIceCallback, ssrc uint32, vCodec string) (string, error) {
+func (w *WebRTC) StartClient(iceCB OnIceCallback, ssrc uint32, vCodec string, natMap string) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)
@@ -101,7 +95,7 @@ func (w *WebRTC) StartClient(iceCB OnIceCallback, ssrc uint32, vCodec string) (s
 	}
 
 	log.Println("=== StartClient ===")
-	w.connection, err = webrtc.NewPeerConnection(webrtcconfig)
+	w.connection, err = NewPeerConnection(webrtcconfig, natMap)
 	if err != nil {
 		return "", err
 	}
@@ -309,4 +303,25 @@ func (w *WebRTC) startStreaming(videoTrack *webrtc.TrackLocalStaticRTP, opusTrac
 			}
 		}
 	}()
+}
+
+func NewPeerConnection(configuration webrtc.Configuration, natMap string) (*webrtc.PeerConnection, error) {
+	m := &webrtc.MediaEngine{}
+	if err := m.RegisterDefaultCodecs(); err != nil {
+		return nil, err
+	}
+
+	i := &interceptor.Registry{}
+	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
+		return nil, err
+	}
+
+	s := webrtc.SettingEngine{}
+	if natMap != "" {
+		s.SetNAT1To1IPs([]string{natMap}, webrtc.ICECandidateTypeHost)
+		log.Printf("Using 1:1 NAT %v/host", natMap)
+	}
+
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i), webrtc.WithSettingEngine(s))
+	return api.NewPeerConnection(configuration)
 }
