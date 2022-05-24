@@ -1,5 +1,4 @@
 // Standalone service for app discovery
-
 package main
 
 import (
@@ -14,8 +13,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/gorilla/mux"
-
-	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/client/v3"
 )
 
 const (
