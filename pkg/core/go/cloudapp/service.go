@@ -86,7 +86,7 @@ func (c *Client) Heartbeat() {
 }
 
 func (s *Service) AddClient(clientID string, ws *cws.Client) *Client {
-	client := NewServiceClient(clientID, ws, s.appEvents, s.ccApp.GetSSRC(), s.config.StunTurn, s.config.VideoCodec, s.config.NatMap)
+	client := NewServiceClient(clientID, ws, s.appEvents, s.config.StunTurn, s.config.VideoCodec, s.config.NatMap)
 	s.clients[clientID] = client
 	return client
 }
@@ -101,7 +101,7 @@ func (s *Service) RemoveClient(clientID string) {
 	}
 }
 
-func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ssrc uint32, stunturn string, vCodec string, natMap string) *Client {
+func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, stunturn string, vCodec string, natMap string) *Client {
 	// The 1st packet
 	ws.Send(cws.WSPacket{
 		Type: "init",
@@ -112,7 +112,6 @@ func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, ss
 		appEvents:   appEvents,
 		clientID:    clientID,
 		ws:          ws,
-		ssrc:        ssrc,
 		videoStream: make(chan *rtp.Packet, 100),
 		audioStream: make(chan *rtp.Packet, 100),
 		cancel:      make(chan struct{}),
@@ -194,7 +193,7 @@ func (c *Client) Handle() {
 	close(c.done)
 }
 
-func (c *Client) Route(ssrc uint32) {
+func (c *Client) Route() {
 	// Listen from video stream
 	// WebRTC
 	c.ws.Receive("initwebrtc", func(req cws.WSPacket) (resp cws.WSPacket) {
@@ -211,7 +210,6 @@ func (c *Client) Route(ssrc uint32) {
 					SessionID: req.SessionID,
 				}, nil)
 			},
-			ssrc,
 			c.vCodec,
 			c.natMap,
 		)
@@ -269,10 +267,6 @@ func NewCloudService(cfg config.Config) *Service {
 
 func (s *Service) SendInput(packet Packet) {
 	s.ccApp.SendInput(packet)
-}
-
-func (s *Service) GetSSRC() uint32 {
-	return s.ccApp.GetSSRC()
 }
 
 func (s *Service) Handle() {

@@ -16,11 +16,6 @@ import (
 // TODO: double check if no need TURN server here
 var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
 
-const audioRate = 48000
-const audioChannels = 2
-const audioMS = 20
-const audioFrame = audioRate * audioMS / 1000 * audioChannels
-
 type WebRTC struct {
 	ID string
 
@@ -78,7 +73,7 @@ func NewWebRTC() *WebRTC {
 }
 
 // StartClient start webrtc
-func (w *WebRTC) StartClient(iceCB OnIceCallback, ssrc uint32, vCodec string, natMap string) (string, error) {
+func (w *WebRTC) StartClient(iceCB OnIceCallback, vCodec string, natMap string) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)

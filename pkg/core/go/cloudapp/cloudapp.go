@@ -24,8 +24,6 @@ type CloudAppClient interface {
 	AudioStream() chan *rtp.Packet
 	SendInput(Packet)
 	Handle()
-	// TODO: Remove it
-	GetSSRC() uint32
 }
 
 type osTypeEnum int

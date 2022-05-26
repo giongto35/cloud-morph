@@ -115,7 +115,7 @@ func (s *Server) WS(w http.ResponseWriter, r *http.Request) {
 	// TODO: Update packet
 	// Add websocket client to app service
 	serviceClient := s.capp.AddClient(clientID, wsClient)
-	serviceClient.Route(s.capp.GetSSRC())
+	serviceClient.Route()
 	log.Println("Initialized ServiceClient")
 
 	s.initClientData(wsClient)
