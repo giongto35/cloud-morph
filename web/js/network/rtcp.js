@@ -16,9 +16,14 @@ const rtcp = (() => {
     const start = (iceservers) => {
         log.info("[rtcp] <- received STUN/TURN config from the worker", iceservers);
 
-        connection = new RTCPeerConnection({
-            iceServers: JSON.parse(iceservers),
-        });
+        let conf
+        if (iceservers !== "") {
+            conf = {
+                iceservers: {urls: iceservers}
+            }
+        }
+
+        connection = conf ? new RTCPeerConnection(conf) : new RTCPeerConnection();
 
         mediaStream = new MediaStream();
 

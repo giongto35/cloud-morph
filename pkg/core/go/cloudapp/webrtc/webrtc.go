@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -12,9 +13,6 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 )
-
-// TODO: double check if no need TURN server here
-var webrtcconfig = webrtc.Configuration{ICEServers: []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}}
 
 type WebRTC struct {
 	ID string
@@ -31,9 +29,6 @@ type WebRTC struct {
 	lastTime time.Time
 	curFPS   int
 }
-
-// OnIceCallback trigger ICE callback with candidate
-type OnIceCallback func(candidate string)
 
 // Encode encodes the input in base64
 func Encode(obj interface{}) (string, error) {
@@ -73,7 +68,7 @@ func NewWebRTC() *WebRTC {
 }
 
 // StartClient start webrtc
-func (w *WebRTC) StartClient(iceCB OnIceCallback, vCodec string, natMap string) (string, error) {
+func (w *WebRTC) StartClient(onIceCandidate func(c string), conf *Config) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)
@@ -90,24 +85,13 @@ func (w *WebRTC) StartClient(iceCB OnIceCallback, vCodec string, natMap string) 
 	}
 
 	log.Println("=== StartClient ===")
-	w.connection, err = NewPeerConnection(webrtcconfig, natMap)
+	w.connection, err = NewPeerConnection(conf)
 	if err != nil {
 		return "", err
 	}
 
-	// get a codec
-	var codec string
-	switch vCodec {
-	case "h264":
-		codec = webrtc.MimeTypeH264
-	case "vpx":
-		fallthrough
-	default:
-		codec = webrtc.MimeTypeVP8
-	}
-
 	// add video track
-	videoTrack, err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: codec}, "video", "pion")
+	videoTrack, err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: conf.VideoCodec}, "video", "pion")
 
 	if err != nil {
 		return "", err
@@ -175,12 +159,11 @@ func (w *WebRTC) StartClient(iceCB OnIceCallback, vCodec string, natMap string) 
 				log.Println("Encode IceCandidate failed: " + iceCandidate.ToJSON().Candidate)
 				return
 			}
-			iceCB(candidate)
+			onIceCandidate(candidate)
 		} else {
 			// finish, send null
-			iceCB("")
+			onIceCandidate("")
 		}
-
 	})
 
 	// Stream provider supposes to send offer
@@ -300,23 +283,39 @@ func (w *WebRTC) startStreaming(videoTrack *webrtc.TrackLocalStaticRTP, opusTrac
 	}()
 }
 
-func NewPeerConnection(configuration webrtc.Configuration, natMap string) (*webrtc.PeerConnection, error) {
+func NewPeerConnection(conf *Config) (*webrtc.PeerConnection, error) {
 	m := &webrtc.MediaEngine{}
 	if err := m.RegisterDefaultCodecs(); err != nil {
 		return nil, err
 	}
 
 	i := &interceptor.Registry{}
-	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
-		return nil, err
+	if !conf.DisableInterceptors {
+		if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
+			return nil, err
+		}
 	}
 
 	s := webrtc.SettingEngine{}
-	if natMap != "" {
-		s.SetNAT1To1IPs([]string{natMap}, webrtc.ICECandidateTypeHost)
-		log.Printf("Using 1:1 NAT %v/host", natMap)
+	if conf.Nat1to1 != "" {
+		if ip, ct, err := parseNatCandidate(conf.Nat1to1); err == nil {
+			s.SetNAT1To1IPs(ip, ct)
+			log.Printf("Using 1:1 NAT %s", conf.Nat1to1)
+		} else {
+			log.Printf("NAT map error: %v", err)
+		}
 	}
 
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i), webrtc.WithSettingEngine(s))
-	return api.NewPeerConnection(configuration)
+	return api.NewPeerConnection(conf.Configuration)
+}
+
+func parseNatCandidate(v string) (ips []string, candidateType webrtc.ICECandidateType, err error) {
+	parts := strings.Split(v, "/")
+	if len(parts) < 2 {
+		return nil, 0, fmt.Errorf("wrong ICE IP NAT mapping format, %v", parts)
+	}
+	ips = []string{parts[0]}
+	candidateType, err = webrtc.NewICECandidateType(parts[1])
+	return
 }

@@ -26,7 +26,8 @@ type Service struct {
 	config         config.Config
 	// chat           *textchat.TextChat Not using own chat
 	// communicate with cloud app
-	appEvents chan Packet
+	appEvents  chan Packet
+	webrtcConf *webrtc.Config
 }
 
 type Client struct {
@@ -40,12 +41,8 @@ type Client struct {
 	// cancel to trigger cleaning up when client is disconnected
 	cancel chan struct{}
 	// done to notify if the client is done clean up
-	done chan struct{}
-	// TODO: Get rid of ssrc
-	ssrc   uint32
-	vCodec string
-	// 1:1 NAT mapping
-	natMap string
+	done       chan struct{}
+	webrtcConf *webrtc.Config
 }
 
 type AppHost struct {
@@ -86,7 +83,7 @@ func (c *Client) Heartbeat() {
 }
 
 func (s *Service) AddClient(clientID string, ws *cws.Client) *Client {
-	client := NewServiceClient(clientID, ws, s.appEvents, s.config.StunTurn, s.config.VideoCodec, s.config.NatMap)
+	client := NewServiceClient(clientID, ws, s.appEvents, s.webrtcConf)
 	s.clients[clientID] = client
 	return client
 }
@@ -101,12 +98,9 @@ func (s *Service) RemoveClient(clientID string) {
 	}
 }
 
-func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, stunturn string, vCodec string, natMap string) *Client {
+func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, conf *webrtc.Config) *Client {
 	// The 1st packet
-	ws.Send(cws.WSPacket{
-		Type: "init",
-		Data: stunturn,
-	}, nil)
+	ws.Send(cws.WSPacket{Type: "init", Data: conf.GetStun()}, nil)
 
 	return &Client{
 		appEvents:   appEvents,
@@ -116,8 +110,7 @@ func NewServiceClient(clientID string, ws *cws.Client, appEvents chan Packet, st
 		audioStream: make(chan *rtp.Packet, 100),
 		cancel:      make(chan struct{}),
 		done:        make(chan struct{}),
-		vCodec:      vCodec,
-		natMap:      natMap,
+		webrtcConf:  conf,
 	}
 }
 
@@ -204,14 +197,9 @@ func (c *Client) Route() {
 		localSession, err := c.rtcConn.StartClient(
 			func(candidate string) {
 				// send back candidate string to browser
-				c.ws.Send(cws.WSPacket{
-					Type:      "candidate",
-					Data:      candidate,
-					SessionID: req.SessionID,
-				}, nil)
+				c.ws.Send(cws.WSPacket{Type: "candidate", Data: candidate, SessionID: req.SessionID}, nil)
 			},
-			c.vCodec,
-			c.natMap,
+			c.webrtcConf,
 		)
 
 		if err != nil {
@@ -252,14 +240,24 @@ func (c *Client) Route() {
 }
 
 // NewCloudService returns a Cloud Service
-func NewCloudService(cfg config.Config) *Service {
+func NewCloudService(conf config.Config) *Service {
 	appEvents := make(chan Packet, 1)
+
+	webrtcConf := &webrtc.DefaultConfig
+	webrtcConf.Override(
+		webrtc.Codec(conf.VideoCodec),
+		webrtc.DisableInterceptors(conf.DisableInterceptors),
+		webrtc.Nat1to1(conf.NAT1To1IP),
+		webrtc.StunServer(conf.StunTurn),
+	)
+
 	s := &Service{
 		clients:        map[string]*Client{},
 		appEvents:      appEvents,
-		appModeHandler: NewAppMode(cfg.AppMode),
-		ccApp:          NewCloudAppClient(cfg, appEvents),
-		config:         cfg,
+		appModeHandler: NewAppMode(conf.AppMode),
+		ccApp:          NewCloudAppClient(conf, appEvents),
+		config:         conf,
+		webrtcConf:     webrtcConf,
 	}
 
 	return s

@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net"
 
-	"github.com/giongto35/cloud-morph/pkg/common/servercfg"
 	"gopkg.in/yaml.v2"
 )
 
@@ -28,12 +27,13 @@ type Config struct {
 	HasChat   bool   `yaml:"hasChat"`
 	PageTitle string `yaml:"pageTitle"`
 	// WebRTC config
-	StunTurn   string `yaml:"stunturn"` // Default: Google STUN
+	StunTurn   string `yaml:"stunturn"` // Default: Google STUN, disable it with the "none" value
 	VideoCodec string `yaml:"videoCodec"`
 	// Virtualization mode: To use in Windows. Linux is already fully virtualized with Docker+Wine
 	IsVirtualized bool `yaml:"virtualize"`
 	// Optional 1:1 NAT mapping
-	NatMap string `yaml:"natMap"`
+	NAT1To1IP           string `yaml:"nat1to1ip"`
+	DisableInterceptors bool   `yaml:"disableInterceptors"`
 }
 
 // TODO: sync with discovery.go
@@ -59,9 +59,6 @@ func ReadConfig(path string) (Config, error) {
 
 	if cfg.AppName == "" {
 		cfg.AppName = cfg.WindowTitle
-	}
-	if cfg.StunTurn == "" {
-		cfg.StunTurn = servercfg.DefaultSTUNTURN
 	}
 	if cfg.ScreenWidth == 0 {
 		cfg.ScreenWidth = 800

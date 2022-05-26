@@ -8,7 +8,12 @@ appMode: collaborative # app mode: collaborative/single (ex. collaborative: mult
 hasChat: false # Toggle chat
 virtualize: false # For Windows, Run in VM (Sandbox) if true. Linux is already fully virtualized with Docker+Wine.
 videoCodec: h264 # h264 / vpx (vp8)
-#natMap: 127.0.0.1 # optional 1:1 NAT mapping
+# Manual external IP, see https://pkg.go.dev/github.com/pion/webrtc/v2#SettingEngine.SetNAT1To1IPs
+# format: IP/candidate type
+#nat1to1ip: 127.0.0.1/host
+# disables WebRTC interceptors
+#disableInterceptors: true
+#stunturn: none
 
 #Need to specify path
 # path: /apps/nfhdemo/bin # Directory to the app. NOTE: It's the path in winvm
