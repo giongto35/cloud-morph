@@ -226,7 +226,6 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	// Add params
 	if c.osType == Windows {
 		params = append(params, cfg.Path)
-		params = append(params, "-vcodec ", cfg.VideoCodec)
 	} else {
 		params = append(params, "/"+cfg.Path) // Path in docker container after mount is at root
 	}
@@ -244,6 +243,7 @@ func (c *ccImpl) launchAppVM(curVideoRTPPort int, curAudioRTPPort int, cfg confi
 	}
 	if c.osType == Windows {
 		params = append(params, "windows")
+		params = append(params, "-vcodec", cfg.VideoCodec)
 	} else {
 		params = append(params, "")
 	}

@@ -37,7 +37,7 @@ if ($isSandbox -eq "sandbox") {
     # sc failure Syncinput reset= 30 actions= restart/5000
     # $syncinput.Start()
 }
-else {    
+else {
     Start-Process ffmpeg -PassThru -ArgumentList "$ffmpegParams"
     sleep 2
     Start-Process -PassThru $PSScriptRoot/winvm/syncinput.exe -ArgumentList "$title", ".", "windows"
