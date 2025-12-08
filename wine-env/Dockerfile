@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     aptitude \
     python3 \
     python3-pip \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Wine
@@ -38,10 +39,12 @@ ENV WINEDEBUG=fixme-all
 # Install common Wine dependencies
 RUN winetricks d3dx9_43 || true
 
+# Copy helper scripts
+COPY scripts/ /app/scripts/
+RUN chmod +x /app/scripts/*.sh
+
 # Download gecko and mono installers
-COPY scripts/download_gecko_and_mono.sh /tmp/
-RUN chmod +x /tmp/download_gecko_and_mono.sh && \
-    /tmp/download_gecko_and_mono.sh "$(dpkg -s wine-stable | grep '^Version:' | awk '{print $2}' | sed -E 's/~.*$//')" || true
+RUN /app/scripts/download_gecko_and_mono.sh "$(dpkg -s wine-stable | grep '^Version:' | awk '{print $2}' | sed -E 's/~.*$//')" || true
 
 # Setup directories
 RUN mkdir -p /app /apps /app/logs

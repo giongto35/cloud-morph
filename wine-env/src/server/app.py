@@ -34,6 +34,13 @@ def get_env():
 executor = ThreadPoolExecutor(max_workers=1)
 app = FastAPI(title="Wine Environment")
 
+@app.on_event("startup")
+async def startup_event():
+    """Initialize environment on startup to create input listener"""
+    print("Initializing Wine Environment...")
+    get_env()
+    print("✓ Environment ready")
+
 
 def encode_frame(frame: np.ndarray) -> str:
     """Encode frame to base64 JPEG"""
