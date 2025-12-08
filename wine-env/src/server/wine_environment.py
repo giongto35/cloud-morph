@@ -62,18 +62,28 @@ class WineEnvironment:
             return False
     
     def _send_input(self, message: bytes):
-        """Send input to syncinput.exe"""
-        if not self.input_conn:
-            self._accept_input_connection()
+        """Send input to syncinput.exe with retry on failure"""
+        for attempt in range(3):  # Try 3 times
+            if not self.input_conn:
+                # Wait for syncinput to reconnect (it may have just restarted)
+                for _ in range(5):  # Wait up to 5 seconds
+                    if self._accept_input_connection():
+                        break
+                    time.sleep(1)
+            
+            if self.input_conn:
+                try:
+                    self.input_conn.sendall(message)
+                    self.input_conn.sendall(b'\x00')  # Ping
+                    return  # Success
+                except Exception as e:
+                    print(f"Send error (attempt {attempt + 1}): {e}")
+                    self.input_conn = None
+                    # Will retry with new connection
+            else:
+                print(f"No connection (attempt {attempt + 1})")
         
-        if self.input_conn:
-            try:
-                self.input_conn.sendall(message)
-                self.input_conn.sendall(b'\x00')  # Ping
-            except Exception as e:
-                print(f"Send error: {e}")
-                self.input_conn = None
-                self._accept_input_connection()
+        print("Failed to send input after 3 attempts")
     
     def reset(self) -> WineObservation:
         """Reset environment"""
