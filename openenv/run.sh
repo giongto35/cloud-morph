@@ -1,5 +1,5 @@
 #!/bin/bash
-# Wine Environment Runner
+# OpenEnv Wine Environment Runner
 # Usage: ./run.sh [app_file] [window_title]
 
 set -e
@@ -8,9 +8,9 @@ APP_FILE="${1:-notepad}"
 WINDOW_TITLE="${2:-Notepad}"
 SCREEN_WIDTH="${SCREEN_WIDTH:-800}"
 SCREEN_HEIGHT="${SCREEN_HEIGHT:-600}"
-CONTAINER_NAME="wine-env"
+CONTAINER_NAME="openenv"
 
-echo "🍷 Wine Environment"
+echo "🎮 OpenEnv - Wine Environment"
 echo "==================="
 echo "App: $APP_FILE"
 echo "Window: $WINDOW_TITLE"
@@ -23,7 +23,7 @@ docker rm $CONTAINER_NAME 2>/dev/null || true
 
 # Build image
 echo "Building image..."
-docker build -t wine-env .
+docker build -t openenv .
 
 # Run container
 echo "Starting container..."
@@ -34,7 +34,7 @@ docker run -d --name $CONTAINER_NAME \
   -e SCREEN_HEIGHT=$SCREEN_HEIGHT \
   -e APP_FILE="$APP_FILE" \
   -e WINDOW_TITLE="$WINDOW_TITLE" \
-  wine-env
+  openenv
 
 # Wait for startup
 echo "Waiting for services..."
