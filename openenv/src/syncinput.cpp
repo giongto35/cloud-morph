@@ -172,16 +172,26 @@ HWND getWindowByTitle(char *pattern) {
 }
 
 HWND sendIt(int key, bool state, bool isDxGame) {
-    HWND targetHwnd = hwnd;
+    // For SDL apps, always use foreground window to ensure input is received
+    HWND targetHwnd = GetForegroundWindow();
+    
+    // If no foreground window, try to use the found window
     if (targetHwnd == NULL || !IsWindow(targetHwnd)) {
-        targetHwnd = GetForegroundWindow();
-        if (targetHwnd == NULL) return 0;
+        targetHwnd = hwnd;
+        if (targetHwnd == NULL || !IsWindow(targetHwnd)) {
+            return 0;
+        }
     }
     
+    // Ensure window is focused and brought to front
+    SetForegroundWindow(targetHwnd);
     SetActiveWindow(targetHwnd);
     ShowWindow(targetHwnd, SW_RESTORE);
     SetFocus(targetHwnd);
     BringWindowToTop(targetHwnd);
+    AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(targetHwnd, NULL), TRUE);
+    SetForegroundWindow(targetHwnd);
+    AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(targetHwnd, NULL), FALSE);
 
     INPUT ip;
     ZeroMemory(&ip, sizeof(INPUT));
@@ -189,23 +199,37 @@ HWND sendIt(int key, bool state, bool isDxGame) {
     ip.ki.time = 0;
     ip.ki.dwExtraInfo = 0;
     
-    if (isDxGame) {
+    // For SDL apps, use scan codes which are more reliable
+    // Check if target window is SDL_app class
+    char className[256] = {0};
+    GetClassName(targetHwnd, className, 256);
+    bool isSDLApp = (strcmp(className, "SDL_app") == 0);
+    
+    if (isDxGame || isSDLApp) {
+        // Use scan codes for SDL and DirectX games
+        UINT scanCode = MapVirtualKey(key, MAPVK_VK_TO_VSC);
+        
+        // Arrow keys need extended flag
         if (key == VK_UP || key == VK_DOWN || key == VK_LEFT || key == VK_RIGHT) {
             ip.ki.dwFlags = KEYEVENTF_EXTENDEDKEY;
         }
-        key = MapVirtualKey(key, 0);
-        ip.ki.wScan = key;
+        
+        ip.ki.wScan = scanCode;
         ip.ki.dwFlags |= KEYEVENTF_SCANCODE;
+        
+        if (state == KEY_UP) {
+            ip.ki.dwFlags |= KEYEVENTF_KEYUP;
+        }
     } else {
+        // Use virtual keys for regular apps
         ip.ki.wVk = key;
-    }
-    
-    if (state == KEY_UP) {
-        ip.ki.dwFlags |= KEYEVENTF_KEYUP;
+        if (state == KEY_UP) {
+            ip.ki.dwFlags |= KEYEVENTF_KEYUP;
+        }
     }
     
     SendInput(1, &ip, sizeof(INPUT));
-    cout << "Sent key " << key << endl;
+    cout << "Sent key " << key << " (scan=" << (isDxGame || isSDLApp ? "yes" : "no") << ")" << endl;
     return hwnd;
 }
 

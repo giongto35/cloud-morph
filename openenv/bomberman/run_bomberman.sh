@@ -1,15 +1,15 @@
 #!/bin/bash
-# Run OpenEnv with Age of Empires 2
-# Usage: ./run_aoe2.sh
+# Run OpenEnv with Bomberman
+# Usage: ./run_bomberman.sh
 
 set -e
 
-CONTAINER_NAME="openenv-aoe2"
-SCREEN_WIDTH="${SCREEN_WIDTH:-1024}"
-SCREEN_HEIGHT="${SCREEN_HEIGHT:-768}"
+CONTAINER_NAME="openenv-bomberman"
+SCREEN_WIDTH="${SCREEN_WIDTH:-800}"
+SCREEN_HEIGHT="${SCREEN_HEIGHT:-600}"
 
-echo "🎮 OpenEnv - Age of Empires 2"
-echo "=============================="
+echo "🎮 OpenEnv - Bomberman"
+echo "======================"
 echo "Screen: ${SCREEN_WIDTH}x${SCREEN_HEIGHT}"
 echo ""
 
@@ -17,23 +17,28 @@ echo ""
 docker stop $CONTAINER_NAME 2>/dev/null || true
 docker rm $CONTAINER_NAME 2>/dev/null || true
 
+# Get the absolute path to openenv directory (parent of bomberman)
+OPENENV_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$OPENENV_DIR"
+
 # Build image
 echo "Building image..."
 docker build -t openenv .
 
 # Get the absolute path to the games folder
-GAMES_PATH="$(cd "$(dirname "$0")" && pwd)/games"
+GAMES_PATH="$OPENENV_DIR/games"
 
-# Run container with AoE2
-echo "Starting container with AoE2..."
+# Run container with Bomberman
+echo "Starting container with Bomberman..."
 docker run -d --name $CONTAINER_NAME \
   -p 8000:8000 \
   -p 9090:9090 \
   -e SCREEN_WIDTH=$SCREEN_WIDTH \
   -e SCREEN_HEIGHT=$SCREEN_HEIGHT \
-  -e APP_FILE="/games/Age of Empires 2/empires2.exe" \
-  -e WINDOW_TITLE="Age of Empires" \
-  -v "$GAMES_PATH:/games:ro" \
+  -e APP_FILE="/games/Bomberman/med/mednafen.exe" \
+  -e APP_ARGS="-video.fs 0 /games/Bomberman/med/game.pce" \
+  -e WINDOW_TITLE="game" \
+  -v "$GAMES_PATH:/games" \
   openenv
 
 # Wait for startup
@@ -57,13 +62,4 @@ echo ""
 echo "Logs:"
 echo "  docker exec $CONTAINER_NAME cat /app/logs/wineapp.log"
 echo "  docker exec $CONTAINER_NAME cat /app/logs/syncinput.log"
-
-
-
-
-
-
-
-
-
 
