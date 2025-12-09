@@ -16,6 +16,8 @@
 #include <sstream>
 #include <pthread.h>
 #include <chrono>
+#include <algorithm>
+#include <cctype>
 
 using namespace std;
 
@@ -127,36 +129,45 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
 }
 
 HWND getWindowByTitle(char *pattern) {
-    // Try by process ID first
-    DWORD pid = GetProcessIdByName("notepad.exe");
-    if (pid != 0) {
-        EnumData data = {pid, NULL};
-        EnumWindows(EnumWindowsProc, (LPARAM)&data);
-        if (data.hwnd != NULL) return data.hwnd;
-    }
-
-    // Try FindWindow
-    HWND hwnd = FindWindow("Notepad", NULL);
-    if (hwnd != NULL && IsWindow(hwnd)) return hwnd;
-
-    // Fallback: enumerate windows
-    hwnd = NULL;
+    // Fallback: enumerate all windows and find by title pattern
+    HWND hwnd = NULL;
+    HWND bestMatch = NULL;
+    int logged = 0;
+    
     do {
         hwnd = FindWindowEx(NULL, hwnd, NULL, NULL);
         if (hwnd == NULL) break;
 
         char className[256] = {0};
         GetClassName(hwnd, className, 256);
-        if (strcmp(className, "#32769") == 0) continue;
+        if (strcmp(className, "#32769") == 0) continue;  // Skip desktop
 
         int len = GetWindowTextLength(hwnd) + 1;
+        if (len <= 1) continue;  // Skip windows without title
+        
         char title[len];
         GetWindowText(hwnd, title, len);
+        string st(title);
+        string cls(className);
 
-        if (string(title).find(pattern) != string::npos) return hwnd;
-        if (string(className).find("Notepad") != string::npos) return hwnd;
+        // Match by title pattern (case-insensitive search)
+        string patternLower(pattern);
+        string titleLower(st);
+        transform(patternLower.begin(), patternLower.end(), patternLower.begin(), ::tolower);
+        transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::tolower);
+        
+        if (titleLower.find(patternLower) != string::npos) {
+            cout << "Found match: " << hwnd << " [" << st << "] Class:[" << cls << "]" << endl;
+            return hwnd;
+        }
+        
+        // Log first few windows for debugging
+        if (logged < 10 && st.length() > 0) {
+            cout << "Window " << ++logged << ": " << hwnd << " [" << st << "] Class:[" << cls << "]" << endl;
+        }
     } while (hwnd != 0);
 
+    cout << "No window found matching pattern: " << pattern << endl;
     return NULL;
 }
 
@@ -216,7 +227,13 @@ void sendMouseDown(bool isLeft, byte state, float x, float y) {
         if (targetHwnd == NULL) return;
     }
     
+    // Ensure window is focused
+    SetActiveWindow(targetHwnd);
+    SetForegroundWindow(targetHwnd);
+    BringWindowToTop(targetHwnd);
+    
     MouseMove(int(x), int(y));
+    Sleep(10);  // Small delay to ensure cursor is moved
 
     INPUT Input = {0};
     Input.type = INPUT_MOUSE;
@@ -227,6 +244,7 @@ void sendMouseDown(bool isLeft, byte state, float x, float y) {
     else if (!isLeft && state == MOUSE_UP) Input.mi.dwFlags = MOUSEEVENTF_RIGHTUP | MOUSEEVENTF_ABSOLUTE;
 
     SendInput(1, &Input, sizeof(INPUT));
+    cout << "Mouse sent at (" << x << "," << y << ")" << endl;
 }
 
 struct Key { byte key; byte state; };
@@ -254,15 +272,18 @@ Mouse parseMousePayload(string s) {
 
 void formatWindow(HWND hwnd) {
     if (hwnd == NULL || !IsWindow(hwnd)) return;
-    SetWindowPos(hwnd, NULL, 0, 0, 800, 600, 0);
-    cout << "Window formatted: " << hwnd << endl;
+    // Don't reposition dialog windows - just log the position
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+    cout << "Window " << hwnd << " at (" << rect.left << "," << rect.top 
+         << ") size " << (rect.right - rect.left) << "x" << (rect.bottom - rect.top) << endl;
 }
 
 void *thealthcheck(void *args) {
     while (true) {
         auto cur = chrono::system_clock::now();
         chrono::duration<double> elapsed = cur - last_ping;
-        if (elapsed.count() > 10) {
+        if (elapsed.count() > 60) {  // Increased timeout to 60 seconds
             cout << "Connection timeout" << endl;
             done = true;
             return NULL;
@@ -292,6 +313,8 @@ void processEvent(string ev, bool isDxGame) {
         sendIt(key.key, key.state, isDxGame);
     } else if (ev[0] == 'M') {
         Mouse mouse = parseMousePayload(ev.substr(1));
+        cout << "Mouse: left=" << (int)mouse.isLeft << " state=" << (int)mouse.state 
+             << " x=" << mouse.x << " y=" << mouse.y << endl;
         sendMouseDown(mouse.isLeft, mouse.state, mouse.x, mouse.y);
     }
 }

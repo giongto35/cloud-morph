@@ -1,5 +1,5 @@
-# Wine Environment Docker Image
-# Minimal setup for running Windows apps via HTTP API
+# OpenEnv Base Image
+# Common Wine environment for running Windows apps via HTTP API
 
 FROM ubuntu:20.04
 
@@ -19,9 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     netcat-openbsd \
-    pulseaudio \
-    libpulse0 \
-    alsa-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Wine
@@ -29,7 +26,7 @@ RUN dpkg --add-architecture i386 && \
     wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add - && \
     add-apt-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ bionic main' && \
     add-apt-repository ppa:cybermax-dexter/sdl2-backport && \
-    aptitude install -y winehq-stable libpulse0:i386 && \
+    aptitude install -y winehq-stable && \
     rm -rf /var/lib/apt/lists/*
 
 # Install winetricks
@@ -38,10 +35,6 @@ RUN wget -nv -O /usr/bin/winetricks https://raw.githubusercontent.com/Winetricks
 
 # Silence Wine debug messages
 ENV WINEDEBUG=fixme-all
-
-# Install common Wine dependencies
-RUN winetricks d3dx9_43 || true
-RUN winetricks -q sound=pulse || true
 
 # Copy helper scripts
 COPY scripts/ /app/scripts/
@@ -68,10 +61,13 @@ RUN touch /app/__init__.py /app/server/__init__.py
 
 # Copy supervisor config
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY config/asound.conf /etc/asound.conf
 
 # Expose ports
 EXPOSE 8000 9090
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+
+
+
+
 

@@ -54,6 +54,11 @@ class WineEnvironment:
             self.input_conn = conn
             conn.settimeout(5.0)
             print(f"✓ syncinput connected from {addr}")
+            # Send immediate ping to keep connection alive
+            try:
+                conn.sendall(b'\x00')
+            except:
+                pass
             return True
         except socket.timeout:
             return False
@@ -109,14 +114,24 @@ class WineEnvironment:
                 
         elif action.action_type == "mouse":
             is_left = 1 if (action.button or "left") == "left" else 0
-            state = 1 if (action.mouse_state or "down") == "down" else (2 if action.mouse_state == "up" else 0)
             x, y = action.x or 0.5, action.y or 0.5
             
             # Normalize coordinates
             if x <= 1.0 and y <= 1.0:
                 x, y = x * self.screen_width, y * self.screen_height
             
-            self._send_input(f"M{is_left},{state},{x},{y},{self.screen_width},{self.screen_height}|".encode())
+            x, y = int(x), int(y)
+            
+            # If no explicit state, send a complete click (down + up)
+            if not action.mouse_state or action.mouse_state == "click":
+                # Mouse down
+                self._send_input(f"M{is_left},1,{x},{y},{self.screen_width},{self.screen_height}|".encode())
+                time.sleep(0.05)
+                # Mouse up
+                self._send_input(f"M{is_left},2,{x},{y},{self.screen_width},{self.screen_height}|".encode())
+            else:
+                state = 1 if action.mouse_state == "down" else 2
+                self._send_input(f"M{is_left},{state},{x},{y},{self.screen_width},{self.screen_height}|".encode())
         
         self._step_count += 1
         time.sleep(0.2)

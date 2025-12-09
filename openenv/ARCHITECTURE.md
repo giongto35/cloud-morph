@@ -65,6 +65,83 @@ OpenEnv provides a standardized HTTP interface for reinforcement learning enviro
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Visual Diagrams
+
+Use these Mermaid diagrams to render the architecture and flows visually (e.g., at https://mermaid.live).
+
+```mermaid
+flowchart TB
+  subgraph Host["RL Training Host"]
+    TL["Training Loop\n(policy, agent, buffer)"]
+    C["OpenEnv HTTP Client\nport 8000"]
+  end
+
+  subgraph Container["Docker Container"]
+    subgraph Sup["supervisord"]
+    end
+    X["Xvfb :99\nVirtual display"]
+    API["FastAPI Server :8000\nOpenEnv API"]
+    SI["syncinput.exe :9090\nTCP input bridge"]
+    WA["Wine App (e.g., notepad.exe)"]
+  end
+
+  TL -->|"observations/actions"| C
+  C -->|"HTTP /reset, /step"| API
+  API -->|"send input"| SI
+  SI -->|"Windows API\nSendInput"| WA
+  WA -->|"renders"| X
+  X -->|"FFmpeg capture"| API
+  API -->|"base64 JPEG obs"| C
+  Sup -.->|manage| X
+  Sup -.->|manage| API
+  Sup -.->|manage| SI
+  Sup -.->|manage| WA
+```
+
+```mermaid
+sequenceDiagram
+  participant Agent as RL Agent
+  participant API as FastAPI (/step)
+  participant Env as WineEnvironment
+  participant SI as syncinput.exe
+  participant Wine as Wine App
+  participant X as Xvfb :99
+  participant FF as FFmpeg
+
+  Agent->>API: POST /step {action}
+  API->>Env: step(action)
+  Env->>SI: TCP "K65,1|K65,0|"
+  SI->>Wine: SendInput(key events)
+  Wine-->>Env: UI updated
+  Env->>FF: capture :99
+  FF-->>Env: JPEG frame
+  Env-->>API: observation (base64)
+  API-->>Agent: obs, reward, done
+```
+
+```mermaid
+flowchart TB
+  subgraph Orchestrator["RL Training Orchestrator"]
+    W1["Worker 1"]
+    W2["Worker 2"]
+    Wn["Worker N"]
+  end
+
+  subgraph C1["Container 1\n:8000 :9090"]
+    A1["Notepad Instance 1"]
+  end
+  subgraph C2["Container 2\n:8001 :9091"]
+    A2["Notepad Instance 2"]
+  end
+  subgraph Cn["Container N\n:800N :909N"]
+    An["Notepad Instance N"]
+  end
+
+  W1 -->|"HTTP to 8000"| C1
+  W2 -->|"HTTP to 8001"| C2
+  Wn -->|"HTTP to 800N"| Cn
+```
+
 ## Component Details
 
 ### 1. FastAPI Server (`src/server/app.py`)

@@ -1,0 +1,22 @@
+# Game files - do not commit
+games/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Docker
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+
+
+
+
+
+
