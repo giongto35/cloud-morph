@@ -1,11 +1,12 @@
 #!/bin/bash
 # OpenEnv Wine Environment Runner
-# Usage: ./run.sh [app_file] [window_title]
+# Usage: ./run.sh [app_file] [window_title] [app_args]
 
 set -e
 
 APP_FILE="${1:-notepad}"
 WINDOW_TITLE="${2:-Notepad}"
+APP_ARGS="${3:-}"
 SCREEN_WIDTH="${SCREEN_WIDTH:-800}"
 SCREEN_HEIGHT="${SCREEN_HEIGHT:-600}"
 CONTAINER_NAME="openenv"
@@ -33,6 +34,7 @@ docker run -d --name $CONTAINER_NAME \
   -e SCREEN_WIDTH=$SCREEN_WIDTH \
   -e SCREEN_HEIGHT=$SCREEN_HEIGHT \
   -e APP_FILE="$APP_FILE" \
+  -e APP_ARGS="$APP_ARGS" \
   -e WINDOW_TITLE="$WINDOW_TITLE" \
   openenv
 

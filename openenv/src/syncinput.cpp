@@ -171,9 +171,38 @@ HWND getWindowByTitle(char *pattern) {
     return NULL;
 }
 
+// Debug helper: log all top-level windows
+void logAllWindows() {
+    cout << "Enumerating windows:" << endl;
+    HWND it = NULL;
+    int idx = 0;
+    do {
+        it = FindWindowEx(NULL, it, NULL, NULL);
+        if (it == NULL) break;
+
+        char cls[256] = {0};
+        char title[256] = {0};
+        GetClassName(it, cls, 256);
+        GetWindowText(it, title, 256);
+
+        // Skip desktop
+        if (strcmp(cls, "#32769") == 0) continue;
+
+        cout << "  [" << ++idx << "] hwnd=" << it << " [" << title << "] Class:[" << cls << "]";
+        if (it == GetForegroundWindow()) cout << " (FOREGROUND)";
+        if (it == hwnd) cout << " (TARGET)";
+        cout << endl;
+        if (idx >= 50) {  // avoid flooding logs
+            cout << "  ... truncated ..." << endl;
+            break;
+        }
+    } while (it != 0);
+}
+
 HWND sendIt(int key, bool state, bool isDxGame) {
     // For SDL apps, always use foreground window to ensure input is received
     HWND targetHwnd = GetForegroundWindow();
+    cout << "Target HWND: " << targetHwnd << endl;
     
     // If no foreground window, try to use the found window
     if (targetHwnd == NULL || !IsWindow(targetHwnd)) {
@@ -192,6 +221,10 @@ HWND sendIt(int key, bool state, bool isDxGame) {
     AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(targetHwnd, NULL), TRUE);
     SetForegroundWindow(targetHwnd);
     AttachThreadInput(GetCurrentThreadId(), GetWindowThreadProcessId(targetHwnd, NULL), FALSE);
+
+    // Debug: list windows and show which hwnd we use
+    cout << "Target HWND: " << targetHwnd << " | Foreground HWND: " << GetForegroundWindow() << endl;
+    logAllWindows();
 
     INPUT ip;
     ZeroMemory(&ip, sizeof(INPUT));
@@ -296,10 +329,27 @@ Mouse parseMousePayload(string s) {
 
 void formatWindow(HWND hwnd) {
     if (hwnd == NULL || !IsWindow(hwnd)) return;
-    // Don't reposition dialog windows - just log the position
+    
+    // Bring window to foreground first
+    SetForegroundWindow(hwnd);
+    SetActiveWindow(hwnd);
+    BringWindowToTop(hwnd);
+
+    // Remove window chrome to avoid borders and title bar eating pixels
+    LONG style = GetWindowLong(hwnd, GWL_STYLE);
+    style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
+    style |= WS_POPUP | WS_VISIBLE;
+    SetWindowLong(hwnd, GWL_STYLE, style);
+    SetWindowPos(hwnd, HWND_TOP, 0, 0, screenWidth, screenHeight,
+                 SWP_SHOWWINDOW | SWP_FRAMECHANGED);
+
+    // Maximize to ensure it fills the virtual display
+    ShowWindow(hwnd, SW_SHOWMAXIMIZED);
+
+    // Log the window position
     RECT rect;
     GetWindowRect(hwnd, &rect);
-    cout << "Window " << hwnd << " at (" << rect.left << "," << rect.top 
+    cout << "Window " << hwnd << " maximized to (" << rect.left << "," << rect.top 
          << ") size " << (rect.right - rect.left) << "x" << (rect.bottom - rect.top) << endl;
 }
 
@@ -318,13 +368,30 @@ void *thealthcheck(void *args) {
 
 void *thwndupdate(void *args) {
     HWND oldhwnd = 0;
+    int checkCount = 0;
     while (true) {
-        hwnd = getWindowByTitle(winTitle);
-        if (hwnd == NULL) hwnd = GetForegroundWindow();
-        
+        // Always track the current foreground window to send input there
+        hwnd = GetForegroundWindow();
+        cout << "Foreground window: " << hwnd << endl;
+
         if (hwnd != oldhwnd) {
             formatWindow(hwnd);
             oldhwnd = hwnd;
+        } else if (hwnd != NULL && IsWindow(hwnd)) {
+            // Periodically re-maximize to ensure window stays maximized
+            // Check every 5 iterations (every 10 seconds)
+            checkCount++;
+            if (checkCount >= 5) {
+                WINDOWPLACEMENT wp;
+                wp.length = sizeof(WINDOWPLACEMENT);
+                if (GetWindowPlacement(hwnd, &wp)) {
+                    if (wp.showCmd != SW_MAXIMIZE) {
+                        cout << "Window not maximized, re-maximizing..." << endl;
+                        formatWindow(hwnd);
+                    }
+                }
+                checkCount = 0;
+            }
         }
         Sleep(2000);
     }

@@ -67,3 +67,5 @@ echo "  docker exec $CONTAINER_NAME cat /app/logs/syncinput.log"
 
 
 
+
+

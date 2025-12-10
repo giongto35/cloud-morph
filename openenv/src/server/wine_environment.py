@@ -91,10 +91,32 @@ class WineEnvironment:
         print("Failed to send input after 3 attempts")
     
     def reset(self) -> WineObservation:
-        """Reset environment"""
+        """Reset environment and restart the Wine application"""
         self._episode_id += 1
         self._step_count = 0
+        
+        # Restart the Wine application via Supervisor
+        try:
+            print("Restarting Wine application...")
+            result = subprocess.run(
+                ['supervisorctl', '-s', 'http://127.0.0.1:9001', 'restart', 'wineapp'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if result.returncode == 0:
+                print(f"✓ Wine application restarted: {result.stdout.strip()}")
+                # Wait for application to start (supervisor startsecs=3)
+                time.sleep(4)
+            else:
+                print(f"Warning: Failed to restart wineapp: {result.stderr}")
+        except Exception as e:
+            print(f"Warning: Could not restart Wine application: {e}")
+        
+        # Reconnect to syncinput (it may have restarted too)
         self._accept_input_connection()
+        time.sleep(0.5)  # Give syncinput time to reconnect
+        
         return WineObservation(screen=self._capture_screen())
     
     def step(self, action: WineAction) -> WineObservation:
