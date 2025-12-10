@@ -1,6 +1,6 @@
 # OpenEnv - Wine Environment
 
-OpenEnv-compatible Docker environment for running and controlling Windows applications via standardized HTTP API. Designed for reinforcement learning agents to interact with Windows applications through Wine.
+OpenEnv-compatible Docker environment for running and controlling Windows applications via standardized HTTP API. Designed for reinforcement learning agents to interact with Windows applications through Wine. Upstream OpenEnv project: https://github.com/meta-pytorch/OpenEnv.
 
 ## Overview
 

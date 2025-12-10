@@ -10,6 +10,8 @@ CloudMorph is a decentralized, self-hosted cloud gaming/cloud application platfo
 CloudMorph copes with different technical challenges from OS to Cloud, such as Low-Latency Streaming, Video/Audio encoding pipeline and optimization, Windows application Virtualization in headless server, OS event simulation, NAT traversal, P2P network structurization, etc.  
 Unlike [CloudRetro](https://github.com/giongto35/cloud-game), a completed Cloud Gaming solution for Retro Game run on its dedicated cloud infrastructure, CloudMorph decentralized hosting works to users with any Windows Games/Applications by a generic and modularized solution.
 
+CloudMorph now ships an [OpenEnv-compatible](https://github.com/meta-pytorch/OpenEnv) Wine environment, allowing RL agents to interact with Windows applications through the standard OpenEnv HTTP API, based on CloudMorph virtualization architecture.
+
 **Discord**: [Join Us](https://discord.gg/ux2rDqwu2W)
 
 ## Changelog
