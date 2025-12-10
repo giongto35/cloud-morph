@@ -19,7 +19,7 @@ import requests
 
 RIGHT_KEY = 68  # D
 LEFT_KEY = 65   # A
-BOMB_KEY = 99   # numpad 3
+BOMB_KEY = 34   # PAGE DOWN
 ENTER_KEY = 13  # Enter/start
 
 
