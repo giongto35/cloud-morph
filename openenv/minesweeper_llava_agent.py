@@ -105,12 +105,13 @@ class OpenEnvClient:
 
 
 SYSTEM_PROMPT_BASE = """
-This is minesweeper board screen 9 x 9. number means the number of bombs around the cell. light grey mean unopened cell. dark grey mean opened cell. black mean bomb. red mean exploded bomb. select the cell with highest probability of not being a bomb. Don't select the cell that is already opened or exploded.
+This is minesweeper board screen 9 x 9 with 13px border each side and top offset 48px with width 170px and height 210px in top left corner. Number means the number of bombs around the cell. light grey mean unopened cell. dark grey mean opened cell. black mean bomb. red mean exploded bomb. select the cell with highest probability of not being a bomb. Don't select the cell that is already opened or exploded.
 Rules:
 - Exclude UI outside the playable grid.
 - Select the cell with highest probability of not being a bomb.
+- row in range [0, 8] and col in range [0, 8]
 
-If there is red cell, or black cell appears multiple times, it means the bomb is exploded and game is over. is_game_over is true.
+If there are multiple black cells in the field, it means the bomb is exploded and game is over. is_game_over is true.
 
 Return JSON ONLY with this schema:
 {
@@ -255,11 +256,11 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
     img = obs.image
     visits: Dict[Tuple[int, int], int] = {}
     allow_gameover_check = True
-    # Fixed board geometry (9x9): width=170px with 8px border each side; top offset 30px
-    FIELD_X0, FIELD_Y0 = 8, 30 + 8  # start after left border and top border
-    FIELD_W, FIELD_H = 170 - 16, 170 - 16  # usable grid area after removing borders
-    CELL_W = FIELD_W / FIXED_COLS
-    CELL_H = FIELD_H / FIXED_ROWS
+    # Fixed board geometry (9x9): cell=16px, border=13px each side; total width=170px; top offset 30px
+    FIELD_X0, FIELD_Y0 = 13, 48  # start after left/top border
+    FIELD_W, FIELD_H = 170 - 26, 170 - 26  # 144px usable grid
+    CELL_W = 16
+    CELL_H = 16
 
     def prep_ui() -> np.ndarray:
         """Click dialog OK then center to bring board up."""
