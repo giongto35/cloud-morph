@@ -438,6 +438,19 @@ def draw_debug(img: np.ndarray, cell: Cell, path: str):
     pil.save(path, format="JPEG")
 
 
+def detect_bomb(img: np.ndarray, red_thresh: int = 180, green_thresh: int = 80, blue_thresh: int = 80, min_pixels: int = 120):
+    """Heuristic bomb detection: look for red-dominant pixels typical of explosion."""
+    if img is None or img.size == 0:
+        return False
+    r = img[:, :, 0]
+    g = img[:, :, 1]
+    b = img[:, :, 2]
+    mask = (r > red_thresh) & (g < green_thresh) & (b < blue_thresh)
+    count = int(mask.sum())
+    dbg("H4", "detect_bomb", "bomb_pixels", {"count": count})
+    return count >= min_pixels
+
+
 # ----------------------- Main loop ----------------------- #
 
 
@@ -451,13 +464,25 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
     visits: Dict[Tuple[int, int], int] = {}
     last_board: Optional[Board] = None
     sweep_idx = 0
+    first_click_done = False
 
-    # Focus the game window with initial center clicks
-    log("[init] focusing window with center clicks")
-    client.step_click(0.5, 0.5)
-    time.sleep(0.4)
-    obs = client.step_click(0.5, 0.5)
-    img = obs.image
+    def prep_ui() -> np.ndarray:
+        """Click dialog OK then center to bring board up."""
+        log("[prep] clicking OK dialog")
+        dbg("H5", "prep_ui", "click_ok", {})
+        obs_local = client.step_click(0.2, 0.15)
+        time.sleep(0.1)
+        log("[prep] clicking center to start")
+        dbg("H5", "prep_ui", "click_center", {})
+        obs_local = client.step_click(0.5, 0.5)
+        time.sleep(0.2)
+        return obs_local.image
+
+    # Focus the game window and clear dialog
+    img = prep_ui()
+
+    def clamp_edge(x: float, y: float, edge: float = 0.1) -> Tuple[float, float]:
+        return clamp01(max(edge, min(1 - edge, x))), clamp01(max(edge, min(1 - edge, y)))
 
     for step in range(1, max_steps + 1):
         log(f"[step {step}] start")
@@ -511,12 +536,26 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
                 cell = Cell(row=-1, col=-1, state="fallback", x_norm=0.5, y_norm=0.5)
             print(f"[step {step}] sweep/fallback click at ({cell.x_norm:.3f},{cell.y_norm:.3f}) state={cell.state}")
 
+        # Force safer opening: first click always center
+        if not first_click_done:
+            cell = Cell(row=-1, col=-1, state="center_open", x_norm=0.5, y_norm=0.5)
+            first_click_done = True
+
+        # Clamp away from edges to reduce corner bombs
+        cell_x, cell_y = clamp_edge(cell.x_norm, cell.y_norm, edge=0.1)
+        cell = Cell(row=cell.row, col=cell.col, state=cell.state, x_norm=cell_x, y_norm=cell_y)
+
         visits[(cell.row, cell.col)] = visits.get((cell.row, cell.col), 0) + 1
         # Send click
         log(f"[step {step}] clicking at ({cell.x_norm:.3f},{cell.y_norm:.3f}) state={cell.state}")
         dbg("H3", "run_agent", "click", {"step": step, "x": cell.x_norm, "y": cell.y_norm, "state": cell.state})
         obs = client.step_click(clamp01(cell.x_norm), clamp01(cell.y_norm))
         img = obs.image
+
+        # Bomb detection: only log, do not reset
+        if detect_bomb(img):
+            log(f"[step {step}] bomb detected; continuing without reset")
+            dbg("H4", "run_agent", "bomb_detected", {"step": step})
 
         if debug_dir:
             out_path = os.path.join(debug_dir, f"step_{step:02d}.jpg")
