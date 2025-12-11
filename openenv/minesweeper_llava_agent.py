@@ -104,7 +104,7 @@ class OpenEnvClient:
 # ----------------------- Vision parsing ----------------------- #
 
 
-SYSTEM_PROMPT = """You are playing Minesweeper on a 9x9 board.
+SYSTEM_PROMPT_BASE = """
 This is minesweeper board screen 9 x 9. number means the number of bombs around the cell. light grey mean unopened cell. dark grey mean opened cell. black mean bomb. red mean exploded bomb. select the cell with highest probability of not being a bomb. Don't select the cell that is already opened or exploded.
 Rules:
 - Exclude UI outside the playable grid.
@@ -114,7 +114,10 @@ Return JSON ONLY with this schema:
 {
   "row": <int>,
   "col": <int>
-}
+}"""
+
+SYSTEM_PROMPT_HISTORY = """Prior chosen cells (avoid repeating): {history}.
+Select a cell that is likely safe (not a bomb) and not already chosen.
 Return ONLY the JSON object."""
 
 
@@ -125,18 +128,20 @@ def _image_to_jpeg_bytes(img: np.ndarray) -> bytes:
     return buf.getvalue()
 
 
-def call_llava(img: np.ndarray, model: str, max_retries: int = 2) -> Optional[dict]:
+def call_llava(img: np.ndarray, model: str, history: List[Tuple[int, int]], max_retries: int = 2) -> Optional[dict]:
     """Send image to Ollama vision model and parse JSON response."""
     jpeg_bytes = _image_to_jpeg_bytes(img)
     last_err: Optional[Exception] = None
     for attempt in range(1, max_retries + 1):
         dbg("H1", "call_llava", "attempt", {"attempt": attempt})
         try:
+            hist_str = "; ".join([f"({r},{c})" for r, c in history]) or "none"
+            sys_prompt = SYSTEM_PROMPT_BASE + "\n" + SYSTEM_PROMPT_HISTORY.format(history=hist_str)
             resp = ollama.chat(
                 model=model,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": "Minesweeper board screen 9 x 9. number means the number of bombs around the cell. light grey mean unopened cell. dark grey mean opened cell. black mean bomb. red mean exploded bomb. select the cell with highest probability of not being a bomb. Don't select the cell that is already opened or exploded.", "images": [jpeg_bytes]},
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": "Select a safe unopened cell on the 9x9 Minesweeper board.", "images": [jpeg_bytes]},
                 ],
                 format="json",
             )
@@ -144,7 +149,16 @@ def call_llava(img: np.ndarray, model: str, max_retries: int = 2) -> Optional[di
             # Print raw response (truncated) for inspection
             raw_preview = content[:500].replace("\n", " ")
             print(f"[vision raw attempt {attempt}] {raw_preview}")
-            parsed = json.loads(content)
+            try:
+                parsed = json.loads(content)
+            except Exception:
+                # fallback: simple regex extract row/col
+                import re
+                m = re.search(r'"?row"?\s*[:=]\s*([0-9]+).*"col"?\s*[:=]\s*([0-9]+)', content, re.IGNORECASE | re.DOTALL)
+                if m:
+                    parsed = {"row": int(m.group(1)), "col": int(m.group(2))}
+                else:
+                    raise
             dbg("H1", "call_llava", "success", {"attempt": attempt, "cells": len(parsed.get("cells", [])) if isinstance(parsed.get("cells"), list) else 0})
             return parsed
         except Exception as exc:  # noqa: BLE001
@@ -439,8 +453,11 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
     img = obs.image
     visits: Dict[Tuple[int, int], int] = {}
     allow_gameover_check = True
-    FIELD_X0, FIELD_Y0 = 0, 30
-    FIELD_W, FIELD_H = 170, 210
+    # Fixed board geometry (9x9): width=170px with 8px border each side; top offset 30px
+    FIELD_X0, FIELD_Y0 = 8, 30 + 8  # start after left border and top border
+    FIELD_W, FIELD_H = 170 - 16, 170 - 16  # usable grid area after removing borders
+    CELL_W = FIELD_W / FIXED_COLS
+    CELL_H = FIELD_H / FIXED_ROWS
 
     def prep_ui() -> np.ndarray:
         """Click dialog OK then center to bring board up."""
@@ -457,37 +474,32 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
     # Focus the game window and clear dialog
     img = prep_ui()
 
-    def clamp_edge(x: float, y: float, edge_frac: float = 0.1) -> Tuple[float, float]:
-        min_x = FIELD_X0 + edge_frac * FIELD_W
-        max_x = FIELD_X0 + (1 - edge_frac) * FIELD_W
-        min_y = FIELD_Y0 + edge_frac * FIELD_H
-        max_y = FIELD_Y0 + (1 - edge_frac) * FIELD_H
+    def clamp_edge(x: float, y: float, margin: float = 2.0) -> Tuple[float, float]:
+        min_x = FIELD_X0 + margin
+        max_x = FIELD_X0 + FIELD_W - margin
+        min_y = FIELD_Y0 + margin
+        max_y = FIELD_Y0 + FIELD_H - margin
         return min(max_x, max(min_x, x)), min(max_y, max(min_y, y))
 
     def to_field_pixels(cell: Cell, rows: int, cols: int) -> Tuple[float, float]:
-        # Prefer row/col mapping if available
-        if rows > 0 and cols > 0 and cell.row is not None and cell.col is not None:
-            cw = FIELD_W / max(cols, 1)
-            ch = FIELD_H / max(rows, 1)
-            x_pix = FIELD_X0 + (cell.col + 0.5) * cw
-            y_pix = FIELD_Y0 + (cell.row + 0.5) * ch
-        else:
-            x_norm = cell.x_norm if cell.x_norm <= 1 else cell.x_norm / max(FIELD_W, 1)
-            y_norm = cell.y_norm if cell.y_norm <= 1 else cell.y_norm / max(FIELD_H, 1)
-            x_pix = FIELD_X0 + clamp01(x_norm) * FIELD_W
-            y_pix = FIELD_Y0 + clamp01(y_norm) * FIELD_H
-        return clamp_edge(x_pix, y_pix, edge_frac=0.05)
+        # Map row/col to pixel using fixed grid geometry
+        r = cell.row if cell.row is not None else 0
+        c = cell.col if cell.col is not None else 0
+        x_pix = FIELD_X0 + (c + 0.5) * CELL_W
+        y_pix = FIELD_Y0 + (r + 0.5) * CELL_H
+        return clamp_edge(x_pix, y_pix, margin=2.0)
 
     def summarize_cells(cells: List[Cell]) -> Dict[str, int]:
         cnt: Dict[str, int] = {}
         for c in cells:
             cnt[c.state] = cnt.get(c.state, 0) + 1
         return cnt
+    chosen_history: List[Tuple[int, int]] = []
 
     for step in range(1, max_steps + 1):
         log(f"[step {step}] start")
         log(f"[step {step}] calling llava")
-        parsed = call_llava(img, model=model)
+        parsed = call_llava(img, model=model, history=chosen_history)
         cell: Optional[Cell] = None
         board: Optional[Board] = None
         log(f"[step {step}] llava done {'ok' if parsed else 'None'}")
@@ -507,6 +519,7 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
         # Convert to pixel coordinates on the field and clamp away from edges
         x_pix, y_pix = to_field_pixels(cell, FIXED_ROWS, FIXED_COLS)
         cell = Cell(row=cell.row, col=cell.col, state=cell.state, x_norm=x_pix, y_norm=y_pix)
+        chosen_history.append((cell.row, cell.col))
 
         visits[(cell.row, cell.col)] = visits.get((cell.row, cell.col), 0) + 1
         # Send click
