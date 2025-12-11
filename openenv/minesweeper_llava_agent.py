@@ -111,7 +111,7 @@ Rules:
 - Select the cell with highest probability of not being a bomb.
 - row in range [0, 8] and col in range [0, 8]
 
-If there are multiple black cells in the field, it means the bomb is exploded and game is over. is_game_over is true.
+If there are multiple black cells in the field or a dense red cell, it means the bomb is exploded and game is over. set is_game_over true.
 
 Return JSON ONLY with this schema:
 {
@@ -132,9 +132,17 @@ def _image_to_jpeg_bytes(img: np.ndarray) -> bytes:
     return buf.getvalue()
 
 
+def _crop_for_llm(img: np.ndarray, width: int = 200, height: int = 270) -> np.ndarray:
+    h, w = img.shape[0], img.shape[1]
+    crop_w = min(width, w)
+    crop_h = min(height, h)
+    return img[0:crop_h, 0:crop_w, :]
+
+
 def call_llava(img: np.ndarray, model: str, history: List[Tuple[int, int]], max_retries: int = 2) -> Optional[dict]:
     """Send image to Ollama vision model and parse JSON response."""
-    jpeg_bytes = _image_to_jpeg_bytes(img)
+    crop = _crop_for_llm(img)
+    jpeg_bytes = _image_to_jpeg_bytes(crop)
     last_err: Optional[Exception] = None
     for attempt in range(1, max_retries + 1):
         dbg("H1", "call_llava", "attempt", {"attempt": attempt})
