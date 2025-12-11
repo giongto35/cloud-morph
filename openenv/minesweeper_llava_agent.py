@@ -85,14 +85,14 @@ class OpenEnvClient:
         img = _decode_frame(payload)
         return Observation(img, tuple(img.shape), payload.get("observation", {}).get("metadata", {}))
 
-    def step_click(self, x_norm: float, y_norm: float) -> Observation:
-        """Send a mouse click at normalized coordinates (0-1)."""
+    def step_click(self, x: float, y: float) -> Observation:
+        """Send a mouse click at pixel coordinates."""
         payload = {
             "action_type": "mouse",
             "button": "left",
             "mouse_state": "click",
-            "x": float(x_norm),
-            "y": float(y_norm),
+            "x": float(x),
+            "y": float(y),
         }
         r = self.session.post(f"{self.base_url}/step", json=payload, timeout=15)
         r.raise_for_status()
@@ -104,20 +104,12 @@ class OpenEnvClient:
 # ----------------------- Vision parsing ----------------------- #
 
 
-SYSTEM_PROMPT = """You are a precise Minesweeper vision parser. Return JSON ONLY.
-Output schema (no extra text):
+SYSTEM_PROMPT = """You are playing Minesweeper on a 9x9 board. Return JSON ONLY with this schema:
 {
-  "rows": <int>,
-  "cols": <int>,
-  "cells": [
-    {"row": <int>, "col": <int>, "state": "<state>", "center_norm": [<x0-1>, <y0-1>]}
-  ]
+  "row": <int>,
+  "col": <int>
 }
 Rules:
-- state must be one of: unopened, unknown, number0, number1, number2, number3, number4, number5, number6, number7, number8, mine, exploded, flagged, boundary.
-- center_norm is normalized to full screenshot (0-1 floats).
-- Include every playable cell in the grid.
-- Use number0 for revealed empty cells.
 - Exclude UI outside the playable grid.
 Return ONLY the JSON object."""
 
@@ -145,10 +137,11 @@ def call_llava(img: np.ndarray, model: str, max_retries: int = 2) -> Optional[di
                 format="json",
             )
             content = resp["message"]["content"]
+            # Print raw response (truncated) for inspection
+            raw_preview = content[:500].replace("\n", " ")
+            print(f"[vision raw attempt {attempt}] {raw_preview}")
             parsed = json.loads(content)
-            if "cells" not in parsed:
-                raise ValueError("Missing 'cells' in LLM response")
-            dbg("H1", "call_llava", "success", {"attempt": attempt, "cells": len(parsed.get("cells", []))})
+            dbg("H1", "call_llava", "success", {"attempt": attempt, "cells": len(parsed.get("cells", [])) if isinstance(parsed.get("cells"), list) else 0})
             return parsed
         except Exception as exc:  # noqa: BLE001
             last_err = exc
@@ -162,6 +155,8 @@ def call_llava(img: np.ndarray, model: str, max_retries: int = 2) -> Optional[di
 
 
 UNOPENED_STATES = {"unopened", "unknown", "covered"}
+FIXED_ROWS = 9
+FIXED_COLS = 9
 
 
 @dataclass
@@ -174,67 +169,29 @@ class Cell:
 
 
 def _extract_cells(parsed: dict) -> Tuple[int, int, List[Cell]]:
-    # Attempt to use rows/cols from parsed
-    rows = int(parsed.get("rows", 0) or 0)
-    cols = int(parsed.get("cols", 0) or 0)
-    cells_raw = parsed.get("cells", []) or []
+    rows = FIXED_ROWS
+    cols = FIXED_COLS
+    cell_obj = parsed.get("cell") or parsed.get("cells")
     cells: List[Cell] = []
 
-    # Helper to map numeric grid values to states
-    def num_to_state(val) -> str:
-        try:
-            iv = int(val)
-            if iv < 0:
-                return "unopened"
-            if iv == 0:
-                return "number0"
-            if 1 <= iv <= 8:
-                return f"number{iv}"
-            return "unknown"
-        except Exception:
-            return "unknown"
+    # Accept top-level row/col
+    if not cell_obj and "row" in parsed and "col" in parsed:
+        cell_obj = parsed
 
-    # First pass: parse provided cells
-    for c in cells_raw:
+    if isinstance(cell_obj, list) and cell_obj:
+        cell_obj = cell_obj[0]
+    if isinstance(cell_obj, dict):
         try:
-            row = int(c.get("row", 0))
-            col = int(c.get("col", 0))
-            state = str(c.get("state", "unknown")).lower()
-            center = c.get("center_norm") or c.get("center") or c.get("centerNormalized")
-            if center and len(center) == 2:
-                x_norm = float(center[0])
-                y_norm = float(center[1])
-            else:
-                bbox = c.get("bbox_norm") or c.get("bbox")
-                if bbox and len(bbox) == 4:
-                    x0, y0, x1, y1 = bbox
-                    x_norm = (float(x0) + float(x1)) / 2
-                    y_norm = (float(y0) + float(y1)) / 2
-                else:
-                    # If we know rows/cols we can synthesize a center
-                    if rows > 0 and cols > 0:
-                        x_norm = (col + 0.5) / cols
-                        y_norm = (row + 0.5) / rows
-                    else:
-                        continue
+            row = int(cell_obj.get("row", 0))
+            col = int(cell_obj.get("col", 0))
+            state = str(cell_obj.get("state", "unknown")).lower() if "state" in cell_obj else "unknown"
+            x_norm = (float(cell_obj.get("center_norm", [0.0, 0.0])[0])
+                      if isinstance(cell_obj.get("center_norm"), list) and len(cell_obj.get("center_norm")) == 2 else 0.0)
+            y_norm = (float(cell_obj.get("center_norm", [0.0, 0.0])[1])
+                      if isinstance(cell_obj.get("center_norm"), list) and len(cell_obj.get("center_norm")) == 2 else 0.0)
             cells.append(Cell(row=row, col=col, state=state, x_norm=x_norm, y_norm=y_norm))
-            rows = max(rows, row + 1)
-            cols = max(cols, col + 1)
         except Exception:
-            continue
-
-    # Fallback: if no usable cells, try to derive from a "grid" matrix
-    if not cells and isinstance(parsed.get("grid"), list):
-        grid = parsed["grid"]
-        rows = len(grid)
-        cols = len(grid[0]) if grid and isinstance(grid[0], list) else cols
-        for r, row_vals in enumerate(grid):
-            for c_idx, val in enumerate(row_vals if isinstance(row_vals, list) else []):
-                state = num_to_state(val)
-                x_norm = (c_idx + 0.5) / max(cols, 1)
-                y_norm = (r + 0.5) / max(rows, 1)
-                cells.append(Cell(row=r, col=c_idx, state=state, x_norm=x_norm, y_norm=y_norm))
-
+            pass
     return rows, cols, cells
 
 
@@ -401,6 +358,7 @@ def pixel_fallback_cells(img: np.ndarray) -> Tuple[int, int, List[Cell], Optiona
         board = Board.from_image(img, x0, y0, cw, ch, cols, rows)
         cells: List[Cell] = []
         dbg("H2", "pixel_fallback_cells", "grid", {"x0": x0, "y0": y0, "cw": cw, "ch": ch, "cols": cols, "rows": rows})
+        print(f"[pixel] grid x0={x0} y0={y0} cw={cw} ch={ch} cols={cols} rows={rows}")
         for r in range(rows):
             for c in range(cols):
                 state = board.grid[r][c]
@@ -428,8 +386,8 @@ def clamp01(v: float) -> float:
 def draw_debug(img: np.ndarray, cell: Cell, path: str):
     """Overlay chosen click and save."""
     h, w = img.shape[0], img.shape[1]
-    x = clamp01(cell.x_norm) * w
-    y = clamp01(cell.y_norm) * h
+    x = (cell.x_norm * w) if cell.x_norm <= 1 else cell.x_norm
+    y = (cell.y_norm * h) if cell.y_norm <= 1 else cell.y_norm
     pil = Image.fromarray(img)
     draw = ImageDraw.Draw(pil)
     draw.ellipse([x - 6, y - 6, x + 6, y + 6], outline=(255, 0, 0), width=3)
@@ -451,6 +409,20 @@ def detect_bomb(img: np.ndarray, red_thresh: int = 180, green_thresh: int = 80, 
     return count >= min_pixels
 
 
+def detect_game_over(img: np.ndarray) -> bool:
+    """Detect end screen: red exploded cell or many black bomb pixels."""
+    if img is None or img.size == 0:
+        return False
+    if detect_bomb(img):
+        dbg("H6", "detect_game_over", "red_explosion", {})
+        return True
+    # black bombs cluster
+    mask_black = (img[:, :, 0] < 40) & (img[:, :, 1] < 40) & (img[:, :, 2] < 40)
+    black_count = int(mask_black.sum())
+    dbg("H6", "detect_game_over", "black_pixels", {"count": black_count})
+    return black_count > 200
+
+
 # ----------------------- Main loop ----------------------- #
 
 
@@ -462,27 +434,51 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
     dbg("H3", "run_agent", "reset_done", {"shape": getattr(obs, "screen_shape", None)})
     img = obs.image
     visits: Dict[Tuple[int, int], int] = {}
-    last_board: Optional[Board] = None
-    sweep_idx = 0
-    first_click_done = False
+    allow_gameover_check = True
+    FIELD_X0, FIELD_Y0 = 0, 30
+    FIELD_W, FIELD_H = 170, 210
 
     def prep_ui() -> np.ndarray:
         """Click dialog OK then center to bring board up."""
         log("[prep] clicking OK dialog")
         dbg("H5", "prep_ui", "click_ok", {})
-        obs_local = client.step_click(0.2, 0.15)
+        obs_local = client.step_click(FIELD_X0 + FIELD_W * 0.2, FIELD_Y0 + FIELD_H * 0.15)
         time.sleep(0.1)
         log("[prep] clicking center to start")
         dbg("H5", "prep_ui", "click_center", {})
-        obs_local = client.step_click(0.5, 0.5)
+        obs_local = client.step_click(FIELD_X0 + FIELD_W * 0.5, FIELD_Y0 + FIELD_H * 0.5)
         time.sleep(0.2)
         return obs_local.image
 
     # Focus the game window and clear dialog
     img = prep_ui()
 
-    def clamp_edge(x: float, y: float, edge: float = 0.1) -> Tuple[float, float]:
-        return clamp01(max(edge, min(1 - edge, x))), clamp01(max(edge, min(1 - edge, y)))
+    def clamp_edge(x: float, y: float, edge_frac: float = 0.1) -> Tuple[float, float]:
+        min_x = FIELD_X0 + edge_frac * FIELD_W
+        max_x = FIELD_X0 + (1 - edge_frac) * FIELD_W
+        min_y = FIELD_Y0 + edge_frac * FIELD_H
+        max_y = FIELD_Y0 + (1 - edge_frac) * FIELD_H
+        return min(max_x, max(min_x, x)), min(max_y, max(min_y, y))
+
+    def to_field_pixels(cell: Cell, rows: int, cols: int) -> Tuple[float, float]:
+        # Prefer row/col mapping if available
+        if rows > 0 and cols > 0 and cell.row is not None and cell.col is not None:
+            cw = FIELD_W / max(cols, 1)
+            ch = FIELD_H / max(rows, 1)
+            x_pix = FIELD_X0 + (cell.col + 0.5) * cw
+            y_pix = FIELD_Y0 + (cell.row + 0.5) * ch
+        else:
+            x_norm = cell.x_norm if cell.x_norm <= 1 else cell.x_norm / max(FIELD_W, 1)
+            y_norm = cell.y_norm if cell.y_norm <= 1 else cell.y_norm / max(FIELD_H, 1)
+            x_pix = FIELD_X0 + clamp01(x_norm) * FIELD_W
+            y_pix = FIELD_Y0 + clamp01(y_norm) * FIELD_H
+        return clamp_edge(x_pix, y_pix, edge_frac=0.05)
+
+    def summarize_cells(cells: List[Cell]) -> Dict[str, int]:
+        cnt: Dict[str, int] = {}
+        for c in cells:
+            cnt[c.state] = cnt.get(c.state, 0) + 1
+        return cnt
 
     for step in range(1, max_steps + 1):
         log(f"[step {step}] start")
@@ -495,67 +491,30 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
 
         if parsed:
             rows, cols, cells = _extract_cells(parsed)
+            dbg("H7", "run_agent", "llava_cells", {"step": step, "rows": rows, "cols": cols, "counts": summarize_cells(cells)})
+            print(f"[step {step}] llava cells: rows={rows} cols={cols} counts={summarize_cells(cells)}")
             if cells:
-                cell = pick_cell(rows, cols, cells, visits)
-                if cell:
-                    print(f"[step {step}] clicking cell r={cell.row} c={cell.col} state={cell.state} at ({cell.x_norm:.3f},{cell.y_norm:.3f})")
-
-        # Pixel fallback if LLM gave nothing
-        if not cell:
-            rows_fb, cols_fb, cells_fb, board = pixel_fallback_cells(img)
-            if board:
-                safe, _ = board.deduce()
-                safe_cells = [c for c in cells_fb if (c.row, c.col) in safe and c.state == "unopened"]
-                if safe_cells:
-                    cell = sorted(safe_cells, key=lambda c: (visits.get((c.row, c.col), 0), c.row, c.col))[0]
-                last_board = board
-            if not cell and cells_fb:
-                cell = pick_cell(rows_fb, cols_fb, cells_fb, visits)
+                cell = cells[0]
 
         if not cell:
-            log(f"[step {step}] no cell from llava/pixel; sweeping")
-            # Deterministic sweep within last known board; fallback to full grid
-            grid_n = last_board.cols if last_board else 16
-            rows_n = last_board.rows if last_board else 16
-            attempts = 0
-            while attempts < grid_n * rows_n:
-                r = sweep_idx // grid_n
-                c = sweep_idx % grid_n
-                sweep_idx = (sweep_idx + 1) % (grid_n * rows_n)
-                attempts += 1
-                if last_board:
-                    x = last_board.x0 + c * last_board.cw + last_board.cw / 2
-                    y = last_board.y0 + r * last_board.ch + last_board.ch / 2
-                    coord = (x / img.shape[1], y / img.shape[0])
-                else:
-                    coord = (c + 0.5) / grid_n, (r + 0.5) / rows_n
-                if visits.get((r, c), 0) < 2:
-                    cell = Cell(row=r, col=c, state="sweep", x_norm=coord[0], y_norm=coord[1])
-                    break
-            if not cell:
-                cell = Cell(row=-1, col=-1, state="fallback", x_norm=0.5, y_norm=0.5)
-            print(f"[step {step}] sweep/fallback click at ({cell.x_norm:.3f},{cell.y_norm:.3f}) state={cell.state}")
+            log(f"[step {step}] no cell from llava; stopping.")
+            break
 
-        # Force safer opening: first click always center
-        if not first_click_done:
-            cell = Cell(row=-1, col=-1, state="center_open", x_norm=0.5, y_norm=0.5)
-            first_click_done = True
-
-        # Clamp away from edges to reduce corner bombs
-        cell_x, cell_y = clamp_edge(cell.x_norm, cell.y_norm, edge=0.1)
-        cell = Cell(row=cell.row, col=cell.col, state=cell.state, x_norm=cell_x, y_norm=cell_y)
+        # Convert to pixel coordinates on the field and clamp away from edges
+        x_pix, y_pix = to_field_pixels(cell, FIXED_ROWS, FIXED_COLS)
+        cell = Cell(row=cell.row, col=cell.col, state=cell.state, x_norm=x_pix, y_norm=y_pix)
 
         visits[(cell.row, cell.col)] = visits.get((cell.row, cell.col), 0) + 1
         # Send click
         log(f"[step {step}] clicking at ({cell.x_norm:.3f},{cell.y_norm:.3f}) state={cell.state}")
         dbg("H3", "run_agent", "click", {"step": step, "x": cell.x_norm, "y": cell.y_norm, "state": cell.state})
-        obs = client.step_click(clamp01(cell.x_norm), clamp01(cell.y_norm))
+        obs = client.step_click(cell.x_norm, cell.y_norm)
         img = obs.image
 
-        # Bomb detection: only log, do not reset
-        if detect_bomb(img):
-            log(f"[step {step}] bomb detected; continuing without reset")
-            dbg("H4", "run_agent", "bomb_detected", {"step": step})
+        # End detection: we only log (no stop) to avoid premature termination
+        if allow_gameover_check and detect_game_over(img):
+            log(f"[step {step}] game over pattern seen; continuing.")
+            dbg("H6", "run_agent", "game_over_seen", {"step": step})
 
         if debug_dir:
             out_path = os.path.join(debug_dir, f"step_{step:02d}.jpg")
