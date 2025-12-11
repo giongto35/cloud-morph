@@ -110,7 +110,7 @@ Rules:
 - Exclude UI outside the playable grid.
 - Select the cell with highest probability of not being a bomb.
 
-If there is red cell, it means the bomb is exploded and game is over.
+If there is red cell, or black cell appears multiple times, it means the bomb is exploded and game is over. is_game_over is true.
 
 Return JSON ONLY with this schema:
 {
@@ -144,7 +144,7 @@ def call_llava(img: np.ndarray, model: str, history: List[Tuple[int, int]], max_
                 model=model,
                 messages=[
                     {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": "Select a safe unopened cell on the 9x9 Minesweeper board.", "images": [jpeg_bytes]},
+                    {"role": "user", "content": "Select a safe unopened cell on the 9x9 Minesweeper board. If there is red cell, or black cell appears multiple times, it means the bomb is exploded and game is over. is_game_over is true.", "images": [jpeg_bytes]},
                 ],
                 format="json",
             )
@@ -159,7 +159,7 @@ def call_llava(img: np.ndarray, model: str, history: List[Tuple[int, int]], max_
                 import re
                 m = re.search(r'"?row"?\s*[:=]\s*([0-9]+).*"col"?\s*[:=]\s*([0-9]+)', content, re.IGNORECASE | re.DOTALL)
                 if m:
-                    parsed = {"row": int(m.group(1)), "col": int(m.group(2))}
+                    parsed = {"row": int(m.group(1)), "col": int(m.group(2)), "is_game_over": False}
                 else:
                     raise
             dbg("H1", "call_llava", "success", {"attempt": attempt, "cells": len(parsed.get("cells", [])) if isinstance(parsed.get("cells"), list) else 0})
@@ -213,7 +213,8 @@ def _extract_cells(parsed: dict) -> Tuple[int, int, List[Cell]]:
             cells.append(Cell(row=row, col=col, state=state, x_norm=x_norm, y_norm=y_norm))
         except Exception:
             pass
-    return rows, cols, cells
+    is_game_over = bool(parsed.get("is_game_over", False))
+    return rows, cols, cells, is_game_over
 
 
 def pick_cell(rows: int, cols: int, cells: List[Cell], visits: Dict[Tuple[int, int], int]) -> Optional[Cell]:
@@ -240,33 +241,6 @@ def draw_debug(img: np.ndarray, cell: Cell, path: str):
     draw.text((x + 8, y - 8), f"{cell.row},{cell.col}", fill=(255, 0, 0))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     pil.save(path, format="JPEG")
-
-
-def detect_bomb(img: np.ndarray, red_thresh: int = 180, green_thresh: int = 80, blue_thresh: int = 80, min_pixels: int = 120):
-    """Heuristic bomb detection: look for red-dominant pixels typical of explosion."""
-    if img is None or img.size == 0:
-        return False
-    r = img[:, :, 0]
-    g = img[:, :, 1]
-    b = img[:, :, 2]
-    mask = (r > red_thresh) & (g < green_thresh) & (b < blue_thresh)
-    count = int(mask.sum())
-    dbg("H4", "detect_bomb", "bomb_pixels", {"count": count})
-    return count >= min_pixels
-
-
-def detect_game_over(img: np.ndarray) -> bool:
-    """Detect end screen: red exploded cell or many black bomb pixels."""
-    if img is None or img.size == 0:
-        return False
-    if detect_bomb(img):
-        dbg("H6", "detect_game_over", "red_explosion", {})
-        return True
-    # black bombs cluster
-    mask_black = (img[:, :, 0] < 40) & (img[:, :, 1] < 40) & (img[:, :, 2] < 40)
-    black_count = int(mask_black.sum())
-    dbg("H6", "detect_game_over", "black_pixels", {"count": black_count})
-    return black_count > 200
 
 
 # ----------------------- Main loop ----------------------- #
@@ -329,14 +303,17 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
         log(f"[step {step}] calling llava")
         parsed = call_llava(img, model=model, history=chosen_history)
         cell: Optional[Cell] = None
-        board: Optional[Board] = None
         log(f"[step {step}] llava done {'ok' if parsed else 'None'}")
         dbg("H3", "run_agent", "llava_done", {"step": step, "parsed": bool(parsed)})
 
         if parsed:
-            rows, cols, cells = _extract_cells(parsed)
-            dbg("H7", "run_agent", "llava_cells", {"step": step, "rows": rows, "cols": cols, "counts": summarize_cells(cells)})
-            print(f"[step {step}] llava cells: rows={rows} cols={cols} counts={summarize_cells(cells)}")
+            rows, cols, cells, is_game_over = _extract_cells(parsed)
+            dbg("H7", "run_agent", "llava_cells", {"step": step, "rows": rows, "cols": cols, "counts": summarize_cells(cells), "is_game_over": is_game_over})
+            print(f"[step {step}] llava cells: rows={rows} cols={cols} counts={summarize_cells(cells)} is_game_over={is_game_over}")
+            if is_game_over:
+                log(f"[step {step}] LLM marked game over; stopping.")
+                dbg("H6", "run_agent", "game_over_llm", {"step": step})
+                break
             if cells:
                 cell = cells[0]
 
@@ -355,11 +332,6 @@ def run_agent(base_url: str, model: str, max_steps: int, debug_dir: Optional[str
         dbg("H3", "run_agent", "click", {"step": step, "x": cell.x_norm, "y": cell.y_norm, "state": cell.state})
         obs = client.step_click(cell.x_norm, cell.y_norm)
         img = obs.image
-
-        # End detection: we only log (no stop) to avoid premature termination
-        if allow_gameover_check and detect_game_over(img):
-            log(f"[step {step}] game over pattern seen; continuing.")
-            dbg("H6", "run_agent", "game_over_seen", {"step": step})
 
         if debug_dir:
             out_path = os.path.join(debug_dir, f"step_{step:02d}.jpg")
