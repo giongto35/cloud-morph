@@ -104,13 +104,17 @@ class OpenEnvClient:
 # ----------------------- Vision parsing ----------------------- #
 
 
-SYSTEM_PROMPT = """You are playing Minesweeper on a 9x9 board. Return JSON ONLY with this schema:
+SYSTEM_PROMPT = """You are playing Minesweeper on a 9x9 board.
+This is minesweeper board screen 9 x 9. number means the number of bombs around the cell. light grey mean unopened cell. dark grey mean opened cell. black mean bomb. red mean exploded bomb. select the cell with highest probability of not being a bomb. Don't select the cell that is already opened or exploded.
+Rules:
+- Exclude UI outside the playable grid.
+- Select the cell with highest probability of not being a bomb.
+
+Return JSON ONLY with this schema:
 {
   "row": <int>,
   "col": <int>
 }
-Rules:
-- Exclude UI outside the playable grid.
 Return ONLY the JSON object."""
 
 
@@ -132,7 +136,7 @@ def call_llava(img: np.ndarray, model: str, max_retries: int = 2) -> Optional[di
                 model=model,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": "Identify the Minesweeper board.", "images": [jpeg_bytes]},
+                    {"role": "user", "content": "Minesweeper board screen 9 x 9. number means the number of bombs around the cell. light grey mean unopened cell. dark grey mean opened cell. black mean bomb. red mean exploded bomb. select the cell with highest probability of not being a bomb. Don't select the cell that is already opened or exploded.", "images": [jpeg_bytes]},
                 ],
                 format="json",
             )
