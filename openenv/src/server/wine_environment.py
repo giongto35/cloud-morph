@@ -8,6 +8,7 @@ import time
 import subprocess
 import tempfile
 import cv2
+import mss
 
 from models import WineAction, WineObservation, WineState
 
@@ -160,26 +161,29 @@ class WineEnvironment:
         return WineObservation(screen=self._capture_screen())
     
     def _capture_screen(self) -> np.ndarray:
-        """Capture screen using FFmpeg"""
-        display = os.getenv("DISPLAY", ":99")
-        
+        """Capture screen using mss (fast in-memory)"""
         try:
-            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
-                tmp_path = tmp.name
-            
-            subprocess.run([
-                'ffmpeg', '-f', 'x11grab', '-draw_mouse', '0',
-                '-video_size', f'{self.screen_width}x{self.screen_height}',
-                '-i', f'{display}+0,0',
-                '-vf', f'scale={self.screen_width}:{self.screen_height}',
-                '-frames:v', '1', '-q:v', '2', '-y', tmp_path
-            ], capture_output=True, timeout=2.0, check=True)
-            
-            frame = cv2.imread(tmp_path)
-            os.unlink(tmp_path)
-            
-            if frame is not None:
+            with mss.mss() as sct:
+                # Capture the specific region or the whole screen
+                # We want to capture the virtual display :99
+                # mss automatically handles the DISPLAY env var on Linux
+                monitor = {
+                    "top": 0, 
+                    "left": 0, 
+                    "width": self.screen_width, 
+                    "height": self.screen_height
+                }
+                
+                # Grab the data
+                sct_img = sct.grab(monitor)
+                
+                # Convert to numpy array
+                # mss returns BGRA, we want BGR for consistency with cv2/opencv-python
+                frame = np.array(sct_img)
+                frame = frame[:, :, :3]  # Drop Alpha channel
+                
                 return frame
+                
         except Exception as e:
             print(f"Capture error: {e}")
         

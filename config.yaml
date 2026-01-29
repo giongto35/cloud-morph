@@ -1,9 +1,9 @@
 #Simpler run with Notepad
-path: apps/spider # Directory to the app (relative path)
-appFile: sol.exe # File Name of the app in the directory
-windowTitle: spider # Window Title: not to show, it's the substring of title to help specify the running program in OS
-pageTitle: "Spider" # Page Title: To display on webpage
-appName: Spider # App name: to show in discovery
+path: apps/streetfighter/Street Fighter One # Directory to the app (relative path)
+appFile: SFOne.exe # File Name of the app in the directory
+windowTitle: Street Fighter # Window Title: not to show, it's the substring of title to help specify the running program in OS
+pageTitle: "Street Fighter One - Cloud Morph" # Page Title: To display on webpage
+appName: StreetFighter # App name: to show in discovery
 appMode: collaborative # app mode: collaborative/single (ex. collaborative: multiple user using same game session)
 hasChat: false # Toggle chat
 virtualize: false # For Windows, Run in VM (Sandbox) if true. Linux is already fully virtualized with Docker+Wine.

@@ -11,6 +11,14 @@ SCREEN_WIDTH="${SCREEN_WIDTH:-800}"
 SCREEN_HEIGHT="${SCREEN_HEIGHT:-600}"
 CONTAINER_NAME="openenv"
 
+# Detect architecture for Apple Silicon / ARM support
+PLATFORM_FLAG=""
+ARCH="$(uname -m)"
+if [ "$ARCH" = "arm64" ] || [ "$ARCH" = "aarch64" ]; then
+    echo "Detected ARM architecture ($ARCH). Using --platform linux/amd64 for Wine compatibility."
+    PLATFORM_FLAG="--platform linux/amd64"
+fi
+
 echo "🎮 OpenEnv - Wine Environment"
 echo "==================="
 echo "App: $APP_FILE"
@@ -24,11 +32,11 @@ docker rm $CONTAINER_NAME 2>/dev/null || true
 
 # Build image
 echo "Building image..."
-docker build -t openenv .
+docker build $PLATFORM_FLAG -t openenv .
 
 # Run container
 echo "Starting container..."
-docker run -d --name $CONTAINER_NAME \
+docker run $PLATFORM_FLAG -d --name $CONTAINER_NAME \
   -p 8000:8000 \
   -p 9090:9090 \
   -e SCREEN_WIDTH=$SCREEN_WIDTH \

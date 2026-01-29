@@ -43,8 +43,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design and RL integration.
 
 ## Quick Start
 
+### macOS / Linux / Windows (WSL)
 ```bash
-cd /home/giongto/code/cloud-morph/openenv
+cd cloud-morph/openenv
 ./run.sh
 ```
 

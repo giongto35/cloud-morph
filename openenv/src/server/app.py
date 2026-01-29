@@ -122,7 +122,7 @@ async def stream_mjpeg():
                 image.save(buffer, format="JPEG", quality=85)
                 buffer.seek(0)
                 yield b'\r\n--frame\r\nContent-Type: image/jpeg\r\n\r\n' + buffer.read() + b'\r\n'
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.03)
             except Exception as e:
                 print(f"Stream error: {e}")
                 await asyncio.sleep(0.5)

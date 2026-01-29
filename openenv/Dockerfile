@@ -1,7 +1,7 @@
 # Wine Environment Docker Image
 # Minimal setup for running Windows apps via HTTP API
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -24,12 +24,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     alsa-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Wine
+# Install Wine from Ubuntu repositories
 RUN dpkg --add-architecture i386 && \
-    wget -O - https://dl.winehq.org/wine-builds/winehq.key | apt-key add - && \
-    add-apt-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ bionic main' && \
-    add-apt-repository ppa:cybermax-dexter/sdl2-backport && \
-    aptitude install -y winehq-stable libpulse0:i386 && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    wine \
+    wine32 \
+    wine64 \
+    libwine \
+    libpulse0:i386 && \
     rm -rf /var/lib/apt/lists/*
 
 # Install winetricks
@@ -48,7 +51,7 @@ COPY scripts/ /app/scripts/
 RUN chmod +x /app/scripts/*.sh
 
 # Download gecko and mono installers
-RUN /app/scripts/download_gecko_and_mono.sh "$(dpkg -s wine-stable | grep '^Version:' | awk '{print $2}' | sed -E 's/~.*$//')" || true
+RUN /app/scripts/download_gecko_and_mono.sh "$(dpkg -s wine | grep '^Version:' | awk '{print $2}' | sed -E 's/~.*$//')" || true
 
 # Setup directories
 RUN mkdir -p /app /apps /app/logs
@@ -59,7 +62,7 @@ COPY src/syncinput.cpp /app/
 RUN x86_64-w64-mingw32-g++ /app/syncinput.cpp -o /app/syncinput.exe -lws2_32 -lpthread -static
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir fastapi uvicorn numpy opencv-python pillow
+RUN pip3 install --no-cache-dir fastapi uvicorn numpy opencv-python pillow mss
 
 # Copy application code
 COPY src/server/ /app/server/
@@ -74,4 +77,3 @@ COPY config/asound.conf /etc/asound.conf
 EXPOSE 8000 9090
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
-
