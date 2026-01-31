@@ -44,6 +44,7 @@ docker run $PLATFORM_FLAG -d --name $CONTAINER_NAME \
   -e APP_FILE="$APP_FILE" \
   -e APP_ARGS="$APP_ARGS" \
   -e WINDOW_TITLE="$WINDOW_TITLE" \
+  -e INPUT_METHOD="${INPUT_METHOD:-socket}" \
   openenv
 
 # Wait for startup

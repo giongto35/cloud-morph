@@ -9,6 +9,11 @@ import subprocess
 import tempfile
 import cv2
 import mss
+import pyautogui
+
+# Configure pyautogui for speed
+pyautogui.FAILSAFE = False
+pyautogui.PAUSE = 0
 
 from models import WineAction, WineObservation, WineState
 
@@ -24,7 +29,11 @@ class WineEnvironment:
         self.app_file = os.getenv("APP_FILE", "notepad")
         self.window_title = os.getenv("WINDOW_TITLE", "Notepad")
         self.screen_width = screen_width
+        self.screen_width = screen_width
         self.screen_height = screen_height
+        
+        self.input_method = os.getenv("INPUT_METHOD", "socket")
+        print(f"Input method: {self.input_method}")
         
         self.input_socket: Optional[socket.socket] = None
         self.input_conn: Optional[socket.socket] = None
@@ -121,7 +130,9 @@ class WineEnvironment:
         return WineObservation(screen=self._capture_screen())
     
     def step(self, action: WineAction) -> WineObservation:
-        """Execute action"""
+        if self.input_method == "pyautogui":
+            return self._step_pyautogui(action)
+            
         if action.action_type == "key":
             key_code = action.key or 0
             key_state = action.key_state or "down"
@@ -160,6 +171,62 @@ class WineEnvironment:
         time.sleep(0.2)
         return WineObservation(screen=self._capture_screen())
     
+    def _step_pyautogui(self, action: WineAction) -> WineObservation:
+        """Execute action using pyautogui (Direct X11)"""
+        # Ensure we target the correct DISPLAY (usually handled by env, but good to be safe)
+        # PyAutoGUI uses Xlib which reads DISPLAY env var automatically.
+        
+        try:
+            if action.action_type == "key":
+                key_code = action.key or 0
+                # Simplified mapping: generic mapping valid for simple keys
+                # For a full implementation we would need a map from key_code to pyautogui keys
+                key_char = chr(key_code).lower() if 32 <= key_code <= 126 else None
+                
+                if key_char:
+                    if action.key_state == "down":
+                        pyautogui.keyDown(key_char)
+                    else: 
+                        pyautogui.keyUp(key_char)
+                else:
+                    # Fallback for special keys if needed, or logging
+                    pass
+                    
+            elif action.action_type == "mouse":
+                is_left = (action.button or "left") == "left"
+                button = 'left' if is_left else 'right'
+                
+                x, y = action.x or 0.5, action.y or 0.5
+                
+                # Normalize coordinates logic match app.py?
+                # User sent absolute coords (200, 220), so strict type check or value check needed
+                # If x > 1, assume absolute. If <= 1, assume normalized.
+                if x <= 1.0 and y <= 1.0:
+                    x, y = x * self.screen_width, y * self.screen_height
+                
+                x, y = int(x), int(y)
+                
+                print(f"PyAutoGUI Moving to ({x}, {y})")
+                
+                if action.mouse_state == "move":
+                    pyautogui.moveTo(x, y)
+                elif action.mouse_state == "down":
+                    print(f"PyAutoGUI MouseDown {button}")
+                    pyautogui.mouseDown(x=x, y=y, button=button)
+                elif action.mouse_state == "up":
+                    print(f"PyAutoGUI MouseUp {button}")
+                    pyautogui.mouseUp(x=x, y=y, button=button)
+                elif not action.mouse_state or action.mouse_state == "click":
+                    print(f"PyAutoGUI Click {button}")
+                    pyautogui.click(x=x, y=y, button=button)
+
+        except Exception as e:
+            print(f"PyAutoGUI Error: {e}")
+        
+        self._step_count += 1
+        # time.sleep(0.2) # Reduce latency
+        return WineObservation(screen=self._capture_screen())
+
     def _capture_screen(self) -> np.ndarray:
         """Capture screen using mss (fast in-memory)"""
         try:

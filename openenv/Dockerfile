@@ -18,10 +18,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     aptitude \
     python3 \
     python3-pip \
+    python3-tk \
+    python3-dev \
     netcat-openbsd \
     pulseaudio \
     libpulse0 \
     alsa-utils \
+    # Window management and automation tools
+    fluxbox \
+    x11-utils \
+    xdotool \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Wine from Ubuntu repositories
@@ -57,17 +63,23 @@ RUN /app/scripts/download_gecko_and_mono.sh "$(dpkg -s wine | grep '^Version:' |
 RUN mkdir -p /app /apps /app/logs
 WORKDIR /app
 
+# Install native minesweeper
+RUN apt-get update && apt-get install -y gnome-mines
+
+
+
 # Compile syncinput.exe
 COPY src/syncinput.cpp /app/
 RUN x86_64-w64-mingw32-g++ /app/syncinput.cpp -o /app/syncinput.exe -lws2_32 -lpthread -static
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir fastapi uvicorn numpy opencv-python pillow mss
+RUN pip3 install --no-cache-dir fastapi uvicorn numpy opencv-python pillow mss pyautogui
 
 # Copy application code
 COPY src/server/ /app/server/
 COPY src/models.py /app/
 RUN touch /app/__init__.py /app/server/__init__.py
+COPY examples/ /app/examples/
 
 # Copy supervisor config
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -75,5 +87,8 @@ COPY config/asound.conf /etc/asound.conf
 
 # Expose ports
 EXPOSE 8000 9090
+
+# Fix for PyAutoGUI Xauth error
+RUN touch /root/.Xauthority
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
