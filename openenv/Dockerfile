@@ -73,7 +73,7 @@ COPY src/syncinput.cpp /app/
 RUN x86_64-w64-mingw32-g++ /app/syncinput.cpp -o /app/syncinput.exe -lws2_32 -lpthread -static
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir fastapi uvicorn numpy opencv-python pillow mss pyautogui
+RUN pip3 install --no-cache-dir fastapi uvicorn numpy opencv-python pillow mss
 
 # Copy application code
 COPY src/server/ /app/server/
@@ -88,7 +88,6 @@ COPY config/asound.conf /etc/asound.conf
 # Expose ports
 EXPOSE 8000 9090
 
-# Fix for PyAutoGUI Xauth error
-RUN touch /root/.Xauthority
+
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

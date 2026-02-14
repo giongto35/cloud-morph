@@ -46,18 +46,19 @@ if __name__ == "__main__":
     print("Note: This measures the full Python Step -> Action -> Sleep -> Screen Capture loop.")
     
     # Test Socket (Standard)
+    # Test Socket (Secondary)
     time_socket = run_benchmark("socket")
     
-    # Test PyAutoGUI
-    time_pyautogui = run_benchmark("pyautogui")
+    # Test xdotool (Primary)
+    time_xdotool = run_benchmark("xdotool")
     
     print("\n=== RESULTS ===")
     print(f"Socket:    {time_socket:.4f}s / step")
-    print(f"PyAutoGUI: {time_pyautogui:.4f}s / step")
+    print(f"xdotool:   {time_xdotool:.4f}s / step")
     
-    if time_pyautogui < time_socket:
-        diff = time_socket - time_pyautogui
-        print(f"Winner: PyAutoGUI (faster by {diff*1000:.2f}ms per step)")
+    if time_xdotool < time_socket:
+        diff = time_socket - time_xdotool
+        print(f"Winner: xdotool (faster by {diff*1000:.2f}ms per step)")
     else:
-        diff = time_pyautogui - time_socket
+        diff = time_xdotool - time_socket
         print(f"Winner: Socket (faster by {diff*1000:.2f}ms per step)")

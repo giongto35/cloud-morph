@@ -12,7 +12,7 @@ import mss
 from models import WineAction, WineObservation, WineState
 
 # Key name mapping: normalizes various string key names to xdotool key names.
-# Works for both xdotool and pyautogui paths.
+# Key name mapping: normalizes various string key names to xdotool key names.
 _KEY_NAME_MAP = {
     'escape': 'Escape', 'return': 'Return', 'enter': 'Return',
     'tab': 'Tab', 'backspace': 'BackSpace', 'delete': 'Delete',
@@ -49,10 +49,9 @@ def _resolve_key(key_value) -> Optional[str]:
 class WineEnvironment:
     """Wine Environment with screen capture and input injection.
     
-    Supports three input methods (set via INPUT_METHOD env var):
+    Supports two input methods (set via INPUT_METHOD env var):
       - "xdotool" (default): Uses xdotool for X11 input. Most reliable
         generic solution for any application running on the virtual display.
-      - "pyautogui": Uses pyautogui for X11 input via Xlib.
       - "socket": Uses syncinput.exe TCP connection for Windows-level input.
     """
     
@@ -179,8 +178,6 @@ class WineEnvironment:
     def step(self, action: WineAction) -> WineObservation:
         if self.input_method == "xdotool":
             self._step_xdotool(action)
-        elif self.input_method == "pyautogui":
-            self._step_pyautogui(action)
         else:
             self._step_socket(action)
         
@@ -224,58 +221,8 @@ class WineEnvironment:
                 self._xdotool('mousemove', str(x), str(y))
                 self._xdotool('click', button)
 
-    # ── pyautogui input ──────────────────────────────────────────────
-
-    def _step_pyautogui(self, action: WineAction):
-        """Execute action using pyautogui (Direct X11 via Xlib)."""
-        import pyautogui
-        pyautogui.FAILSAFE = False
-        pyautogui.PAUSE = 0
-        
-        # pyautogui key name mapping (lowercase)
-        _PYAUTOGUI_MAP = {
-            'Escape': 'escape', 'Return': 'enter', 'Tab': 'tab',
-            'BackSpace': 'backspace', 'Delete': 'delete', 'space': 'space',
-            'Up': 'up', 'Down': 'down', 'Left': 'left', 'Right': 'right',
-            'Shift_L': 'shift', 'Control_L': 'ctrl', 'Alt_L': 'alt',
-        }
-        
-        try:
-            if action.action_type in ("key", "keyboard"):
-                xdotool_name = _resolve_key(action.key)
-                if not xdotool_name:
-                    print(f"PyAutoGUI: Unknown key: {action.key}")
-                    return
-                # Convert xdotool name to pyautogui name
-                key_name = _PYAUTOGUI_MAP.get(xdotool_name, xdotool_name.lower())
-                
-                if action.key_state == "down":
-                    pyautogui.keyDown(key_name)
-                elif action.key_state == "up":
-                    pyautogui.keyUp(key_name)
-                else:
-                    pyautogui.press(key_name)
-                    
-            elif action.action_type == "mouse":
-                is_left = (action.button or "left") == "left"
-                button = 'left' if is_left else 'right'
-                x, y = action.x or 0.5, action.y or 0.5
-                if x <= 1.0 and y <= 1.0:
-                    x, y = x * self.screen_width, y * self.screen_height
-                x, y = int(x), int(y)
-                
-                if action.mouse_state == "move":
-                    pyautogui.moveTo(x, y)
-                elif action.mouse_state == "down":
-                    pyautogui.mouseDown(x=x, y=y, button=button)
-                elif action.mouse_state == "up":
-                    pyautogui.mouseUp(x=x, y=y, button=button)
-                elif not action.mouse_state or action.mouse_state == "click":
-                    pyautogui.click(x=x, y=y, button=button)
-        except Exception as e:
-            print(f"PyAutoGUI Error: {e}")
-
     # ── Socket input (syncinput.exe) ─────────────────────────────────
+
 
     def _step_socket(self, action: WineAction):
         """Execute action via syncinput.exe TCP socket."""

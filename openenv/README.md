@@ -63,7 +63,7 @@ To run StarCraft, you must have the game files located at `../winvm/apps/Starcra
 **Verify:**
 Open **http://localhost:8000/viewer**. You should see the game menu.
 
-**Note:** StarCraft usually requires `INPUT_METHOD=pyautogui` for reliable input, which is handled automatically by the run script.
+**Note:** StarCraft runs best with `INPUT_METHOD=xdotool` (default), which is handled automatically by the run script.
 
 ### Other Classic Games Support
 
@@ -211,7 +211,7 @@ print(f"Screen shape: {obs.shape}")
 | `SCREEN_HEIGHT` | 600 | Virtual screen height |
 | `APP_FILE` | notepad | Wine application to run |
 | `WINDOW_TITLE` | Notepad | Window title for input targeting |
-| `INPUT_METHOD` | socket | Input method: `socket` (default) or `pyautogui` |
+| `INPUT_METHOD` | xdotool | Input method: `xdotool` (default) or `socket` |
 
 ## Manual Commands
 
