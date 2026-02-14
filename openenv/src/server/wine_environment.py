@@ -6,20 +6,55 @@ import os
 import socket
 import time
 import subprocess
-import tempfile
 import cv2
 import mss
-import pyautogui
-
-# Configure pyautogui for speed
-pyautogui.FAILSAFE = False
-pyautogui.PAUSE = 0
 
 from models import WineAction, WineObservation, WineState
 
+# Key name mapping: normalizes various string key names to xdotool key names.
+# Works for both xdotool and pyautogui paths.
+_KEY_NAME_MAP = {
+    'escape': 'Escape', 'return': 'Return', 'enter': 'Return',
+    'tab': 'Tab', 'backspace': 'BackSpace', 'delete': 'Delete',
+    'space': 'space', 'up': 'Up', 'down': 'Down', 'left': 'Left',
+    'right': 'Right', 'shift': 'Shift_L', 'ctrl': 'Control_L',
+    'alt': 'Alt_L', 'f1': 'F1', 'f2': 'F2', 'f3': 'F3', 'f4': 'F4',
+    'f5': 'F5', 'f6': 'F6', 'f7': 'F7', 'f8': 'F8', 'f9': 'F9',
+    'f10': 'F10', 'f11': 'F11', 'f12': 'F12',
+}
+
+# Mapping from integer key codes to xdotool key names
+_KEY_CODE_MAP = {
+    8: 'BackSpace', 9: 'Tab', 13: 'Return', 27: 'Escape',
+    32: 'space', 37: 'Left', 38: 'Up', 39: 'Right', 40: 'Down',
+    46: 'Delete', 112: 'F1', 113: 'F2', 114: 'F3', 115: 'F4',
+    116: 'F5', 117: 'F6', 118: 'F7', 119: 'F8', 120: 'F9',
+    121: 'F10', 122: 'F11', 123: 'F12', 16: 'Shift_L', 17: 'Control_L',
+    18: 'Alt_L',
+}
+
+
+def _resolve_key(key_value) -> Optional[str]:
+    """Resolve a key value (int code or string name) to an xdotool key name."""
+    if isinstance(key_value, str):
+        return _KEY_NAME_MAP.get(key_value.lower(), key_value)
+    elif isinstance(key_value, int):
+        if key_value in _KEY_CODE_MAP:
+            return _KEY_CODE_MAP[key_value]
+        elif 32 <= key_value <= 126:
+            return chr(key_value)
+    return None
+
 
 class WineEnvironment:
-    """Wine Environment with screen capture and input injection"""
+    """Wine Environment with screen capture and input injection.
+    
+    Supports three input methods (set via INPUT_METHOD env var):
+      - "xdotool" (default): Uses xdotool for X11 input. Most reliable
+        generic solution for any application running on the virtual display.
+      - "pyautogui": Uses pyautogui for X11 input via Xlib.
+      - "socket": Uses syncinput.exe TCP connection for Windows-level input.
+    """
     
     def __init__(
         self,
@@ -29,19 +64,22 @@ class WineEnvironment:
         self.app_file = os.getenv("APP_FILE", "notepad")
         self.window_title = os.getenv("WINDOW_TITLE", "Notepad")
         self.screen_width = screen_width
-        self.screen_width = screen_width
         self.screen_height = screen_height
         
-        self.input_method = os.getenv("INPUT_METHOD", "socket")
+        self.input_method = os.getenv("INPUT_METHOD", "xdotool")
+        self._display = os.getenv("DISPLAY", ":99")
         print(f"Input method: {self.input_method}")
         
         self.input_socket: Optional[socket.socket] = None
         self.input_conn: Optional[socket.socket] = None
-        self._init_input_listener()
+        if self.input_method == "socket":
+            self._init_input_listener()
         
         self._episode_id = 0
         self._step_count = 0
     
+    # ── Socket input (syncinput.exe) ─────────────────────────────────
+
     def _init_input_listener(self):
         """Start TCP listener for syncinput.exe"""
         try:
@@ -64,7 +102,6 @@ class WineEnvironment:
             self.input_conn = conn
             conn.settimeout(5.0)
             print(f"✓ syncinput connected from {addr}")
-            # Send immediate ping to keep connection alive
             try:
                 conn.sendall(b'\x00')
             except:
@@ -78,10 +115,9 @@ class WineEnvironment:
     
     def _send_input(self, message: bytes):
         """Send input to syncinput.exe with retry on failure"""
-        for attempt in range(3):  # Try 3 times
+        for attempt in range(3):
             if not self.input_conn:
-                # Wait for syncinput to reconnect (it may have just restarted)
-                for _ in range(5):  # Wait up to 5 seconds
+                for _ in range(5):
                     if self._accept_input_connection():
                         break
                     time.sleep(1)
@@ -89,55 +125,173 @@ class WineEnvironment:
             if self.input_conn:
                 try:
                     self.input_conn.sendall(message)
-                    self.input_conn.sendall(b'\x00')  # Ping
-                    return  # Success
+                    self.input_conn.sendall(b'\x00')
+                    return
                 except Exception as e:
                     print(f"Send error (attempt {attempt + 1}): {e}")
                     self.input_conn = None
-                    # Will retry with new connection
             else:
                 print(f"No connection (attempt {attempt + 1})")
         
         print("Failed to send input after 3 attempts")
-    
+
+    # ── xdotool helpers ──────────────────────────────────────────────
+
+    def _xdotool(self, *args):
+        """Run an xdotool command. Generic and works with any X11 app."""
+        cmd = ['xdotool'] + list(args)
+        env = os.environ.copy()
+        env['DISPLAY'] = self._display
+        try:
+            subprocess.run(cmd, env=env, capture_output=True, timeout=5)
+        except Exception as e:
+            print(f"xdotool error: {e}")
+
+    # ── Reset ────────────────────────────────────────────────────────
+
     def reset(self) -> WineObservation:
         """Reset environment and restart the Wine application"""
         self._episode_id += 1
         self._step_count = 0
         
-        # Restart the Wine application via Supervisor
         try:
             print("Restarting Wine application...")
             result = subprocess.run(
                 ['supervisorctl', '-s', 'http://127.0.0.1:9001', 'restart', 'wineapp'],
-                capture_output=True,
-                text=True,
-                timeout=10
+                capture_output=True, text=True, timeout=10,
             )
             if result.returncode == 0:
                 print(f"✓ Wine application restarted: {result.stdout.strip()}")
-                # Wait for application to start (supervisor startsecs=3)
                 time.sleep(4)
             else:
                 print(f"Warning: Failed to restart wineapp: {result.stderr}")
         except Exception as e:
             print(f"Warning: Could not restart Wine application: {e}")
         
-        # Reconnect to syncinput (it may have restarted too)
-        self._accept_input_connection()
-        time.sleep(0.5)  # Give syncinput time to reconnect
+        if self.input_method == "socket":
+            self._accept_input_connection()
+            time.sleep(0.5)
         
         return WineObservation(screen=self._capture_screen())
-    
+
+    # ── Step dispatch ────────────────────────────────────────────────
+
     def step(self, action: WineAction) -> WineObservation:
-        if self.input_method == "pyautogui":
-            return self._step_pyautogui(action)
+        if self.input_method == "xdotool":
+            self._step_xdotool(action)
+        elif self.input_method == "pyautogui":
+            self._step_pyautogui(action)
+        else:
+            self._step_socket(action)
+        
+        self._step_count += 1
+        return WineObservation(screen=self._capture_screen())
+
+    # ── xdotool input (generic, works with any X11 app) ──────────────
+
+    def _step_xdotool(self, action: WineAction):
+        """Execute action using xdotool. Works with any X11 application."""
+        if action.action_type in ("key", "keyboard"):
+            key_name = _resolve_key(action.key)
+            if not key_name:
+                print(f"xdotool: Unknown key: {action.key}")
+                return
             
-        if action.action_type == "key":
+            if action.key_state == "down":
+                self._xdotool('keydown', key_name)
+            elif action.key_state == "up":
+                self._xdotool('keyup', key_name)
+            else:
+                self._xdotool('key', key_name)
+                
+        elif action.action_type == "mouse":
+            x, y = action.x or 0.5, action.y or 0.5
+            if x <= 1.0 and y <= 1.0:
+                x, y = x * self.screen_width, y * self.screen_height
+            x, y = int(x), int(y)
+            
+            button = '1' if (action.button or "left") == "left" else '3'
+            
+            if action.mouse_state == "move":
+                self._xdotool('mousemove', str(x), str(y))
+            elif action.mouse_state == "down":
+                self._xdotool('mousemove', str(x), str(y))
+                self._xdotool('mousedown', button)
+            elif action.mouse_state == "up":
+                self._xdotool('mousemove', str(x), str(y))
+                self._xdotool('mouseup', button)
+            elif not action.mouse_state or action.mouse_state == "click":
+                self._xdotool('mousemove', str(x), str(y))
+                self._xdotool('click', button)
+
+    # ── pyautogui input ──────────────────────────────────────────────
+
+    def _step_pyautogui(self, action: WineAction):
+        """Execute action using pyautogui (Direct X11 via Xlib)."""
+        import pyautogui
+        pyautogui.FAILSAFE = False
+        pyautogui.PAUSE = 0
+        
+        # pyautogui key name mapping (lowercase)
+        _PYAUTOGUI_MAP = {
+            'Escape': 'escape', 'Return': 'enter', 'Tab': 'tab',
+            'BackSpace': 'backspace', 'Delete': 'delete', 'space': 'space',
+            'Up': 'up', 'Down': 'down', 'Left': 'left', 'Right': 'right',
+            'Shift_L': 'shift', 'Control_L': 'ctrl', 'Alt_L': 'alt',
+        }
+        
+        try:
+            if action.action_type in ("key", "keyboard"):
+                xdotool_name = _resolve_key(action.key)
+                if not xdotool_name:
+                    print(f"PyAutoGUI: Unknown key: {action.key}")
+                    return
+                # Convert xdotool name to pyautogui name
+                key_name = _PYAUTOGUI_MAP.get(xdotool_name, xdotool_name.lower())
+                
+                if action.key_state == "down":
+                    pyautogui.keyDown(key_name)
+                elif action.key_state == "up":
+                    pyautogui.keyUp(key_name)
+                else:
+                    pyautogui.press(key_name)
+                    
+            elif action.action_type == "mouse":
+                is_left = (action.button or "left") == "left"
+                button = 'left' if is_left else 'right'
+                x, y = action.x or 0.5, action.y or 0.5
+                if x <= 1.0 and y <= 1.0:
+                    x, y = x * self.screen_width, y * self.screen_height
+                x, y = int(x), int(y)
+                
+                if action.mouse_state == "move":
+                    pyautogui.moveTo(x, y)
+                elif action.mouse_state == "down":
+                    pyautogui.mouseDown(x=x, y=y, button=button)
+                elif action.mouse_state == "up":
+                    pyautogui.mouseUp(x=x, y=y, button=button)
+                elif not action.mouse_state or action.mouse_state == "click":
+                    pyautogui.click(x=x, y=y, button=button)
+        except Exception as e:
+            print(f"PyAutoGUI Error: {e}")
+
+    # ── Socket input (syncinput.exe) ─────────────────────────────────
+
+    def _step_socket(self, action: WineAction):
+        """Execute action via syncinput.exe TCP socket."""
+        if action.action_type in ("key", "keyboard"):
             key_code = action.key or 0
+            if isinstance(key_code, str):
+                # Convert string key name to key code for syncinput
+                _NAME_TO_CODE = {
+                    'escape': 27, 'return': 13, 'enter': 13, 'tab': 9,
+                    'backspace': 8, 'delete': 46, 'space': 32,
+                    'up': 38, 'down': 40, 'left': 37, 'right': 39,
+                }
+                key_code = _NAME_TO_CODE.get(key_code.lower(), 0)
+            
             key_state = action.key_state or "down"
             
-            # For A-Z keys, send both down and up
             if key_state == "down" and 65 <= key_code <= 90:
                 self._send_input(f"K{key_code},1|".encode())
                 time.sleep(0.05)
@@ -149,111 +303,36 @@ class WineEnvironment:
         elif action.action_type == "mouse":
             is_left = 1 if (action.button or "left") == "left" else 0
             x, y = action.x or 0.5, action.y or 0.5
-            
-            # Normalize coordinates
             if x <= 1.0 and y <= 1.0:
                 x, y = x * self.screen_width, y * self.screen_height
-            
             x, y = int(x), int(y)
             
-            # If no explicit state, send a complete click (down + up)
             if not action.mouse_state or action.mouse_state == "click":
-                # Mouse down
                 self._send_input(f"M{is_left},1,{x},{y},{self.screen_width},{self.screen_height}|".encode())
                 time.sleep(0.05)
-                # Mouse up
                 self._send_input(f"M{is_left},2,{x},{y},{self.screen_width},{self.screen_height}|".encode())
             else:
                 state = 1 if action.mouse_state == "down" else 2
                 self._send_input(f"M{is_left},{state},{x},{y},{self.screen_width},{self.screen_height}|".encode())
         
-        self._step_count += 1
         time.sleep(0.2)
-        return WineObservation(screen=self._capture_screen())
-    
-    def _step_pyautogui(self, action: WineAction) -> WineObservation:
-        """Execute action using pyautogui (Direct X11)"""
-        # Ensure we target the correct DISPLAY (usually handled by env, but good to be safe)
-        # PyAutoGUI uses Xlib which reads DISPLAY env var automatically.
-        
-        try:
-            if action.action_type == "key":
-                key_code = action.key or 0
-                # Simplified mapping: generic mapping valid for simple keys
-                # For a full implementation we would need a map from key_code to pyautogui keys
-                key_char = chr(key_code).lower() if 32 <= key_code <= 126 else None
-                
-                if key_char:
-                    if action.key_state == "down":
-                        pyautogui.keyDown(key_char)
-                    else: 
-                        pyautogui.keyUp(key_char)
-                else:
-                    # Fallback for special keys if needed, or logging
-                    pass
-                    
-            elif action.action_type == "mouse":
-                is_left = (action.button or "left") == "left"
-                button = 'left' if is_left else 'right'
-                
-                x, y = action.x or 0.5, action.y or 0.5
-                
-                # Normalize coordinates logic match app.py?
-                # User sent absolute coords (200, 220), so strict type check or value check needed
-                # If x > 1, assume absolute. If <= 1, assume normalized.
-                if x <= 1.0 and y <= 1.0:
-                    x, y = x * self.screen_width, y * self.screen_height
-                
-                x, y = int(x), int(y)
-                
-                print(f"PyAutoGUI Moving to ({x}, {y})")
-                
-                if action.mouse_state == "move":
-                    pyautogui.moveTo(x, y)
-                elif action.mouse_state == "down":
-                    print(f"PyAutoGUI MouseDown {button}")
-                    pyautogui.mouseDown(x=x, y=y, button=button)
-                elif action.mouse_state == "up":
-                    print(f"PyAutoGUI MouseUp {button}")
-                    pyautogui.mouseUp(x=x, y=y, button=button)
-                elif not action.mouse_state or action.mouse_state == "click":
-                    print(f"PyAutoGUI Click {button}")
-                    pyautogui.click(x=x, y=y, button=button)
 
-        except Exception as e:
-            print(f"PyAutoGUI Error: {e}")
-        
-        self._step_count += 1
-        # time.sleep(0.2) # Reduce latency
-        return WineObservation(screen=self._capture_screen())
+    # ── Screen capture ───────────────────────────────────────────────
 
     def _capture_screen(self) -> np.ndarray:
         """Capture screen using mss (fast in-memory)"""
         try:
             with mss.mss() as sct:
-                # Capture the specific region or the whole screen
-                # We want to capture the virtual display :99
-                # mss automatically handles the DISPLAY env var on Linux
                 monitor = {
-                    "top": 0, 
-                    "left": 0, 
-                    "width": self.screen_width, 
-                    "height": self.screen_height
+                    "top": 0, "left": 0,
+                    "width": self.screen_width, "height": self.screen_height,
                 }
-                
-                # Grab the data
                 sct_img = sct.grab(monitor)
-                
-                # Convert to numpy array
-                # mss returns BGRA, we want BGR for consistency with cv2/opencv-python
                 frame = np.array(sct_img)
-                frame = frame[:, :, :3]  # Drop Alpha channel
-                
+                frame = frame[:, :, :3]  # Drop alpha channel (BGRA → BGR)
                 return frame
-                
         except Exception as e:
             print(f"Capture error: {e}")
-        
         return np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
     
     @property
@@ -277,4 +356,3 @@ class WineEnvironment:
         if self.input_socket:
             try: self.input_socket.close()
             except: pass
-

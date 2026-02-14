@@ -34,13 +34,8 @@ def get_env():
 executor = ThreadPoolExecutor(max_workers=1)
 app = FastAPI()
 
-# Debug: Print environment on startup (Opt: Keep or Remove? Removing for clean code)
-# print(f"Server Startup: INPUT_METHOD={os.getenv('INPUT_METHOD')}")
-# print(f"Server Startup: DISPLAY={os.getenv('DISPLAY')}")
 
-# Initialize environment
-# We might want to pass config here if needed
-env = WineEnvironment()
+
 
 @app.on_event("startup")
 async def startup_event():

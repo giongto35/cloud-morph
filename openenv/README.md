@@ -51,6 +51,31 @@ cd cloud-morph/openenv
 
 Open **http://localhost:8000/viewer** to see the live stream.
 
+### StarCraft: Brood War
+
+To run StarCraft, you must have the game files located at `../winvm/apps/Starcraft`.
+
+**Run:**
+```bash
+./run_starcraft.sh
+```
+
+**Verify:**
+Open **http://localhost:8000/viewer**. You should see the game menu.
+
+**Note:** StarCraft usually requires `INPUT_METHOD=pyautogui` for reliable input, which is handled automatically by the run script.
+
+### Other Classic Games Support
+
+OpenEnv includes pre-configured scripts for several other classic titles. Ensure you have the game files in `../winvm/apps/<FolderName>`.
+
+| Game | Script | Required Path |
+|------|--------|---------------|
+| **Heroes of Might and Magic III** | `./run_heroes3.sh` | `../winvm/apps/Heroes3/Heroes3.exe` |
+| **RollerCoaster Tycoon** | `./run_rct.sh` | `../winvm/apps/RCT/RCT.exe` |
+| **Worms Armageddon** | `./run_worms.sh` | `../winvm/apps/Worms/WA.exe` |
+| **SimCity 3000** | `./run_simcity3000.sh` | `../winvm/apps/SimCity3000/SC3U.exe` |
+
 ## API Reference
 
 ### POST /reset
@@ -186,6 +211,7 @@ print(f"Screen shape: {obs.shape}")
 | `SCREEN_HEIGHT` | 600 | Virtual screen height |
 | `APP_FILE` | notepad | Wine application to run |
 | `WINDOW_TITLE` | Notepad | Window title for input targeting |
+| `INPUT_METHOD` | socket | Input method: `socket` (default) or `pyautogui` |
 
 ## Manual Commands
 

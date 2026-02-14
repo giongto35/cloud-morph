@@ -25,6 +25,36 @@ RUN_CMD="exec"
 
 # Check if it is a Windows executable
 if [[ "$APP_FILE" == *.exe ]]; then
+    # Switch to the executable's directory
+    WORK_DIR=$(dirname "$APP_FILE")
+    
+    # Symlink to C: drive to make games happy (map Z:\apps\...\Game to C:\Game)
+    if [ -d "$WORK_DIR" ]; then
+        GAME_DIR_NAME=$(basename "$WORK_DIR")
+        FAKE_C_PATH="/root/.wine/drive_c/$GAME_DIR_NAME"
+        
+        # Only symlink if not already there
+        if [ ! -d "$FAKE_C_PATH" ]; then
+            echo "Symlinking $WORK_DIR to $FAKE_C_PATH"
+            ln -s "$WORK_DIR" "$FAKE_C_PATH"
+        fi
+        
+        # Use the C: path
+        WORK_DIR="$FAKE_C_PATH"
+        echo "Changing working directory to: $WORK_DIR"
+        cd "$WORK_DIR"
+
+        # Import any .reg files found in the directory
+        for regfile in *.reg; do
+            # Check if file exists (loop expands to literal *.reg if no match)
+            if [ -f "$regfile" ]; then
+                echo "Importing registry file: $regfile"
+                wine regedit /S "$regfile"
+            fi
+        done
+
+        APP_FILE=$(basename "$APP_FILE")
+    fi
     RUN_CMD="exec wine"
 fi
 
