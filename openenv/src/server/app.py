@@ -3,7 +3,7 @@
 from fastapi import FastAPI, Body
 from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
 import uvicorn
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional, Union
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import base64
@@ -101,6 +101,67 @@ async def get_state() -> Dict[str, Any]:
         "window_title": state.window_title,
         "screen_width": state.screen_width,
         "screen_height": state.screen_height,
+    }
+
+
+@app.get("/process/{name}")
+async def get_process_pid(name: str) -> Dict[str, Any]:
+    """Get PID of a process by name"""
+    env = get_env()
+    pid = await asyncio.get_event_loop().run_in_executor(executor, env.find_process_pid, name)
+    if pid is None:
+        return JSONResponse(status_code=404, content={"error": f"Process '{name}' not found"})
+    return {"pid": pid, "name": name}
+
+
+@app.post("/memory/read")
+async def read_memory(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """Read memory from a process"""
+    env = get_env()
+    pid = request.get("pid")
+    address = request.get("address")
+    size = request.get("size", 4)
+    
+    if not pid or address is None:
+        return JSONResponse(status_code=400, content={"error": "pid and address required"})
+        
+    data = await asyncio.get_event_loop().run_in_executor(
+        executor, env.read_memory, pid, address, size
+    )
+    
+    if data is None:
+         return JSONResponse(status_code=500, content={"error": "Failed to read memory"})
+         
+    return {
+        "pid": pid,
+        "address": address,
+        "size": size,
+        "data_b64": base64.b64encode(data).decode('utf-8'),
+        "data_hex": data.hex()
+    }
+
+
+@app.post("/memory/scan")
+async def scan_memory(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """Scan memory for a value"""
+    env = get_env()
+    pid = request.get("pid")
+    value = request.get("value")
+    value_type = request.get("value_type", "int")
+    
+    if not pid or value is None:
+        return JSONResponse(status_code=400, content={"error": "pid and value required"})
+        
+    addresses = await asyncio.get_event_loop().run_in_executor(
+        executor, env.scan_memory, pid, value, value_type
+    )
+    
+    return {
+        "pid": pid,
+        "value": value,
+        "value_type": value_type,
+        "count": len(addresses),
+        "addresses": addresses
     }
 
 

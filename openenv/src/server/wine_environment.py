@@ -8,6 +8,8 @@ import time
 import subprocess
 import cv2
 import mss
+import re
+import struct
 
 from models import WineAction, WineObservation, WineState
 
@@ -297,9 +299,142 @@ class WineEnvironment:
     
     def close(self):
         """Cleanup"""
-        if self.input_conn:
-            try: self.input_conn.close()
-            except: pass
         if self.input_socket:
             try: self.input_socket.close()
             except: pass
+
+    # ── Memory Reading ───────────────────────────────────────────────
+
+    def find_process_pid(self, process_name: str) -> Optional[int]:
+        """Find PID of a process by name (exact or partial)."""
+        try:
+            # simple pgrep
+            # wine processes show up as:
+            #   wine-preloader
+            #   App.exe
+            cmd = ['pgrep', '-f', process_name]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                pids = result.stdout.strip().split('\n')
+                # Return the last one (usually the child/actual app if multiples)
+                # But typically we want the oldest? 
+                # Let's try to be smart or just return the first.
+                # Actually for wine, sometimes it's tricky.
+                # Default to first found
+                return int(pids[0])
+        except Exception as e:
+            print(f"find_process_pid error: {e}")
+        return None
+
+    def read_memory(self, pid: int, address: int, size: int) -> Optional[bytes]:
+        """Read raw bytes from process memory via /proc/{pid}/mem."""
+        mem_file = f"/proc/{pid}/mem"
+        try:
+            with open(mem_file, 'rb') as f:
+                f.seek(address)
+                return f.read(size)
+        except Exception as e:
+            print(f"read_memory error (PID {pid}, Addr {hex(address)}): {e}")
+            return None
+
+    def scan_memory(self, pid: int, value, value_type: str = "int", 
+                   start_addr: int = 0x00400000, end_addr: int = 0x7FFFFFFF,
+                   step: int = 4) -> list[int]:
+        """
+        Scan memory for a value.
+        Very naive implementation: reads chunks and searches.
+        value_type: 'int' (4 bytes), 'short' (2 bytes), 'byte' (1 byte), 'string'
+        """
+        found_addresses = []
+        chunk_size = 1024 * 1024  # 1MB chunks
+        
+        # Determine struct format
+        fmt = 'I' # unsigned int
+        data_len = 4
+        target_bytes = b''
+        
+        if value_type == 'int':
+            fmt = 'I' # unsigned int 32-bit
+            data_len = 4
+            target_bytes = struct.pack(fmt, int(value))
+        elif value_type == 'short':
+            fmt = 'H' # unsigned short 16-bit
+            data_len = 2
+            target_bytes = struct.pack(fmt, int(value))
+        elif value_type == 'byte':
+            fmt = 'B' # unsigned char 8-bit
+            data_len = 1
+            target_bytes = struct.pack(fmt, int(value))
+        elif value_type == 'string':
+            target_bytes = value.encode('utf-8')
+            data_len = len(target_bytes)
+        
+        print(f"Scanning PID {pid} for {value} ({value_type}) [{target_bytes.hex()}]...")
+        
+        try:
+            # We need to read /proc/pid/maps to know valid ranges
+            with open(f"/proc/{pid}/maps", 'r') as map_f:
+                maps = map_f.readlines()
+                
+            mem_file = f"/proc/{pid}/mem"
+            with open(mem_file, 'rb') as mem_f:
+                for line in maps:
+                    parts = line.split()
+                    # Parse address range: 00400000-00401000
+                    addr_range = parts[0].split('-')
+                    range_start = int(addr_range[0], 16)
+                    range_end = int(addr_range[1], 16)
+                    perms = parts[1]
+                    
+                    # Skip if not readable
+                    if 'r' not in perms: continue
+                    # Skip shared libs or stack/heap if requested (optimization)
+                    # For now scan everything readable
+                    
+                    # Optimization: only scan if within requested global bounds
+                    if range_end < start_addr or range_start > end_addr:
+                        continue
+                        
+                    # Clamp to requested bounds
+                    curr_ptr = max(range_start, start_addr)
+                    limit = min(range_end, end_addr)
+                    
+                    if curr_ptr >= limit: continue
+
+                    # Seek to start of this region
+                    try:
+                        mem_f.seek(curr_ptr)
+                    except:
+                        continue
+                        
+                    # Read in chunks
+                    while curr_ptr < limit:
+                        read_size = min(chunk_size, limit - curr_ptr)
+                        try:
+                            chunk = mem_f.read(read_size)
+                        except:
+                            break # Region might not be fully readable
+                            
+                        # Search in chunk
+                        offset = 0
+                        while True:
+                            idx = chunk.find(target_bytes, offset)
+                            if idx == -1:
+                                break
+                            
+                            found_addr = curr_ptr + idx
+                            found_addresses.append(found_addr)
+                            
+                            # Move past this match
+                            offset = idx + 1
+                            
+                            # Limit results to avoid massive spam
+                            if len(found_addresses) > 100:
+                                return found_addresses
+
+                        curr_ptr += read_size
+                        
+        except Exception as e:
+            print(f"Scan error: {e}")
+            
+        return found_addresses
