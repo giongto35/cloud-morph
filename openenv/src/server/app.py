@@ -165,6 +165,26 @@ async def scan_memory(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
     }
 
 
+
+@app.post("/memory/scan_density")
+async def scan_memory_density(request: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """Scan memory for grid using density heuristic"""
+    env = get_env()
+    pid = request.get("pid")
+    
+    if not pid:
+        return JSONResponse(status_code=400, content={"error": "pid required"})
+        
+    address = await asyncio.get_event_loop().run_in_executor(
+        executor, env.scan_grid_density, pid
+    )
+    
+    return {
+        "pid": pid,
+        "address": address, # Can be None
+        "found": address is not None
+    }
+
 @app.get("/health")
 async def health() -> Dict[str, str]:
     """Health check"""

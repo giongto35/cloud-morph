@@ -438,3 +438,62 @@ class WineEnvironment:
             print(f"Scan error: {e}")
             
         return found_addresses
+    
+    def scan_grid_density(self, pid: int) -> Optional[int]:
+        """
+        Scan memory for Minesweeper grid using density heuristic.
+        Looks for high concentration of 0x0F (hidden cells) and 0x10 (borders).
+        Returns the best candidate address.
+        """
+        best_addr = None
+        best_score = 0.0
+        
+        chunk_size = 10 * 1024 * 1024 # 10MB limit per region to avoid huge lags
+        
+        try:
+            # 1. Get readable maps
+            with open(f"/proc/{pid}/maps", 'r') as map_f:
+                maps = map_f.readlines()
+                
+            mem_file = f"/proc/{pid}/mem"
+            with open(mem_file, 'rb') as mem_f:
+                for line in maps:
+                    parts = line.split()
+                    addr_range = parts[0].split('-')
+                    start = int(addr_range[0], 16)
+                    end = int(addr_range[1], 16)
+                    perms = parts[1]
+                    
+                    if 'r' not in perms: continue
+                    
+                    size = end - start
+                    if size > chunk_size: continue # Skip very large regions
+                    
+                    try:
+                        mem_f.seek(start)
+                        data = mem_f.read(size)
+                        
+                        # Window: 256 bytes, Stride: 128
+                        for i in range(0, len(data) - 256, 128):
+                            window = data[i:i+256]
+                            count_0f = window.count(b'\x0f')
+                            ratio_0f = count_0f / 256.0
+                            
+                            # Optimization: Early exit if low density
+                            if ratio_0f < 0.3: continue
+                            
+                            count_10 = window.count(b'\x10')
+                            ratio_10 = count_10 / 256.0
+                            
+                            score = ratio_0f + (ratio_10 * 0.5)
+                            
+                            if score > best_score:
+                                best_score = score
+                                best_addr = start + i
+                    except:
+                        continue
+        except Exception as e:
+            print(f"Grid scan error: {e}")
+            
+        print(f"Grid Scan Result: {hex(best_addr) if best_addr else 'None'} (Score: {best_score})")
+        return best_addr

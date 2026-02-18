@@ -1,0 +1,7 @@
+stable-baselines3[extra]
+gymnasium
+shimmy
+opencv-python
+requests
+numpy
+tensorboard
