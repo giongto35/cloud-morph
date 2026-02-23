@@ -1,0 +1,92 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rollout-worker-{{ITERATION}}-{{WORKER_ID}}
+  namespace: openenv-training
+  labels:
+    kueue.x-k8s.io/queue-name: training-queue
+    app: rollout-worker
+    iteration: "{{ITERATION}}"
+    worker-id: "{{WORKER_ID}}"
+spec:
+  suspend: true  # Kueue will unsuspend when admitted
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: rollout-worker
+        iteration: "{{ITERATION}}"
+        worker-id: "{{WORKER_ID}}"
+    spec:
+      restartPolicy: Never
+      # Native sidecar: OpenEnv runs as init container with restartPolicy Always
+      initContainers:
+        - name: openenv
+          image: openenv:latest
+          imagePullPolicy: Never
+          restartPolicy: Always
+          env:
+            - name: APP_FILE
+              value: /apps/Starcraft/StarCraft.exe
+            - name: WINDOW_TITLE
+              value: "Brood War"
+            - name: SCREEN_WIDTH
+              value: "640"
+            - name: SCREEN_HEIGHT
+              value: "480"
+            - name: INPUT_METHOD
+              value: xdotool
+            - name: DISPLAY
+              value: ":99"
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+          volumeMounts:
+            - name: game-files
+              mountPath: /apps/Starcraft
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      containers:
+        - name: worker
+          image: openenv-worker:latest
+          imagePullPolicy: Never
+          env:
+            - name: WORKER_ID
+              value: "{{WORKER_ID}}"
+            - name: ITERATION
+              value: "{{ITERATION}}"
+            - name: ROLLOUT_STEPS
+              value: "{{ROLLOUT_STEPS}}"
+            - name: OPENENV_URL
+              value: "http://localhost:8000"
+            - name: DATA_DIR
+              value: /data
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          volumeMounts:
+            - name: training-data
+              mountPath: /data
+      volumes:
+        - name: training-data
+          persistentVolumeClaim:
+            claimName: training-data
+        - name: game-files
+          hostPath:
+            path: /opt/games/Starcraft
+            type: DirectoryOrCreate

@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PPO Training Dashboard — StarCraft × OpenEnv</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#05070c;--bgs:#0a0e18;--bgc:#0f1422;--bge:#161d30;
+  --br:#1a2540;--br2:#243050;
+  --t1:#e8edf5;--t2:#8b9dc3;--t3:#4a5e84;
+  --teal:#2dd4bf;--cyan:#22d3ee;--violet:#a78bfa;--pink:#f472b6;
+  --amber:#fbbf24;--green:#4ade80;--red:#f87171;--blue:#60a5fa;--orange:#fb923c;
+}
+html{font-size:13px}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--t1);height:100vh;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(90deg,#2dd4bf04 1px,transparent 1px),linear-gradient(#2dd4bf04 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+
+.dash{display:grid;grid-template-columns:1fr 1fr 340px;grid-template-rows:52px 1fr 1fr 180px;gap:1px;height:100vh;background:#0d1220}
+
+/* Header */
+.hdr{grid-column:1/-1;background:var(--bgs);display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--br)}
+.hdr-left{display:flex;align-items:center;gap:14px}
+.hdr-logo{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--teal),var(--violet));display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono';font-weight:800;font-size:14px;color:var(--bg)}
+.hdr h1{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.hdr-stats{display:flex;gap:20px}
+.hdr-stat{font-family:'JetBrains Mono';font-size:11px;display:flex;align-items:center;gap:6px}
+.hdr-stat .lb{color:var(--t3)}.hdr-stat .vl{font-weight:600}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--red)}
+.conn-dot.ok{background:var(--green);animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* Panel */
+.panel{background:var(--bgs);position:relative;overflow:hidden;display:flex;flex-direction:column}
+.panel-hdr{padding:10px 14px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--br);flex-shrink:0}
+.panel-title{font-size:11px;font-weight:600;font-family:'JetBrains Mono';text-transform:uppercase;letter-spacing:1.2px;color:var(--t2)}
+.panel-badge{font-family:'JetBrains Mono';font-size:9px;font-weight:500;padding:2px 8px;border-radius:4px;border:1px solid var(--br)}
+.panel-body{flex:1;overflow:hidden;position:relative}
+
+/* Game Screen */
+.game-panel{grid-column:1;grid-row:2;display:flex;flex-direction:column}
+.game-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:8px 8px 4px;position:relative;min-height:0}
+.game-wrap img,.game-wrap canvas{max-width:100%;max-height:100%;border-radius:6px;border:1px solid var(--br);image-rendering:auto}
+#gameStream{width:100%;height:100%;object-fit:contain;border-radius:6px;border:1px solid var(--br);background:#000}
+#gameObs{display:none;border-radius:6px;border:1px solid var(--br);image-rendering:pixelated;background:#000}
+.no-stream{display:flex;align-items:center;justify-content:center;width:100%;height:100%;color:var(--t3);font-family:'JetBrains Mono';font-size:12px;flex-direction:column;gap:8px}
+.no-stream .hint{font-size:10px;color:var(--t3);opacity:.6}
+.game-info{flex-shrink:0;display:flex;align-items:center;gap:12px;padding:4px 10px 6px;font-family:'JetBrains Mono';font-size:10px;border-top:1px solid var(--br);overflow:hidden}
+.game-info .gi-item{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.game-info .gi-label{color:var(--t3)}
+.game-info .gi-val{font-weight:600}
+.game-info .gi-sep{color:var(--br);margin:0 2px}
+.game-info .gi-action{display:flex;gap:6px;margin-left:auto;overflow:hidden}
+.game-info .gi-action-item{padding:2px 6px;border-radius:3px;border:1px solid var(--br);font-size:9px;color:var(--t2)}
+.game-info .gi-action-item .pct{color:var(--green);font-weight:600;margin-left:4px}
+
+/* Neural Net */
+.nn-panel{grid-column:2;grid-row:2}
+#nnCanvas{width:100%;height:100%}
+
+/* Scheduler */
+.sched-panel{grid-column:3;grid-row:2/4}
+.sched-body{padding:10px 12px;overflow-y:auto;flex:1}
+.sched-section{margin-bottom:14px}
+.sched-label{font-family:'JetBrains Mono';font-size:9px;text-transform:uppercase;letter-spacing:1.3px;color:var(--t3);margin-bottom:8px}
+
+.sched-slots{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.sched-slot{width:44px;height:30px;border-radius:5px;border:1px solid var(--br);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono';font-size:9px;font-weight:600;transition:all .4s}
+.sched-slot.running{background:#4ade8015;border-color:var(--green);color:var(--green)}
+.sched-slot.pending{background:#fbbf2410;border-color:var(--amber);color:var(--amber);animation:spulse 2s infinite}
+.sched-slot.succeeded{background:#60a5fa10;border-color:var(--blue);color:var(--blue);opacity:.6}
+.sched-slot.failed{background:#f8717110;border-color:var(--red);color:var(--red)}
+.sched-slot.suspended{background:#a78bfa10;border-color:var(--violet);color:var(--violet)}
+.sched-slot.empty{border-style:dashed;color:var(--t3)}
+@keyframes spulse{0%,100%{opacity:.6}50%{opacity:1}}
+
+.sched-legend{display:flex;gap:10px;margin-top:6px;margin-bottom:10px;flex-wrap:wrap}
+.sched-legend span{font-size:9px;color:var(--t3);display:flex;align-items:center;gap:4px;font-family:'JetBrains Mono'}
+.sched-legend .dot{width:6px;height:6px;border-radius:50%}
+
+.pod-card{border:1px solid var(--br);border-radius:6px;padding:8px 10px;margin-bottom:6px;background:var(--bgc);font-family:'JetBrains Mono';font-size:10px}
+.pod-name{font-weight:600;color:var(--t1);margin-bottom:4px}
+.pod-containers{display:flex;gap:6px;flex-wrap:wrap}
+.pod-ct{padding:3px 8px;border-radius:4px;font-size:9px;border:1px dashed var(--br)}
+.pod-ct.ready{border-color:var(--green);color:var(--green)}
+.pod-ct.not-ready{border-color:var(--amber);color:var(--amber)}
+
+.res-bar-wrap{margin-bottom:8px}
+.res-bar-header{display:flex;justify-content:space-between;font-family:'JetBrains Mono';font-size:9px;color:var(--t3);margin-bottom:3px}
+.res-bar-bg{height:6px;background:var(--bgc);border-radius:3px;overflow:hidden}
+.res-bar{height:100%;border-radius:3px;transition:width .5s}
+
+.event-log{max-height:180px;overflow-y:auto;font-family:'JetBrains Mono';font-size:10px;line-height:1.8}
+.event-log::-webkit-scrollbar{width:3px}
+.event-log::-webkit-scrollbar-thumb{background:var(--br);border-radius:2px}
+.ev-time{color:var(--t3);margin-right:6px}
+.ev-k8s{color:var(--violet);font-weight:600;margin-right:4px}
+.ev-kueue{color:var(--teal);font-weight:600;margin-right:4px}
+.ev-worker{color:var(--pink);font-weight:600;margin-right:4px}
+.ev-trainer{color:var(--green);font-weight:600;margin-right:4px}
+.ev-msg{color:var(--t2)}
+
+/* Worker progress bars */
+.wt-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.wt-label{font-family:'JetBrains Mono';font-size:10px;color:var(--t3);width:28px;flex-shrink:0}
+.wt-bar-bg{flex:1;height:16px;background:var(--bgc);border-radius:4px;overflow:hidden;position:relative}
+.wt-bar{height:100%;border-radius:4px;transition:width .5s}
+.wt-bar.boot{background:linear-gradient(90deg,#60a5fa44,#60a5fa22)}
+.wt-bar.collect{background:linear-gradient(90deg,#4ade8044,#4ade8022)}
+.wt-bar.saving{background:linear-gradient(90deg,#fbbf2444,#fbbf2422)}
+.wt-bar.done{background:linear-gradient(90deg,#60a5fa44,#60a5fa22)}
+.wt-bar-label{position:absolute;right:4px;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono';font-size:8px;color:var(--t2)}
+.wt-status{font-family:'JetBrains Mono';font-size:9px;width:60px;text-align:right;flex-shrink:0}
+
+/* Metrics */
+.metrics-panel{grid-column:1;grid-row:3}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;height:100%}
+.metric-cell{background:var(--bgs);padding:8px 12px;display:flex;flex-direction:column}
+.metric-label{font-family:'JetBrains Mono';font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:2px}
+.metric-val{font-family:'JetBrains Mono';font-size:20px;font-weight:700;margin-bottom:4px}
+.metric-canvas{flex:1;min-height:0}
+.metric-canvas canvas{width:100%;height:100%}
+
+/* Activation Maps */
+.act-panel{grid-column:2;grid-row:3}
+.act-tabs{display:flex;gap:0;padding:0 14px;border-bottom:1px solid var(--br)}
+.act-tab{font-family:'JetBrains Mono';font-size:10px;padding:6px 12px;cursor:pointer;color:var(--t3);border-bottom:2px solid transparent;transition:all .2s}
+.act-tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+.act-tab:hover{color:var(--t2)}
+.act-grid{display:grid;gap:2px;padding:8px;height:calc(100% - 34px);overflow:hidden}
+.act-grid.c32{grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(4,1fr)}
+.act-grid.c64{grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr)}
+.act-cell{border-radius:2px;overflow:hidden;position:relative}
+.act-cell canvas{width:100%;height:100%;image-rendering:pixelated}
+
+/* Bottom Flow */
+.flow-panel{grid-column:1/-1;grid-row:4;border-top:1px solid var(--br)}
+#flowCanvas{width:100%;height:100%}
+
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--br);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="dash">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-logo">P</div>
+      <h1>PPO Training — StarCraft</h1>
+      <div class="conn-dot" id="connDot" title="WebSocket connection"></div>
+    </div>
+    <div class="hdr-stats">
+      <div class="hdr-stat"><span class="lb">ITER</span><span class="vl" style="color:var(--teal)" id="hIter">—</span></div>
+      <div class="hdr-stat"><span class="lb">PHASE</span><span class="vl" style="color:var(--violet)" id="hPhase">—</span></div>
+      <div class="hdr-stat"><span class="lb">STEPS</span><span class="vl" style="color:var(--green)" id="hSteps">0</span></div>
+      <div class="hdr-stat"><span class="lb">REWARD</span><span class="vl" style="color:var(--amber)" id="hReward">—</span></div>
+      <div class="hdr-stat"><span class="lb">LOSS</span><span class="vl" style="color:var(--pink)" id="hLoss">—</span></div>
+      <div class="hdr-stat"><span class="lb">WORKERS</span><span class="vl" style="color:var(--green)" id="hWorkers">0/0</span></div>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div class="panel game-panel">
+    <div class="panel-hdr">
+      <span class="panel-title">Game Screen</span>
+      <span class="panel-badge" id="gameSource" style="color:var(--green);border-color:var(--green)">STREAM</span>
+    </div>
+    <div class="game-wrap" id="gameWrap">
+      <img id="gameStream" alt="Game Stream" crossorigin="anonymous" style="display:none">
+      <canvas id="gameObs" width="336" height="336"></canvas>
+      <div class="no-stream" id="noStream">
+        <div>Waiting for game stream...</div>
+        <div class="hint">Workers must be running with OpenEnv sidecar</div>
+      </div>
+    </div>
+    <div class="game-info" id="gameInfo">
+      <div class="gi-item"><span class="gi-label">MIN</span><span class="gi-val" style="color:var(--cyan)" id="gMinerals">—</span></div>
+      <span class="gi-sep">|</span>
+      <div class="gi-item"><span class="gi-label">STEP</span><span class="gi-val" id="gStep">—</span></div>
+      <span class="gi-sep">|</span>
+      <div class="gi-item"><span class="gi-label">V</span><span class="gi-val" style="color:var(--green)" id="gValue">—</span></div>
+      <span class="gi-sep">|</span>
+      <div class="gi-item"><span class="gi-label">ACT</span><span class="gi-val" style="color:var(--amber)" id="gAction">—</span></div>
+      <div class="gi-action" id="gTopActions"></div>
+    </div>
+  </div>
+
+  <!-- NEURAL NET -->
+  <div class="panel nn-panel">
+    <div class="panel-hdr">
+      <span class="panel-title">Network Activations</span>
+      <span class="panel-badge" id="nnBadge">Nature-CNN</span>
+    </div>
+    <div class="panel-body"><canvas id="nnCanvas"></canvas></div>
+  </div>
+
+  <!-- SCHEDULER -->
+  <div class="panel sched-panel">
+    <div class="panel-hdr">
+      <span class="panel-title">Kueue Scheduler</span>
+      <span class="panel-badge" style="color:var(--violet);border-color:var(--violet)" id="schedBadge">—</span>
+    </div>
+    <div class="sched-body" id="schedBody">
+      <div class="sched-section">
+        <div class="sched-label">Jobs</div>
+        <div class="sched-slots" id="jobSlots"></div>
+        <div class="sched-legend">
+          <span><span class="dot" style="background:var(--green)"></span>Running</span>
+          <span><span class="dot" style="background:var(--amber)"></span>Pending</span>
+          <span><span class="dot" style="background:var(--violet)"></span>Suspended</span>
+          <span><span class="dot" style="background:var(--blue)"></span>Succeeded</span>
+          <span><span class="dot" style="background:var(--red)"></span>Failed</span>
+        </div>
+      </div>
+      <div class="sched-section">
+        <div class="sched-label">Pods</div>
+        <div id="podCards"></div>
+      </div>
+      <div class="sched-section">
+        <div class="sched-label">Worker Progress</div>
+        <div id="workerTimeline"></div>
+      </div>
+      <div class="sched-section">
+        <div class="sched-label">Resource Usage</div>
+        <div id="resourceBars"></div>
+      </div>
+      <div class="sched-section">
+        <div class="sched-label">Events</div>
+        <div class="event-log" id="eventLog"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="panel metrics-panel">
+    <div class="panel-hdr">
+      <span class="panel-title">Training Metrics</span>
+      <span class="panel-badge" id="metricsBadge">—</span>
+    </div>
+    <div class="panel-body">
+      <div class="metrics-grid">
+        <div class="metric-cell">
+          <div class="metric-label">Policy Loss</div>
+          <div class="metric-val" style="color:var(--pink)" id="mPL">—</div>
+          <div class="metric-canvas"><canvas id="cPL"></canvas></div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Value Loss</div>
+          <div class="metric-val" style="color:var(--cyan)" id="mVL">—</div>
+          <div class="metric-canvas"><canvas id="cVL"></canvas></div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Entropy</div>
+          <div class="metric-val" style="color:var(--violet)" id="mEnt">—</div>
+          <div class="metric-canvas"><canvas id="cEnt"></canvas></div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-label">Episode Reward</div>
+          <div class="metric-val" style="color:var(--amber)" id="mRew">—</div>
+          <div class="metric-canvas"><canvas id="cRew"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVATION MAPS -->
+  <div class="panel act-panel">
+    <div class="panel-hdr">
+      <span class="panel-title">Conv Activations</span>
+      <span class="panel-badge" id="actBadge">—</span>
+    </div>
+    <div class="panel-body">
+      <div class="act-tabs">
+        <div class="act-tab active" data-layer="conv1" onclick="selectActLayer('conv1',this)">Conv1 (32)</div>
+        <div class="act-tab" data-layer="conv2" onclick="selectActLayer('conv2',this)">Conv2 (64)</div>
+        <div class="act-tab" data-layer="conv3" onclick="selectActLayer('conv3',this)">Conv3 (64)</div>
+      </div>
+      <div class="act-grid c32" id="actGrid"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM FLOW -->
+  <div class="panel flow-panel">
+    <div class="panel-hdr">
+      <span class="panel-title">Distributed Training Flow</span>
+      <span class="panel-badge" id="flowBadge">—</span>
+    </div>
+    <div class="panel-body"><canvas id="flowCanvas"></canvas></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+const API = window.location.origin; // monitor.py serves everything
+const WS_URL = `ws://${window.location.host}/api/ws`;
+const POLL_MS = 800;  // polling interval for REST endpoints
+const ACTIONS = [
+  'key:s','key:b','key:m','key:p','key:a','key:h','key:Return','key:Escape','key:F1','key:F2',
+  ...Array.from({length:25},(_,i)=>`click(${[64,192,320,448,576][i%5]},${[48,144,240,336,432][Math.floor(i/5)]})`)
+];
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let ST = {
+  connected: false,
+  trainer: { phase:'unknown', iteration:0, max_iterations:3 },
+  workers: [],
+  metrics: [],
+  scheduler: { jobs:[], pods:[], workloads:[], queues:{} },
+  activations: null,
+  actLayer: 'conv1',
+  gameFrame: null,
+  events: [],
+  actionProbs: null,
+  nnData: { fc_stats:null, value:null },
+  nnActive: false,            // true only when CNN is actively processing
+  lastActivationTs: 0,        // timestamp of last activation data update
+};
+
+const chartData = { cPL:[], cVL:[], cEnt:[], cRew:[] };
+
+// ═══════════════════════════════════════════════════════════════
+// WEBSOCKET + POLLING
+// ═══════════════════════════════════════════════════════════════
+let ws = null;
+function connectWS() {
+  try {
+    ws = new WebSocket(WS_URL);
+    ws.onopen = () => {
+      ST.connected = true;
+      document.getElementById('connDot').classList.add('ok');
+      addEvent('monitor','WebSocket connected');
+    };
+    ws.onclose = () => {
+      ST.connected = false;
+      document.getElementById('connDot').classList.remove('ok');
+      setTimeout(connectWS, 2000);
+    };
+    ws.onerror = () => { ws.close(); };
+    ws.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.trainer) updateTrainerState(d.trainer);
+        if (d.workers) updateWorkersState(d.workers);
+        if (d.metrics) updateMetricsState(d.metrics);
+      } catch(err) {}
+    };
+  } catch(e) {
+    setTimeout(connectWS, 3000);
+  }
+}
+
+// Poll REST endpoints that WebSocket doesn't cover
+async function pollScheduler() {
+  try {
+    const r = await fetch(`${API}/api/scheduler`);
+    if (r.ok) {
+      ST.scheduler = await r.json();
+      renderScheduler();
+    }
+  } catch(e) {}
+}
+
+async function pollActivations() {
+  try {
+    // Try live activations first (model-based), fall back to file-based
+    let r = await fetch(`${API}/api/activations_live/0`);
+    if (!r.ok) r = await fetch(`${API}/api/activations/0`);
+    if (r.ok) {
+      const d = await r.json();
+      if (!d.error) {
+        // Check if data actually changed (compare a value fingerprint)
+        const newFp = d.value != null ? d.value.toFixed(6) : '';
+        const oldFp = ST.nnData.value != null ? ST.nnData.value.toFixed(6) : '';
+        if (newFp !== oldFp) {
+          ST.lastActivationTs = performance.now();
+        }
+        ST.activations = d;
+        if (d.action_probs) ST.actionProbs = d.action_probs;
+        if (d.value !== undefined) ST.nnData.value = d.value;
+        if (d.fc_stats) ST.nnData.fc_stats = d.fc_stats;
+        renderActivations();
+      }
+    }
+  } catch(e) {}
+}
+
+async function pollGameFrame() {
+  try {
+    const r = await fetch(`${API}/api/game_frame/0`);
+    if (r.ok) {
+      const d = await r.json();
+      if (d.frame) {
+        ST.gameFrame = d.frame;
+        showObsFrame(d.frame);
+      }
+    }
+  } catch(e) {}
+}
+
+// Try MJPEG stream first, fall back to polling snapshots
+function setupGameStream() {
+  const img = document.getElementById('gameStream');
+  const obs = document.getElementById('gameObs');
+  const noStream = document.getElementById('noStream');
+
+  img.src = `${API}/api/stream/0`;
+  img.onerror = () => {
+    // MJPEG stream failed, fall back to polling obs snapshots
+    img.style.display = 'none';
+    obs.style.display = 'block';
+    noStream.style.display = 'none';
+    document.getElementById('gameSource').textContent = 'SNAPSHOT';
+    document.getElementById('gameSource').style.color = 'var(--amber)';
+    setInterval(pollGameFrame, POLL_MS);
+  };
+  img.onload = () => {
+    img.style.display = 'block';
+    obs.style.display = 'none';
+    noStream.style.display = 'none';
+    document.getElementById('gameSource').textContent = 'LIVE MJPEG';
+  };
+  // Also poll snapshots as backup
+  setTimeout(() => {
+    if (img.naturalWidth === 0) {
+      img.style.display = 'none';
+      obs.style.display = 'block';
+      document.getElementById('gameSource').textContent = 'SNAPSHOT';
+      document.getElementById('gameSource').style.color = 'var(--amber)';
+      setInterval(pollGameFrame, POLL_MS);
+    }
+  }, 5000);
+}
+
+function showObsFrame(b64) {
+  const cv = document.getElementById('gameObs');
+  const ctx = cv.getContext('2d');
+  const img = new Image();
+  img.onload = () => { ctx.drawImage(img, 0, 0, 336, 336); };
+  img.src = 'data:image/jpeg;base64,' + b64;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATE UPDATES
+// ═══════════════════════════════════════════════════════════════
+function updateTrainerState(t) {
+  const prev = ST.trainer.phase;
+  ST.trainer = t;
+  ST.nnActive = !!t.nn_active;
+  document.getElementById('hIter').textContent = `${t.iteration||0}/${t.max_iterations||'?'}`;
+  document.getElementById('hPhase').textContent = (t.phase||'—').toUpperCase();
+  document.getElementById('metricsBadge').textContent = (t.phase||'—').toUpperCase();
+  document.getElementById('flowBadge').textContent = `ITERATION ${t.iteration||0}`;
+
+  if (t.stats) {
+    document.getElementById('hLoss').textContent = (t.stats.policy_loss||0).toFixed(4);
+  }
+  if (prev !== t.phase) {
+    addEvent('trainer', `Phase → ${t.phase} (iter ${t.iteration})`);
+  }
+}
+
+function updateWorkersState(d) {
+  ST.workers = d.workers || [];
+  let totalSteps = 0, collecting = 0;
+  const wk = ST.workers[0];
+  ST.workers.forEach(w => {
+    totalSteps += w.step || 0;
+    if (w.phase === 'collect') collecting++;
+  });
+  document.getElementById('hSteps').textContent = totalSteps;
+  document.getElementById('hWorkers').textContent = `${collecting}/${ST.workers.length}`;
+  if (wk) {
+    document.getElementById('gMinerals').textContent = wk.minerals ?? '—';
+    document.getElementById('gStep').textContent = `${wk.step||0}/${wk.total_steps||128}`;
+    document.getElementById('gAction').textContent = wk.action_name || '—';
+    document.getElementById('gValue').textContent = wk.value != null ? wk.value.toFixed(3) : '—';
+    if (wk.total_reward != null) {
+      document.getElementById('hReward').textContent = wk.total_reward.toFixed(3);
+    }
+  }
+  renderWorkerTimeline();
+}
+
+function updateMetricsState(d) {
+  const metrics = d.metrics || d;
+  if (!Array.isArray(metrics)) return;
+  ST.metrics = metrics;
+
+  chartData.cPL = metrics.map(m => m.policy_loss).filter(v => v != null);
+  chartData.cVL = metrics.map(m => m.value_loss).filter(v => v != null);
+  chartData.cEnt = metrics.map(m => m.entropy).filter(v => v != null);
+  // Use total_reward from workers as episode reward proxy
+  chartData.cRew = metrics.map(m => m.reward || m.total_reward || 0);
+
+  const last = metrics[metrics.length - 1];
+  if (last) {
+    document.getElementById('mPL').textContent = (last.policy_loss||0).toFixed(4);
+    document.getElementById('mVL').textContent = (last.value_loss||0).toFixed(4);
+    document.getElementById('mEnt').textContent = (last.entropy||0).toFixed(3);
+    document.getElementById('mRew').textContent = (last.reward||0).toFixed(4);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCHEDULER RENDERING
+// ═══════════════════════════════════════════════════════════════
+function renderScheduler() {
+  const S = ST.scheduler;
+
+  // Queue stats badge
+  const q = S.queues || {};
+  document.getElementById('schedBadge').textContent =
+    `${q.admittedWorkloads||0} admitted / ${q.pendingWorkloads||0} pending`;
+
+  // Job slots
+  const jobsEl = document.getElementById('jobSlots');
+  jobsEl.innerHTML = '';
+  (S.jobs || []).forEach(j => {
+    const d = document.createElement('div');
+    let cls = 'empty';
+    if (j.suspended) cls = 'suspended';
+    else if (j.succeeded > 0) cls = 'succeeded';
+    else if (j.failed > 0) cls = 'failed';
+    else if (j.active > 0) cls = 'running';
+    else cls = 'pending';
+    d.className = `sched-slot ${cls}`;
+    // Short name
+    let name = j.name || '';
+    if (name.startsWith('rollout-worker-')) name = 'W' + name.split('-').slice(-1)[0];
+    else if (name.includes('trainer')) name = 'TR';
+    d.textContent = name;
+    d.title = `${j.name}\nactive:${j.active} succeeded:${j.succeeded} failed:${j.failed}`;
+    jobsEl.appendChild(d);
+  });
+  // Fill empty slots
+  for (let i = (S.jobs||[]).length; i < 6; i++) {
+    const d = document.createElement('div');
+    d.className = 'sched-slot empty';
+    d.textContent = '—';
+    jobsEl.appendChild(d);
+  }
+
+  // Pod cards
+  const podsEl = document.getElementById('podCards');
+  podsEl.innerHTML = '';
+  (S.pods || []).forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'pod-card';
+    let chtml = '';
+    (p.containers || []).forEach(c => {
+      const cls = c.ready ? 'ready' : 'not-ready';
+      chtml += `<span class="pod-ct ${cls}">${c.name}: ${c.state}${c.restartCount > 0 ? ' (↻'+c.restartCount+')' : ''}</span>`;
+    });
+    card.innerHTML = `<div class="pod-name">${p.name} <span style="color:var(--t3);font-weight:400">${p.phase}</span></div><div class="pod-containers">${chtml}</div>`;
+    podsEl.appendChild(card);
+  });
+
+  // Resource bars
+  const resEl = document.getElementById('resourceBars');
+  const usage = S.queues?.usage;
+  if (usage && usage.length > 0) {
+    let cpuUsed = 0, memUsed = 0;
+    usage.forEach(f => {
+      (f.resources || []).forEach(r => {
+        if (r.name === 'cpu') cpuUsed = parseFloat(r.total) || 0;
+        if (r.name === 'memory') memUsed = parseFloat(r.total) || 0;
+      });
+    });
+    resEl.innerHTML = `
+      <div class="res-bar-wrap">
+        <div class="res-bar-header"><span>CPU</span><span style="color:var(--teal)">${cpuUsed} / 6</span></div>
+        <div class="res-bar-bg"><div class="res-bar" style="width:${(cpuUsed/6)*100}%;background:var(--teal)"></div></div>
+      </div>
+      <div class="res-bar-wrap">
+        <div class="res-bar-header"><span>Memory</span><span style="color:var(--violet)">${memUsed} / 5Gi</span></div>
+        <div class="res-bar-bg"><div class="res-bar" style="width:${(memUsed/5)*100}%;background:var(--violet)"></div></div>
+      </div>`;
+  } else {
+    // Estimate from active pods
+    const active = (S.pods||[]).filter(p => p.phase === 'Running').length;
+    const cpu = Math.min(6, 0.5 + active * 1.5);
+    const mem = Math.min(5, 0.5 + active * 1.0);
+    resEl.innerHTML = `
+      <div class="res-bar-wrap">
+        <div class="res-bar-header"><span>CPU (est)</span><span style="color:var(--teal)">${cpu.toFixed(1)} / 6</span></div>
+        <div class="res-bar-bg"><div class="res-bar" style="width:${(cpu/6)*100}%;background:var(--teal)"></div></div>
+      </div>
+      <div class="res-bar-wrap">
+        <div class="res-bar-header"><span>Memory (est)</span><span style="color:var(--violet)">${mem.toFixed(1)}Gi / 5Gi</span></div>
+        <div class="res-bar-bg"><div class="res-bar" style="width:${(mem/5)*100}%;background:var(--violet)"></div></div>
+      </div>`;
+  }
+}
+
+function renderWorkerTimeline() {
+  const el = document.getElementById('workerTimeline');
+  el.innerHTML = '';
+  ST.workers.forEach(w => {
+    const maxSteps = w.total_steps || 128;
+    const step = w.step || 0;
+    let pct, cls, statusTxt, statusCol;
+    switch(w.phase) {
+      case 'boot':
+        pct = 10; cls = 'boot'; statusTxt = 'Booting'; statusCol = 'var(--blue)'; break;
+      case 'collect':
+        pct = 15 + (step / maxSteps) * 75; cls = 'collect'; statusTxt = `${step}/${maxSteps}`; statusCol = 'var(--green)'; break;
+      case 'saving':
+        pct = 92; cls = 'saving'; statusTxt = 'Saving'; statusCol = 'var(--amber)'; break;
+      case 'done':
+        pct = 100; cls = 'done'; statusTxt = 'Done'; statusCol = 'var(--blue)'; break;
+      default:
+        pct = 0; cls = ''; statusTxt = w.phase || 'idle'; statusCol = 'var(--t3)';
+    }
+    el.innerHTML += `<div class="wt-row">
+      <span class="wt-label">W${w.worker_id}</span>
+      <div class="wt-bar-bg"><div class="wt-bar ${cls}" style="width:${pct}%"><span class="wt-bar-label">${w.phase||''}</span></div></div>
+      <span class="wt-status" style="color:${statusCol}">${statusTxt}</span>
+    </div>`;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACTIVATION MAP RENDERING
+// ═══════════════════════════════════════════════════════════════
+let actCanvases = {};
+
+function selectActLayer(layer, el) {
+  ST.actLayer = layer;
+  document.querySelectorAll('.act-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderActivations();
+}
+
+function renderActivations() {
+  const A = ST.activations;
+  if (!A) return;
+  const layer = ST.actLayer;
+  const data = A[layer];
+  if (!data || !data.maps) return;
+
+  const grid = document.getElementById('actGrid');
+  const nFilters = data.maps.length;
+  const [C, H, W] = data.shape;
+
+  document.getElementById('actBadge').textContent = `${layer} — ${C}×${H}×${W}`;
+
+  // Adjust grid
+  if (C <= 32) {
+    grid.className = 'act-grid c32';
+  } else {
+    grid.className = 'act-grid c64';
+  }
+
+  // Create canvases if needed
+  if (!actCanvases[layer] || actCanvases[layer].length !== nFilters) {
+    grid.innerHTML = '';
+    actCanvases[layer] = [];
+    for (let i = 0; i < nFilters; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'act-cell';
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      cell.appendChild(cv);
+      grid.appendChild(cell);
+      actCanvases[layer].push(cv);
+    }
+  }
+
+  // Draw activation maps with color coding
+  const colors = {
+    conv1: [45, 212, 191],  // teal
+    conv2: [96, 165, 250],  // blue
+    conv3: [167, 139, 250], // violet
+  };
+  const [cr, cg, cb] = colors[layer] || [255, 255, 255];
+
+  for (let i = 0; i < nFilters; i++) {
+    const cv = actCanvases[layer][i];
+    const ctx = cv.getContext('2d');
+    const map = data.maps[i]; // H×W array of 0-255
+    const img = ctx.createImageData(W, H);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const v = (map[y]?.[x] || map[y * W + x] || 0) / 255;
+        const idx = (y * W + x) * 4;
+        img.data[idx] = v * cr;
+        img.data[idx+1] = v * cg;
+        img.data[idx+2] = v * cb;
+        img.data[idx+3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NEURAL NETWORK VISUALIZATION (real activations)
+// ═══════════════════════════════════════════════════════════════
+const nnC = document.getElementById('nnCanvas');
+const nnCtx = nnC.getContext('2d');
+
+const NN_LAYERS = [
+  { name:'84×84×3', n:12, color:'#2dd4bf', key:null },
+  { name:'Conv1 32', n:8, color:'#22d3ee', key:'conv1' },
+  { name:'Conv2 64', n:8, color:'#60a5fa', key:'conv2' },
+  { name:'Conv3 64', n:8, color:'#a78bfa', key:'conv3' },
+  { name:'FC 512', n:10, color:'#f472b6', key:'fc' },
+  { name:'π(35)', n:7, color:'#4ade80', key:'policy' },
+  { name:'V(1)', n:2, color:'#fbbf24', key:'value' },
+];
+
+function drawNN(time) {
+  const r = nnC.getBoundingClientRect();
+  nnC.width = r.width * devicePixelRatio;
+  nnC.height = r.height * devicePixelRatio;
+  const ctx = nnCtx;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = r.width, H = r.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const A = ST.activations;
+  const lx = (i) => 50 + i * ((W - 100) / (NN_LAYERS.length - 1));
+
+  // Compute positions
+  const positions = NN_LAYERS.map((layer, li) => {
+    const x = lx(li);
+    const sp = Math.min(26, (H - 60) / (layer.n + 1));
+    const sy = H / 2 - (layer.n - 1) * sp / 2;
+    return Array.from({length: layer.n}, (_, ni) => ({ x, y: sy + ni * sp }));
+  });
+
+  // How recently did activations update? (0 = stale, 1 = just now)
+  const actAge = Math.max(0, 1 - (time - ST.lastActivationTs) / 2000); // fades over 2s
+  const isActive = ST.nnActive || actAge > 0.1;
+
+  // Get real activation magnitudes per layer
+  function getNodeActivation(li, ni, t) {
+    if (!isActive) {
+      // NN is idle — show dim static state, no animation
+      if (A && NN_LAYERS[li].key) {
+        const key = NN_LAYERS[li].key;
+        if (key === 'policy' && ST.actionProbs) {
+          return Math.min(1, ST.actionProbs[Math.floor(ni * ST.actionProbs.length / NN_LAYERS[li].n)] * 5) * 0.15;
+        }
+        if (key === 'value' && ST.nnData.value != null) {
+          return Math.min(1, Math.abs(ST.nnData.value) * 2) * 0.15;
+        }
+        const layerData = A[key];
+        if (layerData && layerData.shape) {
+          const C = layerData.shape[0];
+          const fi = Math.floor(ni * C / NN_LAYERS[li].n);
+          if (layerData.maps && layerData.maps[fi]) {
+            const map = layerData.maps[fi];
+            let sum = 0, cnt = 0;
+            if (Array.isArray(map[0])) { map.forEach(row => row.forEach(v => { sum += v; cnt++; })); }
+            else { map.forEach(v => { sum += v; cnt++; }); }
+            return cnt > 0 ? (sum / cnt) / 255 * 0.15 : 0.05;
+          }
+        }
+      }
+      return 0.05; // very dim when idle
+    }
+
+    // Active mode — use real activation data
+    if (A && NN_LAYERS[li].key) {
+      const key = NN_LAYERS[li].key;
+      if (key === 'policy' && ST.actionProbs) {
+        const idx = Math.floor(ni * ST.actionProbs.length / NN_LAYERS[li].n);
+        return Math.min(1, ST.actionProbs[idx] * 5) * actAge;
+      }
+      if (key === 'value' && ST.nnData.value != null) {
+        return Math.min(1, Math.abs(ST.nnData.value) * 2) * actAge;
+      }
+      if (key === 'fc' && ST.nnData.fc_stats) {
+        const s = ST.nnData.fc_stats;
+        // Slight variation but NO time-based animation when data is stale
+        return (0.2 + Math.abs(Math.sin(ni * 1.3)) * (1 - s.sparsity)) * actAge;
+      }
+      const layerData = A[key];
+      if (layerData && layerData.shape) {
+        const C = layerData.shape[0];
+        const fi = Math.floor(ni * C / NN_LAYERS[li].n);
+        if (layerData.maps && layerData.maps[fi]) {
+          const map = layerData.maps[fi];
+          let sum = 0, cnt = 0;
+          if (Array.isArray(map[0])) { map.forEach(row => row.forEach(v => { sum += v; cnt++; })); }
+          else { map.forEach(v => { sum += v; cnt++; }); }
+          return cnt > 0 ? (sum / cnt) / 255 * actAge : 0.1;
+        }
+      }
+    }
+    // No data yet — dim static
+    return 0.05;
+  }
+
+  // Draw connections
+  for (let li = 0; li < positions.length - 1; li++) {
+    const from = positions[li], to = positions[li+1];
+    const col = NN_LAYERS[li+1].color;
+    from.forEach((f, fi) => {
+      to.forEach((t2, ti) => {
+        const act = getNodeActivation(li+1, ti, time) * 0.25;
+        ctx.strokeStyle = col;
+        ctx.globalAlpha = Math.max(0.02, act);
+        ctx.lineWidth = 0.4 + act * 2;
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        const mx = (f.x + t2.x) / 2;
+        ctx.bezierCurveTo(mx, f.y, mx, t2.y, t2.x, t2.y);
+        ctx.stroke();
+      });
+    });
+  }
+  ctx.globalAlpha = 1;
+
+  // Draw data flow particles — only when NN is actively processing
+  if (isActive) {
+    for (let li = 0; li < positions.length - 1; li++) {
+      const from = positions[li], to = positions[li+1];
+      const col = NN_LAYERS[li+1].color;
+      for (let p = 0; p < 3; p++) {
+        const fi = Math.floor((time * 0.01 + p * 13 + li * 7) % from.length);
+        const ti = Math.floor((time * 0.008 + p * 11 + li * 5) % to.length);
+        const t2 = ((time * 0.001 + p * 0.3 + li * 0.2) % 1);
+        const f = from[fi], tt = to[ti];
+        const mx = (f.x + tt.x) / 2;
+        const px = (1-t2)*(1-t2)*f.x + 2*(1-t2)*t2*mx + t2*t2*tt.x;
+        const py = (1-t2)*(1-t2)*f.y + 2*(1-t2)*t2*((f.y+tt.y)/2) + t2*t2*tt.y;
+        ctx.fillStyle = col;
+        ctx.globalAlpha = actAge;
+        ctx.shadowColor = col;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(px, py, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw nodes with REAL activation brightness
+  positions.forEach((layer, li) => {
+    layer.forEach((node, ni) => {
+      const act = getNodeActivation(li, ni, time);
+      const col = NN_LAYERS[li].color;
+
+      // Glow
+      ctx.fillStyle = col;
+      ctx.globalAlpha = act * 0.25;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Node
+      ctx.globalAlpha = 0.1 + act * 0.7;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bright center proportional to activation
+      ctx.globalAlpha = act;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(node.x, node.y, 1.5 + act, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  });
+  ctx.globalAlpha = 1;
+
+  // Layer labels
+  ctx.font = '500 9px JetBrains Mono';
+  ctx.textAlign = 'center';
+  NN_LAYERS.forEach((layer, li) => {
+    ctx.fillStyle = layer.color;
+    ctx.globalAlpha = isActive ? 0.7 : 0.25;
+    ctx.fillText(layer.name, lx(li), H - 8);
+  });
+  ctx.globalAlpha = 1;
+
+  // Status indicator
+  const nnBadge = document.getElementById('nnBadge');
+  if (isActive) {
+    nnBadge.textContent = 'PROCESSING';
+    nnBadge.style.color = 'var(--green)';
+    nnBadge.style.borderColor = 'var(--green)';
+  } else {
+    nnBadge.textContent = 'IDLE';
+    nnBadge.style.color = 'var(--t3)';
+    nnBadge.style.borderColor = 'var(--br)';
+  }
+
+  // Action probabilities bar (right side) — from REAL data
+  const probs = ST.actionProbs;
+  if (probs && probs.length > 0) {
+    const topK = probs.map((p,i) => ({p,i})).sort((a,b) => b.p - a.p).slice(0, 8);
+    const barW = 60, barH = 6;
+    const barX = W - barW - 12;
+    ctx.font = '8px JetBrains Mono';
+    ctx.textAlign = 'right';
+    topK.forEach((item, i) => {
+      const y = 14 + i * 14;
+      const name = ACTIONS[item.i] ? ACTIONS[item.i].substring(0, 10) : `a${item.i}`;
+      ctx.fillStyle = '#4a5e84';
+      ctx.fillText(name, barX - 4, y + 5);
+      ctx.fillStyle = '#1a2540';
+      ctx.fillRect(barX, y, barW, barH);
+      const probW = Math.min(barW, barW * item.p / Math.max(topK[0].p, 0.01));
+      ctx.fillStyle = '#4ade80';
+      ctx.globalAlpha = 0.4 + item.p * 3;
+      ctx.fillRect(barX, y, probW, barH);
+      // Probability text
+      ctx.globalAlpha = 0.6;
+      ctx.textAlign = 'left';
+      ctx.fillText((item.p * 100).toFixed(1) + '%', barX + probW + 3, y + 5);
+      ctx.textAlign = 'right';
+      ctx.globalAlpha = 1;
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// METRIC CHARTS
+// ═══════════════════════════════════════════════════════════════
+function drawChart(id, color) {
+  const data = chartData[id];
+  const cv = document.getElementById(id);
+  if (!cv) return;
+  const r = cv.parentElement.getBoundingClientRect();
+  cv.width = r.width * devicePixelRatio;
+  cv.height = r.height * devicePixelRatio;
+  const ctx = cv.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = r.width, H = r.height;
+  if (data.length < 2) {
+    ctx.fillStyle = '#4a5e8422';
+    ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('Waiting for data...', W/2, H/2);
+    return;
+  }
+  const maxLen = 60;
+  const d = data.slice(-maxLen);
+  const min = Math.min(...d) * 0.9;
+  const max = Math.max(...d) * 1.1 || 1;
+
+  // Grid
+  ctx.strokeStyle = '#1a2540';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < 4; i++) {
+    const y = (H / 4) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Area
+  ctx.beginPath();
+  d.forEach((v, i) => {
+    const x = (i / (maxLen - 1)) * W;
+    const y = H - ((v - min) / (max - min)) * H;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(((d.length-1)/(maxLen-1))*W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fillStyle = color + '15';
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  d.forEach((v, i) => {
+    const x = (i / (maxLen - 1)) * W;
+    const y = H - ((v - min) / (max - min)) * H;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Latest dot
+  const lx = ((d.length-1)/(maxLen-1)) * W;
+  const ly = H - ((d[d.length-1] - min) / (max - min)) * H;
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.arc(lx, ly, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DISTRIBUTED FLOW (bottom panel)
+// ═══════════════════════════════════════════════════════════════
+const flowC = document.getElementById('flowCanvas');
+const flowCtx = flowC.getContext('2d');
+
+function drawFlow(time) {
+  const r = flowC.parentElement.getBoundingClientRect();
+  flowC.width = r.width * devicePixelRatio;
+  flowC.height = r.height * devicePixelRatio;
+  const ctx = flowCtx;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = r.width, H = r.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const cy = H / 2 - 10;
+  const phase = ST.trainer.phase || 'unknown';
+
+  // Dynamic nodes based on real workers
+  const nWorkers = Math.max(ST.workers.length, 2);
+  const baseNodes = [
+    { x: 60, label:'Trainer', sub: phase, color:'#2dd4bf', icon:'T' },
+    { x: 170, label:'PVC', sub:'model.pt', color:'#fbbf24', icon:'⛁' },
+    { x: 280, label:'Kueue', sub:`${ST.scheduler.queues?.admittedWorkloads||0} admitted`, color:'#a78bfa', icon:'K' },
+  ];
+
+  // Add worker nodes
+  const workerNodes = [];
+  const workerSpacing = Math.min(120, (W - 500) / nWorkers);
+  for (let i = 0; i < nWorkers; i++) {
+    const w = ST.workers[i];
+    const state = w ? w.phase : 'idle';
+    workerNodes.push({
+      x: 400 + i * workerSpacing,
+      label: `Worker ${i}`,
+      sub: state,
+      color: '#f472b6',
+      icon: String(i),
+      yOff: i * 24 - (nWorkers - 1) * 12,
+    });
+  }
+
+  const endNodes = [
+    { x: 400 + nWorkers * workerSpacing + 30, label:'PVC', sub:'.npz', color:'#fbbf24', icon:'⛁' },
+    { x: 400 + nWorkers * workerSpacing + 140, label:'Trainer', sub:'PPO Update', color:'#2dd4bf', icon:'T' },
+  ];
+
+  const allNodes = [...baseNodes, ...workerNodes, ...endNodes];
+
+  // Draw connections
+  function drawConn(n1, n2, yOff1, yOff2) {
+    const y1 = cy + (yOff1 || 0), y2 = cy + (yOff2 || 0);
+    ctx.strokeStyle = '#1a2540';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(n1.x + 22, y1);
+    ctx.lineTo(n2.x - 22, y2);
+    ctx.stroke();
+
+    // Particle
+    const t = ((time * 0.0008) % 1);
+    const px = n1.x + 22 + (n2.x - 22 - n1.x - 22) * t;
+    const py = y1 + (y2 - y1) * t;
+    ctx.fillStyle = n2.color;
+    ctx.shadowColor = n2.color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // Trainer → PVC
+  drawConn(baseNodes[0], baseNodes[1]);
+  // PVC → Kueue
+  drawConn(baseNodes[1], baseNodes[2]);
+  // Kueue → each worker
+  workerNodes.forEach(wn => drawConn(baseNodes[2], wn, 0, wn.yOff));
+  // Each worker → PVC out
+  workerNodes.forEach(wn => drawConn(wn, endNodes[0], wn.yOff, 0));
+  // PVC out → Trainer
+  drawConn(endNodes[0], endNodes[1]);
+
+  // Draw all nodes
+  allNodes.forEach(n => {
+    const ny = cy + (n.yOff || 0);
+
+    // Phase-aware coloring
+    let glowIntensity = 0.1;
+    if (phase === 'rollout' && n.icon !== 'T') glowIntensity = 0.2;
+    if (phase === 'ppo_update' && (n.icon === 'T' || n.label === 'Trainer')) glowIntensity = 0.3;
+    const isActive = ST.workers.find(w => String(w.worker_id) === n.icon && w.phase === 'collect');
+    if (isActive) glowIntensity = 0.4;
+
+    // Glow
+    ctx.fillStyle = n.color + Math.round(glowIntensity * 255).toString(16).padStart(2, '0');
+    ctx.beginPath();
+    ctx.arc(n.x, ny, 26, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Circle
+    ctx.fillStyle = '#0a0e18';
+    ctx.strokeStyle = n.color;
+    ctx.lineWidth = isActive ? 3 : 2;
+    ctx.beginPath();
+    ctx.arc(n.x, ny, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Icon
+    ctx.fillStyle = n.color;
+    ctx.font = '700 12px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n.icon, n.x, ny);
+
+    // Labels
+    ctx.font = '600 9px JetBrains Mono';
+    ctx.fillStyle = n.color;
+    ctx.fillText(n.label, n.x, ny + 30);
+    ctx.font = '8px JetBrains Mono';
+    ctx.fillStyle = '#4a5e84';
+    ctx.fillText(n.sub, n.x, ny + 41);
+  });
+
+  // Phase indicator
+  ctx.font = '500 10px JetBrains Mono';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#2dd4bf';
+  ctx.fillText('Phase: ' + phase.toUpperCase(), W - 16, 18);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GAME INFO BAR (replaces overlay — shows top predicted actions)
+// ═══════════════════════════════════════════════════════════════
+let _lastInfoUpdate = 0;
+function updateGameInfo() {
+  // Throttle to ~4 updates/sec
+  const now = performance.now();
+  if (now - _lastInfoUpdate < 250) return;
+  _lastInfoUpdate = now;
+
+  const el = document.getElementById('gTopActions');
+  if (!el) return;
+  const probs = ST.actionProbs;
+  if (!probs || probs.length < 35) { el.innerHTML = ''; return; }
+
+  const top3 = probs.map((p,i) => ({p,i})).sort((a,b) => b.p - a.p).slice(0, 3);
+  el.innerHTML = top3.map(item => {
+    const name = ACTIONS[item.i] ? ACTIONS[item.i].substring(0, 12) : `a${item.i}`;
+    const pct = (item.p * 100).toFixed(1);
+    return `<span class="gi-action-item">${name}<span class="pct">${pct}%</span></span>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EVENTS LOG
+// ═══════════════════════════════════════════════════════════════
+function addEvent(type, msg) {
+  const now = new Date();
+  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  ST.events.unshift({ time: ts, type, msg });
+  if (ST.events.length > 50) ST.events.pop();
+  const el = document.getElementById('eventLog');
+  const cls = { monitor:'ev-kueue', k8s:'ev-k8s', kueue:'ev-kueue', worker:'ev-worker', trainer:'ev-trainer' };
+  el.innerHTML = ST.events.map(e =>
+    `<div><span class="ev-time">${e.time}</span><span class="${cls[e.type]||'ev-msg'}">${e.type.toUpperCase()}</span> <span class="ev-msg">${e.msg}</span></div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER LOOP
+// ═══════════════════════════════════════════════════════════════
+function render(time) {
+  drawNN(time);
+  drawFlow(time);
+  updateGameInfo();
+  drawChart('cPL', '#f472b6');
+  drawChart('cVL', '#22d3ee');
+  drawChart('cEnt', '#a78bfa');
+  drawChart('cRew', '#fbbf24');
+  requestAnimationFrame(render);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+connectWS();
+setupGameStream();
+addEvent('monitor', 'Dashboard initialized');
+
+// Poll scheduler and activations on separate intervals
+setInterval(pollScheduler, 3000);
+setInterval(pollActivations, POLL_MS);
+
+requestAnimationFrame(render);
+</script>
+</body>
+</html>

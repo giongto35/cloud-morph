@@ -212,15 +212,15 @@ class WineEnvironment:
             button = '1' if (action.button or "left") == "left" else '3'
             
             if action.mouse_state == "move":
-                self._xdotool('mousemove', str(x), str(y))
+                self._xdotool('mousemove', '--sync', str(x), str(y))
             elif action.mouse_state == "down":
-                self._xdotool('mousemove', str(x), str(y))
+                self._xdotool('mousemove', '--sync', str(x), str(y))
                 self._xdotool('mousedown', button)
             elif action.mouse_state == "up":
-                self._xdotool('mousemove', str(x), str(y))
+                self._xdotool('mousemove', '--sync', str(x), str(y))
                 self._xdotool('mouseup', button)
             elif not action.mouse_state or action.mouse_state == "click":
-                self._xdotool('mousemove', str(x), str(y))
+                self._xdotool('mousemove', '--sync', str(x), str(y))
                 self._xdotool('click', button)
 
     # ── Socket input (syncinput.exe) ─────────────────────────────────

@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distributed PPO — StarCraft × OpenEnv × Kueue</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep: #06080d;
+  --bg-surface: #0c1018;
+  --bg-card: #111827;
+  --bg-elevated: #1a2236;
+  --border: #1e293b;
+  --border-glow: #2dd4bf22;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-dim: #475569;
+  --neon-teal: #2dd4bf;
+  --neon-cyan: #22d3ee;
+  --neon-violet: #a78bfa;
+  --neon-pink: #f472b6;
+  --neon-amber: #fbbf24;
+  --neon-green: #4ade80;
+  --neon-red: #f87171;
+  --neon-blue: #60a5fa;
+  --glow-teal: 0 0 20px #2dd4bf44, 0 0 40px #2dd4bf22;
+  --glow-violet: 0 0 20px #a78bfa44, 0 0 40px #a78bfa22;
+  --glow-pink: 0 0 20px #f472b644, 0 0 40px #f472b622;
+}
+
+html { font-size: 14px; }
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* === BACKGROUND GRID === */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    linear-gradient(90deg, #2dd4bf06 1px, transparent 1px),
+    linear-gradient(#2dd4bf06 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #2dd4bf08 0%, transparent 60%),
+              radial-gradient(ellipse 60% 40% at 80% 80%, #a78bfa06 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* === LAYOUT === */
+.app {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  min-height: 100vh;
+}
+
+/* === HEADER === */
+.header {
+  grid-column: 1 / -1;
+  padding: 24px 32px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #0c101866, transparent);
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.logo {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--neon-teal), var(--neon-violet));
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700; font-size: 18px; color: var(--bg-deep);
+  box-shadow: var(--glow-teal);
+}
+.header h1 {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--text-primary), var(--neon-teal));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.header-sub {
+  font-size: 12px; color: var(--text-dim); font-weight: 400;
+  font-family: 'JetBrains Mono', monospace;
+}
+.header-badges { display: flex; gap: 8px; }
+.badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 500;
+  padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+.badge.live {
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+  animation: pulse-badge 2s infinite;
+}
+.badge.live::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  margin-right: 6px;
+  animation: blink 1.5s infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes pulse-badge { 0%, 100% { box-shadow: 0 0 0 0 #4ade8033; } 50% { box-shadow: 0 0 12px 2px #4ade8022; } }
+
+/* === MAIN DIAGRAM === */
+.diagram-area {
+  padding: 28px;
+  overflow: auto;
+  position: relative;
+}
+
+/* === KIND CLUSTER BOUNDARY === */
+.cluster-boundary {
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  background: linear-gradient(135deg, #0c101822, #111827 22);
+  min-height: 600px;
+}
+.cluster-boundary::before {
+  content: 'KIND CLUSTER — kueue-demo';
+  position: absolute; top: -12px; left: 24px;
+  background: var(--bg-deep);
+  padding: 2px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 600;
+  color: var(--neon-teal);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* === KUEUE SECTION === */
+.kueue-bar {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #a78bfa0a, #2dd4bf08, transparent);
+  border: 1px solid #a78bfa22;
+}
+.kueue-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--neon-violet);
+  white-space: nowrap;
+}
+.kueue-flow {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+}
+.kueue-node {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  transition: all 0.3s;
+}
+.kueue-node:hover {
+  border-color: var(--neon-violet);
+  box-shadow: var(--glow-violet);
+  color: var(--text-primary);
+}
+.kueue-node .val {
+  color: var(--neon-amber);
+  font-weight: 600;
+}
+.kueue-arrow {
+  color: var(--neon-violet);
+  font-size: 16px;
+  opacity: 0.6;
+  animation: arrow-flow 1.5s infinite;
+}
+@keyframes arrow-flow {
+  0%, 100% { opacity: 0.3; transform: translateX(0); }
+  50% { opacity: 0.9; transform: translateX(3px); }
+}
+
+/* === MAIN GRID === */
+.arch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 20px;
+}
+
+/* === CARDS === */
+.card {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  overflow: hidden;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.card:hover {
+  border-color: var(--border-glow);
+}
+.card-header {
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.card-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+  flex-shrink: 0;
+}
+.card-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-primary);
+}
+.card-subtitle {
+  font-size: 10px; font-weight: 400;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+.card-body { padding: 14px 18px; }
+
+/* Trainer card */
+.card-trainer { grid-column: 1; grid-row: 1; }
+.card-trainer .card-icon { background: linear-gradient(135deg, #2dd4bf33, #22d3ee22); color: var(--neon-teal); }
+.card-trainer:hover { border-color: var(--neon-teal); box-shadow: 0 0 30px #2dd4bf11; }
+
+/* Worker card */
+.card-workers { grid-column: 2; grid-row: 1 / 3; }
+.card-workers .card-icon { background: linear-gradient(135deg, #f472b633, #a78bfa22); color: var(--neon-pink); }
+.card-workers:hover { border-color: var(--neon-pink); box-shadow: 0 0 30px #f472b611; }
+
+/* PVC card */
+.card-pvc { grid-column: 1; grid-row: 2; }
+.card-pvc .card-icon { background: linear-gradient(135deg, #fbbf2433, #f59e0b22); color: var(--neon-amber); }
+.card-pvc:hover { border-color: var(--neon-amber); box-shadow: 0 0 30px #fbbf2411; }
+
+/* === STEP LIST === */
+.step-list { list-style: none; }
+.step-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #1e293b66;
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 12px; color: var(--text-secondary);
+  line-height: 1.5;
+}
+.step-list li:last-child { border-bottom: none; }
+.step-num {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.step-num.teal { background: #2dd4bf22; color: var(--neon-teal); }
+.step-num.pink { background: #f472b622; color: var(--neon-pink); }
+.step-num.amber { background: #fbbf2422; color: var(--neon-amber); }
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: #1e293b;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--neon-cyan);
+}
+
+/* === WORKER PODS === */
+.worker-pods {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.worker-pod {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--bg-surface);
+  position: relative;
+  transition: all 0.3s;
+}
+.worker-pod:hover {
+  border-color: var(--neon-pink);
+  background: #1a223644;
+}
+.worker-pod-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  color: var(--neon-pink);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.containers {
+  display: flex; gap: 8px;
+}
+.container-box {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+  font-size: 11px;
+}
+.container-box.sidecar {
+  border-color: #60a5fa44;
+  background: #60a5fa08;
+}
+.container-box.main-c {
+  border-color: #4ade8044;
+  background: #4ade8008;
+}
+.container-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  margin-bottom: 4px;
+}
+.container-box.sidecar .container-name { color: var(--neon-blue); }
+.container-box.main-c .container-name { color: var(--neon-green); }
+.container-detail {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* === QUEUE VISUALIZATION === */
+.queue-viz {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #0c1018;
+  border: 1px solid var(--border);
+}
+.queue-viz-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.queue-slots {
+  display: flex; gap: 6px; align-items: center;
+}
+.queue-slot {
+  width: 36px; height: 28px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; font-weight: 600;
+  transition: all 0.5s;
+}
+.queue-slot.admitted {
+  background: #4ade8018;
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+  animation: slot-glow 2s infinite;
+}
+.queue-slot.waiting {
+  background: #fbbf2410;
+  border-color: var(--neon-amber);
+  color: var(--neon-amber);
+  animation: slot-pulse 1.5s infinite;
+}
+.queue-slot.empty {
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-dim);
+}
+@keyframes slot-glow {
+  0%, 100% { box-shadow: 0 0 0 0 #4ade8033; } 50% { box-shadow: 0 0 8px 1px #4ade8022; }
+}
+@keyframes slot-pulse {
+  0%, 100% { opacity: 0.7; } 50% { opacity: 1; }
+}
+.queue-legend {
+  display: flex; gap: 14px; margin-top: 8px;
+  font-size: 10px; color: var(--text-dim);
+}
+.queue-legend span { display: flex; align-items: center; gap: 4px; }
+.ql-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.ql-dot.green { background: var(--neon-green); }
+.ql-dot.amber { background: var(--neon-amber); }
+
+/* === PVC FILES === */
+.pvc-tree {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+.pvc-tree .dir { color: var(--neon-amber); font-weight: 500; }
+.pvc-tree .file { color: var(--text-dim); }
+.pvc-tree .highlight { color: var(--neon-cyan); }
+
+/* === DATA FLOW ARROWS (SVG overlay) === */
+.flow-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* === ANIMATED FLOW DOTS === */
+.flow-line {
+  position: absolute;
+  pointer-events: none;
+}
+.flow-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  position: absolute;
+  animation: flow-move 3s linear infinite;
+}
+.flow-dot.teal { background: var(--neon-teal); box-shadow: 0 0 8px var(--neon-teal); }
+.flow-dot.pink { background: var(--neon-pink); box-shadow: 0 0 8px var(--neon-pink); }
+.flow-dot.amber { background: var(--neon-amber); box-shadow: 0 0 8px var(--neon-amber); }
+
+/* === ITERATION FLOW === */
+.iteration-flow {
+  margin-top: 20px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: linear-gradient(90deg, #2dd4bf06, #f472b606, #fbbf2406);
+}
+.iteration-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.flow-steps {
+  display: flex; align-items: center; gap: 0;
+  flex-wrap: wrap;
+}
+.flow-step {
+  display: flex; align-items: center; gap: 0;
+}
+.flow-step-box {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  white-space: nowrap;
+  transition: all 0.3s;
+}
+.flow-step-box:hover {
+  background: var(--bg-elevated);
+  border-color: var(--text-dim);
+}
+.flow-step-box .icon { margin-right: 6px; }
+.flow-connector {
+  width: 32px;
+  height: 2px;
+  background: var(--border);
+  position: relative;
+  flex-shrink: 0;
+}
+.flow-connector::after {
+  content: '';
+  position: absolute;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  top: -2px;
+  animation: dot-flow 2s linear infinite;
+}
+.flow-connector.c-teal::after { background: var(--neon-teal); box-shadow: 0 0 6px var(--neon-teal); }
+.flow-connector.c-pink::after { background: var(--neon-pink); box-shadow: 0 0 6px var(--neon-pink); }
+.flow-connector.c-amber::after { background: var(--neon-amber); box-shadow: 0 0 6px var(--neon-amber); }
+.flow-connector.c-green::after { background: var(--neon-green); box-shadow: 0 0 6px var(--neon-green); }
+.flow-connector.c-violet::after { background: var(--neon-violet); box-shadow: 0 0 6px var(--neon-violet); }
+@keyframes dot-flow {
+  0% { left: 0; } 100% { left: calc(100% - 6px); }
+}
+
+/* === CNN DIAGRAM === */
+.cnn-diagram {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #0c1018;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+.cnn-layer {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex-shrink: 0;
+}
+.cnn-block {
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; font-weight: 500;
+  color: var(--text-primary);
+  transition: all 0.3s;
+}
+.cnn-block:hover { transform: scale(1.05); }
+.cnn-label {
+  font-size: 8px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+}
+.cnn-arrow {
+  color: var(--text-dim);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* === SIDEBAR === */
+.sidebar {
+  border-left: 1px solid var(--border);
+  background: var(--bg-surface);
+  padding: 20px;
+  overflow-y: auto;
+}
+.sidebar-section {
+  margin-bottom: 24px;
+}
+.sidebar-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.file-group { margin-bottom: 14px; }
+.file-group-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.file-group-dot {
+  width: 8px; height: 8px; border-radius: 2px;
+}
+.file-item {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 0 4px 14px;
+  color: var(--text-dim);
+  position: relative;
+  cursor: default;
+  transition: color 0.2s;
+  line-height: 1.6;
+}
+.file-item:hover { color: var(--text-secondary); }
+.file-item::before {
+  content: '';
+  position: absolute; left: 0; top: 12px;
+  width: 6px; height: 1px;
+  background: var(--border);
+}
+.file-desc {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.7;
+  margin-left: 4px;
+}
+
+/* === LEGEND === */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.legend-swatch {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+}
+
+/* === ANIMATION: staggered entrance === */
+.fade-in {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: fade-up 0.5s ease forwards;
+}
+@keyframes fade-up { to { opacity: 1; transform: translateY(0); } }
+.d1 { animation-delay: 0.1s; }
+.d2 { animation-delay: 0.2s; }
+.d3 { animation-delay: 0.3s; }
+.d4 { animation-delay: 0.4s; }
+.d5 { animation-delay: 0.5s; }
+.d6 { animation-delay: 0.6s; }
+.d7 { animation-delay: 0.7s; }
+
+/* === Responsive === */
+@media (max-width: 1100px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { border-left: none; border-top: 1px solid var(--border); }
+}
+@media (max-width: 700px) {
+  .arch-grid { grid-template-columns: 1fr; }
+  .card-workers { grid-column: 1; grid-row: auto; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <header class="header fade-in">
+    <div class="header-left">
+      <div class="logo">P</div>
+      <div>
+        <h1>Distributed PPO Training</h1>
+        <div class="header-sub">StarCraft × OpenEnv × Kueue on Kind</div>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="badge">Kubernetes v1.35</span>
+      <span class="badge">Kueue v0.9</span>
+      <span class="badge">PyTorch CPU</span>
+      <span class="badge live">kind-kueue-demo</span>
+    </div>
+  </header>
+
+  <!-- MAIN DIAGRAM -->
+  <main class="diagram-area">
+    <div class="cluster-boundary fade-in d1">
+
+      <!-- KUEUE BAR -->
+      <div class="kueue-bar fade-in d2">
+        <span class="kueue-label">Kueue</span>
+        <div class="kueue-flow">
+          <div class="kueue-node">ResourceFlavor <span class="val">default</span></div>
+          <span class="kueue-arrow">→</span>
+          <div class="kueue-node">ClusterQueue <span class="val">6 CPU / 5Gi</span></div>
+          <span class="kueue-arrow">→</span>
+          <div class="kueue-node">LocalQueue <span class="val">training-queue</span></div>
+          <span class="kueue-arrow">→</span>
+          <span style="font-size:11px; color: var(--neon-green); font-family: 'JetBrains Mono', monospace;">admits jobs</span>
+        </div>
+      </div>
+
+      <!-- MAIN GRID -->
+      <div class="arch-grid">
+
+        <!-- TRAINER CARD -->
+        <div class="card card-trainer fade-in d3">
+          <div class="card-header">
+            <div class="card-icon">T</div>
+            <div>
+              <div class="card-title">Trainer Job</div>
+              <div class="card-subtitle">1 pod · ppo-trainer · ServiceAccount: trainer-sa</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <ul class="step-list">
+              <li><span class="step-num teal">1</span>Saves <code>model.pt</code> to shared PVC</li>
+              <li><span class="step-num teal">2</span>Creates N worker Jobs via <code>kubectl apply</code></li>
+              <li><span class="step-num teal">3</span>Polls PVC for <code>.done</code> marker files</li>
+              <li><span class="step-num teal">4</span>Aggregates <code>.npz</code> rollouts, runs PPO update</li>
+              <li><span class="step-num teal">5</span>Saves updated model + checkpoint, repeats K iterations</li>
+            </ul>
+
+            <!-- CNN MINI DIAGRAM -->
+            <div class="cnn-diagram">
+              <div class="cnn-layer">
+                <div class="cnn-block" style="width:36px;height:36px;background:#2dd4bf22;border:1px solid #2dd4bf44;">84²</div>
+                <div class="cnn-label">input<br>RGB</div>
+              </div>
+              <span class="cnn-arrow">→</span>
+              <div class="cnn-layer">
+                <div class="cnn-block" style="width:30px;height:30px;background:#22d3ee22;border:1px solid #22d3ee44;">32</div>
+                <div class="cnn-label">conv<br>8×8/4</div>
+              </div>
+              <span class="cnn-arrow">→</span>
+              <div class="cnn-layer">
+                <div class="cnn-block" style="width:26px;height:26px;background:#60a5fa22;border:1px solid #60a5fa44;">64</div>
+                <div class="cnn-label">conv<br>4×4/2</div>
+              </div>
+              <span class="cnn-arrow">→</span>
+              <div class="cnn-layer">
+                <div class="cnn-block" style="width:22px;height:22px;background:#a78bfa22;border:1px solid #a78bfa44;">64</div>
+                <div class="cnn-label">conv<br>3×3/1</div>
+              </div>
+              <span class="cnn-arrow">→</span>
+              <div class="cnn-layer">
+                <div class="cnn-block" style="width:18px;height:34px;background:#f472b622;border:1px solid #f472b644;">512</div>
+                <div class="cnn-label">FC</div>
+              </div>
+              <span class="cnn-arrow">→</span>
+              <div class="cnn-layer" style="gap:4px;">
+                <div class="cnn-block" style="width:40px;height:16px;background:#4ade8022;border:1px solid #4ade8044;font-size:8px;">π(35)</div>
+                <div class="cnn-block" style="width:40px;height:16px;background:#fbbf2422;border:1px solid #fbbf2444;font-size:8px;">V(1)</div>
+                <div class="cnn-label">heads</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PVC CARD -->
+        <div class="card card-pvc fade-in d5">
+          <div class="card-header">
+            <div class="card-icon">⛁</div>
+            <div>
+              <div class="card-title">PVC: training-data</div>
+              <div class="card-subtitle">1Gi · ReadWriteOnce · shared storage</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="pvc-tree">
+              <div><span class="dir">/data/</span></div>
+              <div style="padding-left:16px"><span class="highlight">model.pt</span> <span class="file">← current weights</span></div>
+              <div style="padding-left:16px"><span class="dir">rollouts/</span></div>
+              <div style="padding-left:32px"><span class="dir">iter_0/</span></div>
+              <div style="padding-left:48px"><span class="highlight">worker_0.npz</span></div>
+              <div style="padding-left:48px"><span class="file">worker_0.done</span></div>
+              <div style="padding-left:48px"><span class="highlight">worker_1.npz</span></div>
+              <div style="padding-left:48px"><span class="file">worker_1.done</span></div>
+              <div style="padding-left:16px"><span class="dir">checkpoints/</span></div>
+              <div style="padding-left:32px"><span class="file">model_iter_0.pt</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WORKERS CARD -->
+        <div class="card card-workers fade-in d4">
+          <div class="card-header">
+            <div class="card-icon">W</div>
+            <div>
+              <div class="card-title">Rollout Worker Jobs</div>
+              <div class="card-subtitle">×N · Kueue-queued · sidecar pattern</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="worker-pods">
+              <!-- Worker 0 -->
+              <div class="worker-pod">
+                <div class="worker-pod-label">Worker 0 · rollout-worker-0-0</div>
+                <div class="containers">
+                  <div class="container-box sidecar">
+                    <div class="container-name">openenv (sidecar)</div>
+                    <div class="container-detail">
+                      Wine + Xvfb<br>
+                      StarCraft.exe<br>
+                      640×480 · :8000
+                    </div>
+                  </div>
+                  <div class="container-box main-c">
+                    <div class="container-name">worker</div>
+                    <div class="container-detail">
+                      Load model.pt<br>
+                      128 steps via API<br>
+                      Save .npz + .done
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Worker 1 -->
+              <div class="worker-pod">
+                <div class="worker-pod-label">Worker 1 · rollout-worker-0-1</div>
+                <div class="containers">
+                  <div class="container-box sidecar">
+                    <div class="container-name">openenv (sidecar)</div>
+                    <div class="container-detail">
+                      Wine + Xvfb<br>
+                      StarCraft.exe<br>
+                      640×480 · :8000
+                    </div>
+                  </div>
+                  <div class="container-box main-c">
+                    <div class="container-name">worker</div>
+                    <div class="container-detail">
+                      Load model.pt<br>
+                      128 steps via API<br>
+                      Save .npz + .done
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- QUEUE VISUALIZATION -->
+            <div class="queue-viz">
+              <div class="queue-viz-label">Kueue Admission Queue</div>
+              <div class="queue-slots" id="queueSlots">
+                <div class="queue-slot admitted">W0</div>
+                <div class="queue-slot admitted">W1</div>
+                <div class="queue-slot waiting">W2</div>
+                <div class="queue-slot waiting">W3</div>
+                <div class="queue-slot empty">—</div>
+                <div class="queue-slot empty">—</div>
+              </div>
+              <div class="queue-legend">
+                <span><span class="ql-dot green"></span> Admitted</span>
+                <span><span class="ql-dot amber"></span> Waiting</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ITERATION FLOW -->
+      <div class="iteration-flow fade-in d6">
+        <div class="iteration-label">Data Flow Per Iteration</div>
+        <div class="flow-steps">
+          <div class="flow-step">
+            <div class="flow-step-box"><span class="icon" style="color:var(--neon-teal)">◆</span> Trainer saves model.pt</div>
+          </div>
+          <div class="flow-connector c-teal"></div>
+          <div class="flow-step">
+            <div class="flow-step-box"><span class="icon" style="color:var(--neon-violet)">◆</span> Kueue admits workers</div>
+          </div>
+          <div class="flow-connector c-violet"></div>
+          <div class="flow-step">
+            <div class="flow-step-box"><span class="icon" style="color:var(--neon-blue)">◆</span> OpenEnv boots SC</div>
+          </div>
+          <div class="flow-connector c-pink"></div>
+          <div class="flow-step">
+            <div class="flow-step-box"><span class="icon" style="color:var(--neon-pink)">◆</span> Collect 128 steps</div>
+          </div>
+          <div class="flow-connector c-amber"></div>
+          <div class="flow-step">
+            <div class="flow-step-box"><span class="icon" style="color:var(--neon-amber)">◆</span> Save .npz + .done</div>
+          </div>
+          <div class="flow-connector c-green"></div>
+          <div class="flow-step">
+            <div class="flow-step-box"><span class="icon" style="color:var(--neon-green)">◆</span> PPO update</div>
+          </div>
+          <div class="flow-connector c-teal"></div>
+          <div class="flow-step">
+            <div class="flow-step-box" style="border-color: var(--neon-teal); color: var(--neon-teal);">↻ Repeat</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- LEGEND -->
+    <div class="legend fade-in d7" style="margin-top: 16px;">
+      <div class="legend-item"><div class="legend-swatch" style="background: var(--neon-teal);"></div> Trainer</div>
+      <div class="legend-item"><div class="legend-swatch" style="background: var(--neon-pink);"></div> Workers</div>
+      <div class="legend-item"><div class="legend-swatch" style="background: var(--neon-amber);"></div> Storage (PVC)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background: var(--neon-violet);"></div> Kueue Scheduling</div>
+      <div class="legend-item"><div class="legend-swatch" style="background: var(--neon-blue);"></div> OpenEnv Sidecar</div>
+      <div class="legend-item"><div class="legend-swatch" style="background: var(--neon-green);"></div> Worker Container</div>
+    </div>
+  </main>
+
+  <!-- SIDEBAR: FILE STRUCTURE -->
+  <aside class="sidebar">
+    <div class="sidebar-section fade-in d3">
+      <div class="sidebar-title">File Structure</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);margin-bottom:14px;">
+        examples/training/ppo/
+      </div>
+
+      <div class="file-group">
+        <div class="file-group-label"><div class="file-group-dot" style="background:var(--neon-cyan);"></div> Python</div>
+        <div class="file-item">openenv_gym.py <span class="file-desc">84×84 CNN obs, Discrete(35)</span></div>
+        <div class="file-item">reward.py <span class="file-desc">mineral memory reader</span></div>
+        <div class="file-item">ppo.py <span class="file-desc">CleanRL CNN agent + update</span></div>
+        <div class="file-item">rollout_worker.py <span class="file-desc">collect &amp; save rollouts</span></div>
+        <div class="file-item">trainer.py <span class="file-desc">orchestrate &amp; PPO update</span></div>
+      </div>
+
+      <div class="file-group">
+        <div class="file-group-label"><div class="file-group-dot" style="background:var(--neon-blue);"></div> Docker</div>
+        <div class="file-item">Dockerfile.trainer <span class="file-desc">PyTorch + kubectl</span></div>
+        <div class="file-item">Dockerfile.worker <span class="file-desc">PyTorch + opencv</span></div>
+      </div>
+
+      <div class="file-group">
+        <div class="file-group-label"><div class="file-group-dot" style="background:var(--neon-violet);"></div> Kubernetes</div>
+        <div class="file-item">namespace.yaml</div>
+        <div class="file-item">pvc.yaml <span class="file-desc">1Gi shared</span></div>
+        <div class="file-item">rbac.yaml <span class="file-desc">SA + Role</span></div>
+        <div class="file-item">kueue-resources.yaml <span class="file-desc">queues</span></div>
+        <div class="file-item">trainer-job.yaml <span class="file-desc">suspended</span></div>
+        <div class="file-item">worker-job-template.yaml <span class="file-desc">sidecar</span></div>
+      </div>
+
+      <div class="file-group">
+        <div class="file-group-label"><div class="file-group-dot" style="background:var(--neon-green);"></div> Scripts</div>
+        <div class="file-item">build.sh <span class="file-desc">3 images</span></div>
+        <div class="file-item">load-images.sh <span class="file-desc">Kind + SC files</span></div>
+        <div class="file-item">deploy.sh <span class="file-desc">apply manifests</span></div>
+        <div class="file-item">status.sh <span class="file-desc">workloads &amp; logs</span></div>
+        <div class="file-item">cleanup.sh <span class="file-desc">tear down</span></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section fade-in d5">
+      <div class="sidebar-title">Configuration</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;color:var(--text-dim);">
+        <div><span style="color:var(--neon-amber)">NUM_WORKERS</span> = 2</div>
+        <div><span style="color:var(--neon-amber)">NUM_ITERATIONS</span> = 3</div>
+        <div><span style="color:var(--neon-amber)">ROLLOUT_STEPS</span> = 128</div>
+        <div><span style="color:var(--neon-amber)">LEARNING_RATE</span> = 2.5e-4</div>
+        <div><span style="color:var(--neon-amber)">GAMMA</span> = 0.99</div>
+        <div><span style="color:var(--neon-amber)">GAE_LAMBDA</span> = 0.95</div>
+        <div><span style="color:var(--neon-amber)">CLIP_COEF</span> = 0.2</div>
+        <div><span style="color:var(--neon-amber)">UPDATE_EPOCHS</span> = 4</div>
+        <div><span style="color:var(--neon-amber)">MINIBATCH</span> = 64</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section fade-in d6">
+      <div class="sidebar-title">Quick Start</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:2;color:var(--text-dim);">
+        <div style="color:var(--neon-green)">$ ./build.sh</div>
+        <div style="color:var(--neon-green)">$ ./load-images.sh</div>
+        <div style="color:var(--neon-green)">$ ./deploy.sh</div>
+        <div style="color:var(--text-dim);margin-top:4px;">Monitor:</div>
+        <div style="color:var(--neon-cyan)">$ ./status.sh</div>
+        <div style="color:var(--neon-cyan)">$ kubectl -n openenv-training \</div>
+        <div style="color:var(--neon-cyan);padding-left:12px;">logs job/ppo-trainer -f</div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+// Animate queue slots cycling
+const slots = document.querySelectorAll('.queue-slot');
+const states = [
+  // Frame patterns: admitted, admitted, waiting, waiting, empty, empty
+  ['admitted','admitted','waiting','waiting','empty','empty'],
+  ['admitted','admitted','admitted','waiting','empty','empty'],
+  ['admitted','admitted','admitted','waiting','waiting','empty'],
+  ['admitted','admitted','admitted','admitted','waiting','waiting'],
+  // Workers complete, new ones admit
+  ['empty','admitted','admitted','admitted','waiting','waiting'],
+  ['empty','empty','admitted','admitted','admitted','waiting'],
+  ['empty','empty','admitted','admitted','admitted','admitted'],
+  ['empty','empty','empty','admitted','admitted','admitted'],
+  ['empty','empty','empty','empty','admitted','admitted'],
+  ['admitted','admitted','waiting','waiting','empty','empty'],
+];
+const labels = [
+  ['W0','W1','W2','W3','—','—'],
+  ['W0','W1','W2','W3','—','—'],
+  ['W0','W1','W2','W3','W4','—'],
+  ['W0','W1','W2','W3','W4','W5'],
+  ['—','W1','W2','W3','W4','W5'],
+  ['—','—','W2','W3','W4','W5'],
+  ['—','—','W2','W3','W4','W5'],
+  ['—','—','—','W3','W4','W5'],
+  ['—','—','—','—','W4','W5'],
+  ['W0','W1','W2','W3','—','—'],
+];
+let frame = 0;
+setInterval(() => {
+  frame = (frame + 1) % states.length;
+  slots.forEach((slot, i) => {
+    slot.className = 'queue-slot ' + states[frame][i];
+    slot.textContent = labels[frame][i];
+  });
+}, 2000);
+</script>
+</body>
+</html>

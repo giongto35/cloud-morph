@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ppo-trainer
+  namespace: openenv-training
+  labels:
+    kueue.x-k8s.io/queue-name: training-queue
+spec:
+  suspend: true  # Kueue will unsuspend when admitted
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: ppo-trainer
+    spec:
+      serviceAccountName: trainer-sa
+      restartPolicy: Never
+      containers:
+        - name: trainer
+          image: openenv-trainer:latest
+          imagePullPolicy: Never
+          env:
+            - name: NUM_WORKERS
+              value: "2"
+            - name: NUM_ITERATIONS
+              value: "3"
+            - name: ROLLOUT_STEPS
+              value: "128"
+            - name: DATA_DIR
+              value: /data
+            - name: NAMESPACE
+              value: openenv-training
+            - name: WORKER_TEMPLATE_PATH
+              value: /config/worker-job-template.yaml
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          volumeMounts:
+            - name: training-data
+              mountPath: /data
+            - name: worker-template
+              mountPath: /config
+      volumes:
+        - name: training-data
+          persistentVolumeClaim:
+            claimName: training-data
+        - name: worker-template
+          configMap:
+            name: worker-job-template

@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ppo-monitor
+  namespace: openenv-training
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ppo-monitor
+  template:
+    metadata:
+      labels:
+        app: ppo-monitor
+    spec:
+      serviceAccountName: trainer-sa
+      containers:
+        - name: monitor
+          image: openenv-monitor:latest
+          imagePullPolicy: Never
+          env:
+            - name: DATA_DIR
+              value: /data
+            - name: NAMESPACE
+              value: openenv-training
+            - name: MONITOR_PORT
+              value: "9000"
+            # Worker URLs are pod IPs — in practice, set dynamically or use service
+            - name: WORKER_URLS
+              value: "http://localhost:8000"
+          ports:
+            - containerPort: 9000
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: training-data
+              mountPath: /data
+      volumes:
+        - name: training-data
+          persistentVolumeClaim:
+            claimName: training-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ppo-monitor
+  namespace: openenv-training
+spec:
+  selector:
+    app: ppo-monitor
+  ports:
+    - port: 9000
+      targetPort: 9000
+  type: ClusterIP

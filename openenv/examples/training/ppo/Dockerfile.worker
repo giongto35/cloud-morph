@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+
+# Install Python dependencies
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir numpy opencv-python-headless requests gymnasium
+
+WORKDIR /app
+COPY openenv_gym.py reward.py ppo.py rollout_worker.py ./
+
+CMD ["python", "rollout_worker.py"]
