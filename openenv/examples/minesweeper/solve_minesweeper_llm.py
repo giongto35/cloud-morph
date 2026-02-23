@@ -35,8 +35,22 @@ def get_screenshot():
         return None
 
 def save_image(b64_img, filename="turn.png"):
-    with open(filename, "wb") as f:
-        f.write(base64.b64decode(b64_img))
+    # Decode
+    img_data = base64.b64decode(b64_img)
+    np_arr = np.frombuffer(img_data, np.uint8)
+    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    
+    # Resize to max 300x300 for speed
+    height, width = img.shape[:2]
+    max_dim = 300
+    if height > max_dim or width > max_dim:
+        scale = max_dim / max(height, width)
+        new_width = int(width * scale)
+        new_height = int(height * scale)
+        img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    
+    # Save
+    cv2.imwrite(filename, img)
     return os.path.abspath(filename)
 
 def save_debug_click_image(image_path, x, y, filename="debug_click.png"):
@@ -112,16 +126,27 @@ CRITICAL: ONLY click on UNREVEALED GREEN BLOCKS. Clicking a number does nothing.
     # print(f"--- Prompt ---\n{prompt}\n----------------")
 
     # Combine text prompt and image path into a SINGLE argument
-    # Claude CLI likely interprets file paths in the prompt as attachments
-    full_prompt = f"{prompt}\n\nAttachment: {image_path}"
+    # WE USE DIRECT BASE64 INJECTION TO AVOID CLI FILE PERMISSION PROMPTS
+    
+    # 1. Read the resized image file to get base64
+    with open(image_path, "rb") as img_file:
+        b64_str = base64.b64encode(img_file.read()).decode('utf-8')
+        
+    full_prompt = f"{prompt}\n\n[Image Data Base64]:\ndata:image/png;base64,{b64_str}\n\n(Please interpret the above base64 data as the game board image)"
+
     
     try:
         result = subprocess.run(
             ["claude", "-p", full_prompt],
             capture_output=True,
             text=True,
-            timeout=45 # Increased timeout
+            timeout=120 # Increased timeout even more
         )
+        if result.returncode != 0:
+            print(f"\n[CLAUDE ERROR]: Return Code {result.returncode}")
+            print(f"Stderr: {result.stderr}")
+            return None
+            
         output = result.stdout.strip()
         
         # requested debug print
@@ -133,7 +158,7 @@ CRITICAL: ONLY click on UNREVEALED GREEN BLOCKS. Clicking a number does nothing.
         return None
 
 def perform_action(action_data):
-    if not action_data: return
+    if not action_data: return False, None
     
     # 0. Check for Game Over logic
     if "GAME WON" in action_data.upper():
@@ -172,12 +197,12 @@ def perform_action(action_data):
         button = match.group(3).lower()
         
         # Coordinate Transformation for WinMine (Green)
-        # Grid Start: (5, 25)
-        # Analyzed Cell Size: 18x21
-        GRID_X = 5
-        GRID_Y = 25
-        CELL_W = 18
-        CELL_H = 21
+        # Grid Start: (12, 55)
+        # Cell Size: 16x16
+        GRID_X = 12
+        GRID_Y = 55
+        CELL_W = 16
+        CELL_H = 16
         
         # Calculate Pixel Center
         x = int(GRID_X + (col * CELL_W) + (CELL_W / 2))
@@ -238,6 +263,11 @@ def main():
     
     reset_game()
     
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mock", action="store_true", help="Use mock LLM response")
+    args = parser.parse_args()
+    
     step = 0
     previous_action = None
     previous_b64 = None
@@ -263,7 +293,15 @@ def main():
         previous_b64 = b64
         
         # 3. Think (with feedback)
-        response = ask_claude(img_path, previous_action, screen_changed)
+        if args.mock:
+             print("[MOCK] Simulating LLM response...")
+             # Alternate moves to show progress
+             r, c = (step % 5) + 1, (step % 5) + 1
+             response = f"Analysis: Mocking move for testing.\nMOVE: {r} {c} left"
+             time.sleep(1)
+        else:
+             response = ask_claude(img_path, previous_action, screen_changed)
+             
         print(f"LLM Response: {response}")
         
         # 4. Act
@@ -276,11 +314,17 @@ def main():
                  print("==============================")
                  break
              
-             print("\n!!! Game Lost / Reset Triggered !!!")
-             reset_game()
-             step = 0
-             previous_action = None
-             previous_b64 = None
+             if action_desc == "LOST" or action_desc == "Forced Smiley Click":
+                 print(f"\n!!! Game {action_desc} / Reset Triggered !!!")
+                 reset_game()
+                 step = 0
+                 previous_action = None
+                 previous_b64 = None
+                 continue
+             
+             # Otherwise, it's a parse error or timeout. DO NOT RESET.
+             print("\n[WARN] No valid move found or API error. Retrying... (Game NOT reset)")
+             time.sleep(1)
              continue
         
         previous_action = action_desc

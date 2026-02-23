@@ -31,8 +31,8 @@ docker stop $CONTAINER_NAME 2>/dev/null || true
 docker rm $CONTAINER_NAME 2>/dev/null || true
 
 # Build image
-echo "Building image..."
-docker build $PLATFORM_FLAG -t openenv .
+echo "Building image (legacy mode)..."
+DOCKER_BUILDKIT=0 docker build $PLATFORM_FLAG -t openenv .
 
 # Run container
 echo "Starting container..."

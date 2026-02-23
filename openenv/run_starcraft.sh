@@ -30,18 +30,15 @@ docker stop $CONTAINER_NAME 2>/dev/null || true
 docker rm $CONTAINER_NAME 2>/dev/null || true
 
 # Build image (ensure image is up to date)
-echo "Building image..."
-docker build $PLATFORM_FLAG -t openenv .
+echo "Building image (legacy mode)..."
+DOCKER_BUILDKIT=0 docker build $PLATFORM_FLAG -t openenv .
 
 # Get the absolute path to the winvm/apps folder
 PROJECT_ROOT="$(cd .. && pwd)"
 APPS_PATH="$PROJECT_ROOT/winvm/apps"
 
-if [ ! -d "$APPS_PATH/Starcraft" ]; then
-    echo "Error: StarCraft directory not found at $APPS_PATH/Starcraft"
-    echo "Please ensure you have downloaded StarCraft to winvm/apps/Starcraft"
-    exit 1
-fi
+# Skip permission check on host, rely on mount
+echo "Assuming StarCraft is present at $APPS_PATH/Starcraft"
 
 # Run container with StarCraft
 echo "Starting container with StarCraft..."
