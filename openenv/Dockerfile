@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdotool \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Wine from Ubuntu repositories
+# Install Wine from Ubuntu repositories + 32-bit OpenGL for DirectDraw games
 RUN dpkg --add-architecture i386 && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -38,7 +38,10 @@ RUN dpkg --add-architecture i386 && \
     wine32 \
     wine64 \
     libwine \
-    libpulse0:i386 && \
+    libpulse0:i386 \
+    libgl1:i386 \
+    libgl1-mesa-dri:i386 \
+    libglx-mesa0:i386 && \
     rm -rf /var/lib/apt/lists/*
 
 # Install winetricks
