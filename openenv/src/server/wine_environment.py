@@ -144,17 +144,150 @@ class WineEnvironment:
         env = os.environ.copy()
         env['DISPLAY'] = self._display
         try:
-            subprocess.run(cmd, env=env, capture_output=True, timeout=5)
+            result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                print(f"xdotool {' '.join(args)} failed (rc={result.returncode}): {result.stderr.strip()}")
         except Exception as e:
             print(f"xdotool error: {e}")
+
+    def _focus_wine_window(self):
+        """Focus the Wine application window so key/mouse events land correctly.
+
+        Tries the configured WINDOW_TITLE first, then falls back to any Wine window.
+        Uses --sync so xdotool waits until the window actually has focus.
+        """
+        env = os.environ.copy()
+        env['DISPLAY'] = self._display
+        for search_args in [
+            ['search', '--name', self.window_title, 'windowfocus', '--sync'],
+            ['search', '--class', 'Wine',            'windowfocus', '--sync'],
+        ]:
+            result = subprocess.run(
+                ['xdotool'] + search_args, env=env,
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0:
+                print(f"xdotool focused window via {search_args[2]!r}")
+                return
+        print("Warning: could not focus Wine window — keys may not land")
+
+    # ── App detection ────────────────────────────────────────────────
+
+    def _is_starcraft(self) -> bool:
+        return "starcraft" in self.app_file.lower() or "starcraft" in self.window_title.lower()
+
+    # ── Input dispatch (no screen capture) ───────────────────────────
+
+    def _send_action(self, action: WineAction):
+        """Send input action without capturing a frame."""
+        if self.input_method == "xdotool":
+            self._step_xdotool(action)
+        else:
+            self._step_socket(action)
+
+    # ── StarCraft navigation ──────────────────────────────────────────
+
+    def _nav_screenshot(self, label: str):
+        """Save a debug screenshot during navigation to /app/logs/nav_<label>.png."""
+        try:
+            frame = self._capture_screen()
+            path = f"/app/logs/nav_{label}.png"
+            cv2.imwrite(path, frame)
+            print(f"Nav screenshot → {path}")
+        except Exception as e:
+            print(f"Nav screenshot failed ({label}): {e}")
+
+    def _navigate_starcraft_to_game(self):
+        """Navigate from StarCraft main menu to single-player custom game.
+
+        Path: Main Menu → Single Player (s) → Expansion (e) → Profile (Return)
+              → Episode Select → Play Custom (click) → AIIDE folder (click+Return)
+              → Ok (click) → dismiss Tips (Return)
+        """
+        def key(k):
+            self._focus_wine_window()
+            self._send_action(WineAction(action_type="key", key=k))
+
+        def click(x, y):
+            self._focus_wine_window()
+            self._send_action(WineAction(action_type="mouse", x=x, y=y,
+                                         button="left", mouse_state="click"))
+
+        self._nav_screenshot("00_main_menu")
+
+        print("SC: pressing 's' for Single Player...")
+        key("s")
+        time.sleep(2)
+        self._nav_screenshot("01_after_s")
+
+        print("SC: pressing 'e' for Expansion...")
+        key("e")
+        time.sleep(2)
+        self._nav_screenshot("02_after_e")
+
+        print("SC: pressing Return to select profile...")
+        key("Return")
+        time.sleep(3)
+        self._nav_screenshot("03_after_profile_return")
+
+        print("SC: clicking 'Play Custom' (340, 420)...")
+        click(340, 420)
+        time.sleep(2)
+        self._nav_screenshot("04_after_play_custom")
+
+        print("SC: clicking AIIDE folder (100, 140)...")
+        click(100, 140)
+        time.sleep(0.5)
+        key("Return")
+        time.sleep(2)
+        self._nav_screenshot("05_after_aiide_folder")
+
+        print("SC: clicking 'Ok' to start game (540, 395)...")
+        click(540, 395)
+        print("SC: waiting for map to load (8s)...")
+        time.sleep(8)
+        self._nav_screenshot("06_after_map_load")
+
+        print("SC: dismissing tips dialog...")
+        key("Return")
+        time.sleep(1)
+        self._nav_screenshot("07_final")
+        print("SC: navigation complete.")
+
+    # ── StarCraft in-game verification ───────────────────────────────
+
+    def _verify_starcraft_in_game(self, frame: np.ndarray) -> bool:
+        """Return True if the screen looks like the StarCraft in-game view.
+
+        The minimap (bottom-left corner) shows colorful terrain in-game but
+        is uniform/dark on menu screens. We use pixel std-dev as the signal.
+        """
+        h, w = frame.shape[:2]
+        # Minimap at 640x480 occupies roughly x:5-125, y:356-480
+        x0 = max(0, int(5 * w / 640))
+        x1 = max(1, int(125 * w / 640))
+        y0 = max(0, int(356 * h / 480))
+        y1 = h
+
+        region = frame[y0:y1, x0:x1]
+        if region.size == 0:
+            return False
+
+        std_dev = float(np.std(region))
+        print(f"SC verify: minimap std_dev={std_dev:.1f} (threshold=15.0)")
+        return std_dev > 15.0
 
     # ── Reset ────────────────────────────────────────────────────────
 
     def reset(self) -> WineObservation:
-        """Reset environment and restart the Wine application"""
+        """Reset environment and restart the Wine application.
+
+        For StarCraft, also navigates from the main menu to a single-player
+        custom game and returns a verified observation in metadata.
+        """
         self._episode_id += 1
         self._step_count = 0
-        
+
         try:
             print("Restarting Wine application...")
             result = subprocess.run(
@@ -163,16 +296,31 @@ class WineEnvironment:
             )
             if result.returncode == 0:
                 print(f"✓ Wine application restarted: {result.stdout.strip()}")
-                time.sleep(4)
+                # StarCraft needs ~8s to reach the main menu; other apps need ~4s
+                startup_wait = 8 if self._is_starcraft() else 4
+                print(f"Waiting {startup_wait}s for startup...")
+                time.sleep(startup_wait)
             else:
                 print(f"Warning: Failed to restart wineapp: {result.stderr}")
         except Exception as e:
             print(f"Warning: Could not restart Wine application: {e}")
-        
+
         if self.input_method == "socket":
             self._accept_input_connection()
             time.sleep(0.5)
-        
+
+        metadata: dict = {}
+        if self._is_starcraft():
+            self._navigate_starcraft_to_game()
+            screen = self._capture_screen()
+            verified = self._verify_starcraft_in_game(screen)
+            metadata["game_screen_verified"] = verified
+            if verified:
+                print("✓ StarCraft in-game screen verified")
+            else:
+                print("Warning: could not verify StarCraft in-game screen after reset")
+            return WineObservation(screen=screen, metadata=metadata)
+
         return WineObservation(screen=self._capture_screen())
 
     # ── Step dispatch ────────────────────────────────────────────────
