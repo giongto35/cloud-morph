@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start application (Wine or Native) with proper path handling
+# Start Wine application with proper environment and path handling
 
 APP_FILE="${APP_FILE:-notepad}"
 APP_ARGS="${APP_ARGS:-}"
@@ -9,7 +9,7 @@ if [ -n "$APP_ARGS" ]; then
     echo "With arguments: $APP_ARGS"
 fi
 
-RUN_CMD="exec"
+RUN_CMD="exec wine"
 
 # Start persistent focus loop in background to ensure input registration
 (
@@ -25,42 +25,43 @@ RUN_CMD="exec"
 
 # Check if it is a Windows executable
 if [[ "$APP_FILE" == *.exe ]]; then
-    # Switch to the executable's directory
+    # Extract the directory where the exe is located
     WORK_DIR=$(dirname "$APP_FILE")
     
-    # Symlink to C: drive to make games happy (map Z:\apps\...\Game to C:\Game)
+    # If it's an absolute path with a directory
     if [ -d "$WORK_DIR" ]; then
+        # Get just the game folder name for the C: drive path
         GAME_DIR_NAME=$(basename "$WORK_DIR")
+        
+        # Create symlink in Wine's C: drive
         FAKE_C_PATH="/root/.wine/drive_c/$GAME_DIR_NAME"
         
-        # Only symlink if not already there
         if [ ! -d "$FAKE_C_PATH" ]; then
             echo "Symlinking $WORK_DIR to $FAKE_C_PATH"
             ln -s "$WORK_DIR" "$FAKE_C_PATH"
         fi
         
-        # Use the C: path
-        WORK_DIR="$FAKE_C_PATH"
-        echo "Changing working directory to: $WORK_DIR"
-        cd "$WORK_DIR"
-
+        # Change to the game directory
+        cd "$FAKE_C_PATH"
+        
         # Import any .reg files found in the directory
         for regfile in *.reg; do
-            # Check if file exists (loop expands to literal *.reg if no match)
             if [ -f "$regfile" ]; then
                 echo "Importing registry file: $regfile"
                 wine regedit /S "$regfile"
             fi
         done
-
+        
+        # Use just the executable name since we're in the right directory
         APP_FILE=$(basename "$APP_FILE")
     fi
+    
     RUN_CMD="exec wine"
 fi
 
-# Run with the app file (properly quoted)
+# Execute the application
 if [ -n "$APP_ARGS" ]; then
-    # Split APP_ARGS by spaces and pass as separate arguments
+    # Split APP_ARGS on whitespace
     IFS=' ' read -ra ARGS <<< "$APP_ARGS"
     $RUN_CMD "$APP_FILE" "${ARGS[@]}"
 else
