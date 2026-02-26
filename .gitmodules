@@ -1,0 +1,3 @@
+[submodule "winvm/OpenEnvBinary"]
+	path = winvm/OpenEnvBinary
+	url = git@github.com:giongto35/OpenEnvBinary.git
